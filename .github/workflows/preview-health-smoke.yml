@@ -1,0 +1,31 @@
+name: Preview Backend Smoke
+
+on:
+  push:
+    branches:
+      - stage-1-platform-foundation
+    paths:
+      - .github/workflows/preview-health-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check deployed KSI backend target
+        run: |
+          URL="https://kaec-school-intelligence-git-s-4f5a8d-synsynlele-3991s-projects.vercel.app/api/health"
+          echo "Checking $URL"
+          body_file="$(mktemp)"
+          status="$(curl --silent --show-error --location --output "$body_file" --write-out '%{http_code}' "$URL")"
+          cat "$body_file"
+          echo
+          echo "HTTP $status"
+          test "$status" = "200"
+          grep -q '"ok":true' "$body_file"
+          grep -q '"dedicatedKsiTarget":true' "$body_file"
+          grep -q '"backendReachable":true' "$body_file"
