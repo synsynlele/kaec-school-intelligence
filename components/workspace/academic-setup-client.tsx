@@ -76,6 +76,9 @@ async function loadSetupContext(): Promise<SetupContext | null> {
     classResult.error ??
     studentResult.error;
   if (firstError) throw firstError;
+  if (!workspaceResult.data || !membershipResult.data) {
+    throw new Error("Active workspace membership could not be resolved.");
+  }
 
   return {
     userId: user.id,
