@@ -1,17 +1,23 @@
 import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
+import { KaecBrand } from "@/components/branding/kaec-brand";
 
 export default function SignInPage() {
   return (
     <main className="min-h-screen bg-stone-50 px-5 py-10 sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl flex-col">
-        <Link
-          href="/"
-          className="w-fit text-sm font-medium text-zinc-600 transition hover:text-zinc-950"
-        >
-          ← KAEC School Intelligence
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="w-fit">
+            <KaecBrand compact />
+          </Link>
+          <Link
+            href="/"
+            className="w-fit text-sm font-medium text-zinc-600 transition hover:text-zinc-950"
+          >
+            ← Back to KAEC School Intelligence
+          </Link>
+        </div>
 
         <div className="grid flex-1 items-center gap-12 py-10 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="max-w-xl">

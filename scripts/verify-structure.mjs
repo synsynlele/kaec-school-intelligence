@@ -41,7 +41,7 @@ assert(
 const migrationFiles = (await readdir(join(ROOT, "supabase/migrations")))
   .filter((name) => name.endsWith(".sql"))
   .sort();
-assert(migrationFiles.length >= 11, "Stage 1 migration set is incomplete.");
+assert(migrationFiles.length >= 12, "Stage 2 migration set is incomplete.");
 
 const prefixes = migrationFiles.map((name) => name.split("_")[0]);
 assert(
@@ -49,7 +49,9 @@ assert(
   `Duplicate local migration versions detected: ${migrationFiles.join(", ")}`,
 );
 
-const lessonMigration = await text("supabase/migrations/008_stage1_hqls_lesson_structure.sql");
+const lessonMigration = await text(
+  "supabase/migrations/008_stage1_hqls_lesson_structure.sql",
+);
 for (const [number, key] of [
   [1, "awakening"],
   [2, "exploration"],
@@ -72,8 +74,14 @@ assert(
 const diagnosisIntegrity = await text(
   "supabase/migrations/009_stage1_diagnosis_review_integrity.sql",
 );
-assert(diagnosisIntegrity.includes("review_diagnosis"), "Diagnosis review RPC is missing.");
-assert(diagnosisIntegrity.includes("finalise_diagnosis"), "Diagnosis finalisation RPC is missing.");
+assert(
+  diagnosisIntegrity.includes("review_diagnosis"),
+  "Diagnosis review RPC is missing.",
+);
+assert(
+  diagnosisIntegrity.includes("finalise_diagnosis"),
+  "Diagnosis finalisation RPC is missing.",
+);
 
 const storageIntegrity = await text(
   "supabase/migrations/006_stage1_resource_storage_integrity.sql",
@@ -81,6 +89,22 @@ const storageIntegrity = await text(
 assert(
   storageIntegrity.includes("private.is_workspace_member"),
   "Private resource storage is not bound to workspace membership.",
+);
+
+const fidelityRpc = await text(
+  "supabase/migrations/012_stage2_hqls_system_fidelity_rpc.sql",
+);
+assert(
+  fidelityRpc.includes("private.record_hqls_system_fidelity_check_internal") &&
+    fidelityRpc.includes("public.record_hqls_system_fidelity_check") &&
+    fidelityRpc.includes("security definer") &&
+    fidelityRpc.includes("security invoker"),
+  "Stage 2 secure system-fidelity RPC is missing or incomplete.",
+);
+assert(
+  fidelityRpc.includes("private.is_workspace_member(target_lesson.workspace_id)") &&
+    fidelityRpc.includes("auth.uid()"),
+  "Stage 2 system-fidelity RPC must derive the actor and verify workspace access.",
 );
 
 const productCodePaths = ["app", "components", "lib"];
@@ -103,6 +127,12 @@ for (const rootPath of productCodePaths) {
           !source.includes("pipupath-staging"),
         `Forbidden privileged credential or PipuPath backend reference found in ${relative}.`,
       );
+      assert(
+        !source.includes("GEMINI_API_KEY") &&
+          !source.includes("generateGemini") &&
+          !source.includes("GeminiProviderError"),
+        `Obsolete Gemini Stage 2 provider reference found in ${relative}.`,
+      );
     }
   }
 }
@@ -113,6 +143,163 @@ assert(
   "Health contract no longer pins the dedicated KSI Supabase project.",
 );
 
+const stage2Spec = await text("docs/STAGE_2_HQLS_LESSON_INTELLIGENCE.md");
+assert(
+  stage2Spec.includes("Generate seven-stage HQLS lesson") &&
+    stage2Spec.includes("Independent Validation"),
+  "Stage 2 HQLS acceptance contract is missing or incomplete.",
+);
+assert(
+  stage2Spec.includes("OpenAI Responses API") &&
+    stage2Spec.includes("Authenticated live OpenAI generation E2E"),
+  "Stage 2 specification does not declare OpenAI as the active provider path.",
+);
+assert(
+  !stage2Spec.includes("Gemini"),
+  "Stage 2 specification still contains obsolete Gemini provider references.",
+);
+
+const officialLogo = await text("lib/branding/official-kaec-logo.ts");
+assert(
+  officialLogo.includes("KAEC_OFFICIAL_LOGO_DATA_URI") &&
+    officialLogo.includes("data:image/png;base64,"),
+  "The founder-approved official KAEC-NG logo asset is missing.",
+);
+
+for (const brandedSurface of [
+  "app/page.tsx",
+  "app/sign-in/page.tsx",
+  "app/dashboard/page.tsx",
+  "app/hqls/page.tsx",
+]) {
+  const surface = await text(brandedSurface);
+  assert(
+    surface.includes("KaecBrand"),
+    `Official KAEC-NG branding is missing from ${brandedSurface}.`,
+  );
+}
+
+const stage2Engine = await text("lib/hqls/engine.ts");
+for (const required of [
+  "HQLS_ENGINE_v1.0",
+  "HQLS_PROMPT_v1.1",
+  "validateHqlsLesson",
+  "full_illumination_ignores_revealed_gaps",
+  "trial_second_has_no_genuine_reattempt",
+  "integration_reflection_missing",
+  "reflectionPrompt",
+  "readOptionalString",
+  "teaching_content_outside_full_illumination",
+]) {
+  assert(
+    stage2Engine.includes(required),
+    `Stage 2 HQLS engine is missing ${required}.`,
+  );
+}
+
+const stage2Route = await text("app/api/hqls/route.ts");
+assert(
+  stage2Route.includes("createLesson"),
+  "Stage 2 route does not use canonical lesson persistence.",
+);
+assert(
+  stage2Route.includes("record_hqls_system_fidelity_check") &&
+    stage2Route.includes("artifact_resource_links"),
+  "Stage 2 route is missing secure HQLS fidelity or source-provenance persistence.",
+);
+assert(
+  !stage2Route.includes('.from("hqls_fidelity_checks").insert'),
+  "Stage 2 route must not forge system fidelity through the direct authenticated table-insert path.",
+);
+assert(
+  stage2Route.includes('action === "save_edits"') &&
+    stage2Route.includes('action === "regenerate_stage"'),
+  "Stage 2 route is missing edit or stage-regeneration flow.",
+);
+assert(
+  stage2Route.includes('provider: "openai"') &&
+    stage2Route.includes("generateOpenAIJson"),
+  "Stage 2 route is not wired to OpenAI generation/provenance.",
+);
+assert(
+  !stage2Route.includes("Gemini") && !stage2Route.includes('provider: "google"'),
+  "Stage 2 route still contains obsolete Gemini/Google provider wiring.",
+);
+
+const openai = await text("lib/ai/openai.ts");
+assert(
+  openai.includes("process.env.OPENAI_API_KEY"),
+  "OpenAI server credential lookup is missing.",
+);
+assert(
+  openai.includes("https://api.openai.com/v1/responses"),
+  "OpenAI adapter is not using the Responses API.",
+);
+assert(
+  openai.includes('type: "json_schema"') && openai.includes("strict: true"),
+  "OpenAI adapter is not using strict Structured Outputs.",
+);
+assert(
+  openai.includes("store: false"),
+  "OpenAI generation requests must explicitly disable provider response storage for KSI Stage 2.",
+);
+assert(
+  !openai.includes("NEXT_PUBLIC_OPENAI"),
+  "OpenAI credential must never be public/browser-scoped.",
+);
+
+const hqlsClient = await text("components/hqls/hqls-client.tsx");
+assert(
+  hqlsClient.includes("/api/hqls"),
+  "HQLS teacher UI is not connected to the secure server route.",
+);
+assert(
+  hqlsClient.includes("Reflection — how thinking changed") &&
+    hqlsClient.includes("payload.validation"),
+  "HQLS teacher UI must expose explicit reflection and fidelity failure details.",
+);
+for (const action of [
+  "Improve",
+  "Simplify",
+  "Increase Challenge",
+  "Make More Practical",
+  "Reduce Resource Dependence",
+  "Regenerate",
+]) {
+  assert(hqlsClient.includes(action), `HQLS stage action is missing: ${action}`);
+}
+
+const pdfRoute = await text("app/api/hqls/pdf/route.ts");
+assert(
+  pdfRoute.includes("createHqlsLessonPdf") &&
+    pdfRoute.includes("Only a saved HQLS-validated lesson") &&
+    pdfRoute.includes('"Content-Type": "application/pdf"'),
+  "Stage 2 secure validated-lesson PDF export route is missing or incomplete.",
+);
+
+const pdfGenerator = await text("lib/pdf/hqls-lesson-pdf.ts");
+for (const requirement of [
+  "KAEC_REPORT_LOGO_JPEG_BASE64",
+  "HQLS LESSON PLAN",
+  "Guide Guardrails",
+  "Full Illumination - teaching after struggle",
+  "Reflection - how thinking changed",
+  "HQLS VALIDATED",
+]) {
+  assert(
+    pdfGenerator.includes(requirement),
+    `Teacher-ready HQLS PDF is missing ${requirement}.`,
+  );
+}
+
+const exportsClient = await text("components/hqls/hqls-exports-client.tsx");
+assert(
+  exportsClient.includes("/api/hqls/pdf") &&
+    exportsClient.includes("Download PDF") &&
+    exportsClient.includes("KaecBrand"),
+  "HQLS PDF download experience or official branding is incomplete.",
+);
+
 console.log(
-  `Stage 1 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, tenant/storage/diagnosis guards present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
 );

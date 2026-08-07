@@ -7,6 +7,8 @@ import type {
 
 type DiagnosisRow =
   GeneratedDatabase["public"]["Tables"]["diagnoses"]["Row"];
+type HqlsFidelityCheckRow =
+  GeneratedDatabase["public"]["Tables"]["hqls_fidelity_checks"]["Row"];
 
 type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
   create_hqls_lesson_draft: {
@@ -30,6 +32,17 @@ type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
   finalise_diagnosis: {
     Args: { target_diagnosis_id: string };
     Returns: DiagnosisRow;
+  };
+  record_hqls_system_fidelity_check: {
+    Args: {
+      target_lesson_id: string;
+      target_passed: boolean;
+      target_score: number | null;
+      target_violations: Json;
+      target_evidence: Json;
+      target_engine_version: string;
+    };
+    Returns: HqlsFidelityCheckRow;
   };
 };
 

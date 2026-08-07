@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { KaecBrand } from "@/components/branding/kaec-brand";
+
 const engines = [
   {
     title: "HQLS Lesson Intelligence",
@@ -23,10 +25,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-stone-50 text-zinc-950">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
         <nav className="flex items-center justify-between border-b border-zinc-200 pb-6">
-          <div>
-            <p className="text-sm font-semibold tracking-tight">KAEC-NG</p>
-            <p className="mt-0.5 text-xs text-zinc-500">School Intelligence</p>
-          </div>
+          <KaecBrand />
           <Link
             href="/sign-in"
             className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800"
@@ -62,15 +61,9 @@ export default function HomePage() {
         <section className="grid gap-4 border-t border-zinc-200 pt-8 md:grid-cols-3">
           {engines.map((engine, index) => (
             <article key={engine.title} className="rounded-3xl bg-white p-6 shadow-sm">
-              <p className="text-xs font-semibold text-emerald-800">
-                0{index + 1}
-              </p>
-              <h2 className="mt-5 text-xl font-semibold tracking-tight">
-                {engine.title}
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-zinc-600">
-                {engine.description}
-              </p>
+              <p className="text-xs font-semibold text-emerald-800">0{index + 1}</p>
+              <h2 className="mt-5 text-xl font-semibold tracking-tight">{engine.title}</h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-600">{engine.description}</p>
             </article>
           ))}
         </section>
