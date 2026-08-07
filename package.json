@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "validate": "npm run lint && npm run typecheck && npm run build"
+    "verify:structure": "node scripts/verify-structure.mjs",
+    "validate": "npm run lint && npm run typecheck && npm run verify:structure && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
