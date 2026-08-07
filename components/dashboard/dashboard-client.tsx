@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -25,11 +25,91 @@ type WorkspaceCounts = {
   diagnoses: number;
 };
 
+type DashboardState = {
+  user: User;
+  profile: Profile;
+  workspaces: Workspace[];
+  counts: WorkspaceCounts;
+};
+
 const EMPTY_COUNTS: WorkspaceCounts = {
   lessons: 0,
   assessments: 0,
   diagnoses: 0,
 };
+
+async function fetchCounts(
+  supabase: SupabaseClient,
+  workspaceId: string,
+): Promise<WorkspaceCounts> {
+  const [lessonResult, assessmentResult, diagnosisResult] = await Promise.all([
+    supabase
+      .from("lessons")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId),
+    supabase
+      .from("assessments")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId),
+    supabase
+      .from("diagnoses")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId),
+  ]);
+
+  const firstError =
+    lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error;
+
+  if (firstError) throw firstError;
+
+  return {
+    lessons: lessonResult.count ?? 0,
+    assessments: assessmentResult.count ?? 0,
+    diagnoses: diagnosisResult.count ?? 0,
+  };
+}
+
+async function fetchDashboardState(
+  supabase: SupabaseClient,
+): Promise<DashboardState | null> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) throw sessionError;
+  if (!session?.user) return null;
+
+  const [profileResult, workspaceResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name,email,default_workspace_id")
+      .eq("id", session.user.id)
+      .single(),
+    supabase
+      .from("workspaces")
+      .select("id,name,workspace_type,created_at")
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (profileResult.error) throw profileResult.error;
+  if (workspaceResult.error) throw workspaceResult.error;
+
+  const profile = profileResult.data as Profile;
+  const workspaces = (workspaceResult.data ?? []) as Workspace[];
+  const activeWorkspaceId =
+    profile.default_workspace_id ?? workspaces[0]?.id ?? null;
+  const counts = activeWorkspaceId
+    ? await fetchCounts(supabase, activeWorkspaceId)
+    : EMPTY_COUNTS;
+
+  return {
+    user: session.user,
+    profile,
+    workspaces,
+    counts,
+  };
+}
 
 export function DashboardClient() {
   const router = useRouter();
@@ -44,113 +124,34 @@ export function DashboardClient() {
   const [showSchoolForm, setShowSchoolForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeWorkspace = useMemo(() => {
-    if (!profile?.default_workspace_id) {
-      return workspaces[0] ?? null;
-    }
-
-    return (
-      workspaces.find(
+  const activeWorkspace = profile?.default_workspace_id
+    ? (workspaces.find(
         (workspace) => workspace.id === profile.default_workspace_id,
       ) ??
       workspaces[0] ??
-      null
-    );
-  }, [profile?.default_workspace_id, workspaces]);
-
-  const loadCounts = useCallback(async (workspaceId: string) => {
-    const supabase = getBrowserSupabaseClient();
-
-    const [lessonResult, assessmentResult, diagnosisResult] = await Promise.all([
-      supabase
-        .from("lessons")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId),
-      supabase
-        .from("assessments")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId),
-      supabase
-        .from("diagnoses")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId),
-    ]);
-
-    const firstError =
-      lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error;
-
-    if (firstError) {
-      throw firstError;
-    }
-
-    setCounts({
-      lessons: lessonResult.count ?? 0,
-      assessments: assessmentResult.count ?? 0,
-      diagnoses: diagnosisResult.count ?? 0,
-    });
-  }, []);
-
-  const loadWorkspaceState = useCallback(async () => {
-    const supabase = getBrowserSupabaseClient();
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    if (sessionError) {
-      throw sessionError;
-    }
-
-    if (!session?.user) {
-      router.replace("/sign-in");
-      return;
-    }
-
-    setUser(session.user);
-
-    const [profileResult, workspaceResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("display_name,email,default_workspace_id")
-        .eq("id", session.user.id)
-        .single(),
-      supabase
-        .from("workspaces")
-        .select("id,name,workspace_type,created_at")
-        .order("created_at", { ascending: true }),
-    ]);
-
-    if (profileResult.error) {
-      throw profileResult.error;
-    }
-
-    if (workspaceResult.error) {
-      throw workspaceResult.error;
-    }
-
-    const nextProfile = profileResult.data as Profile;
-    const nextWorkspaces = (workspaceResult.data ?? []) as Workspace[];
-
-    setProfile(nextProfile);
-    setWorkspaces(nextWorkspaces);
-
-    const activeId =
-      nextProfile.default_workspace_id ?? nextWorkspaces[0]?.id ?? null;
-
-    if (activeId) {
-      await loadCounts(activeId);
-    } else {
-      setCounts(EMPTY_COUNTS);
-    }
-  }, [loadCounts, router]);
+      null)
+    : (workspaces[0] ?? null);
 
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
     const supabase = getBrowserSupabaseClient();
 
-    void loadWorkspaceState()
+    void fetchDashboardState(supabase)
+      .then((state) => {
+        if (cancelled) return;
+
+        if (!state) {
+          router.replace("/sign-in");
+          return;
+        }
+
+        setUser(state.user);
+        setProfile(state.profile);
+        setWorkspaces(state.workspaces);
+        setCounts(state.counts);
+      })
       .catch((caught) => {
-        if (!mounted) return;
+        if (cancelled) return;
         setError(
           caught instanceof Error
             ? caught.message
@@ -158,7 +159,7 @@ export function DashboardClient() {
         );
       })
       .finally(() => {
-        if (mounted) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
 
     const {
@@ -170,10 +171,10 @@ export function DashboardClient() {
     });
 
     return () => {
-      mounted = false;
+      cancelled = true;
       subscription.unsubscribe();
     };
-  }, [loadWorkspaceState, router]);
+  }, [router]);
 
   async function switchWorkspace(workspaceId: string) {
     if (!user || workspaceId === activeWorkspace?.id) return;
@@ -190,10 +191,11 @@ export function DashboardClient() {
 
       if (updateError) throw updateError;
 
+      const nextCounts = await fetchCounts(supabase, workspaceId);
       setProfile((current) =>
         current ? { ...current, default_workspace_id: workspaceId } : current,
       );
-      await loadCounts(workspaceId);
+      setCounts(nextCounts);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -227,7 +229,6 @@ export function DashboardClient() {
       if (workspaceError) throw workspaceError;
 
       const created = workspace as Workspace;
-
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ default_workspace_id: created.id })
