@@ -87,7 +87,7 @@ Stage 5 teaching must be sufficient for clarity but concise and targeted. It mus
 
 ## 5. Generation architecture
 
-Stage 2 must follow the constitutional orchestration hierarchy:
+Stage 2 follows the constitutional orchestration hierarchy:
 
 **Constitutional Rules → HQLS Module Rules → School/Resource Context → User Request → Structured Generation → Independent Validation → Repair**
 
@@ -99,7 +99,9 @@ Rules:
 - Selected source resources are workspace-scoped and provenance is persisted.
 - The browser never receives the provider API key.
 
-Initial provider adapter: Google Gemini API, with model configurable by server environment. The HQLS engine remains provider-independent at the contract layer.
+Initial provider adapter: **OpenAI Responses API with Structured Outputs**, using a server-only `OPENAI_API_KEY`. The model is configurable through `KSI_OPENAI_MODEL`; the HQLS engine remains provider-independent at the constitutional contract and validation layers.
+
+Selected authorised PDFs/images/text resources may be supplied to the OpenAI request only after existing KSI RLS/storage permission checks succeed. Provider storage is disabled for these generation requests where supported by the API request contract.
 
 ## 6. Fidelity validator
 
@@ -157,10 +159,11 @@ No output should appear as an undifferentiated AI wall of text.
 - All lesson, stage, resource, fidelity, artifact-version and AI-run writes remain workspace-scoped under RLS.
 - API routes authenticate the real Supabase user token before generation.
 - Selected resources must be readable by the authenticated user under existing RLS/storage rules.
+- `OPENAI_API_KEY` is server-only and must never use a `NEXT_PUBLIC_` prefix.
 - AI runs record engine version, prompt version, provider/model, status and input summary.
 - Generated lesson rows record engine and prompt versions.
 - Resource links are recorded in `artifact_resource_links`.
-- No service-role key is required for normal teacher generation.
+- No Supabase service-role key is required for normal teacher generation.
 
 ## 10. Stage 2 UI
 
@@ -177,7 +180,7 @@ The surface should remain calm and teacher-facing:
 - stage-level AI actions
 - fidelity status visible but not noisy
 
-Dashboard HQLS Lesson Intelligence card becomes an active entry point. Assessment and Diagnosis cards remain future stages.
+Dashboard HQLS Lesson Intelligence becomes an active entry point. Assessment and Diagnosis remain future stages.
 
 ## 11. Stage 2 exit criteria
 
@@ -185,7 +188,8 @@ Stage 2 is complete only when all of the following are proven:
 
 - [ ] Stage 2 branch starts from merged Stage 1 main.
 - [ ] Required lesson inputs and progressive optional context are implemented.
-- [ ] AI provider key remains server-side.
+- [ ] OpenAI API key remains server-side.
+- [ ] OpenAI Responses API Structured Outputs are used for generated schemas.
 - [ ] Structured seven-stage schema is enforced before persistence.
 - [ ] Deterministic HQLS fidelity validation is independent of generator self-claims.
 - [ ] Failed generation is repaired or rejected rather than presented as compliant.
@@ -207,7 +211,10 @@ Stage 2 is complete only when all of the following are proven:
 - [ ] Production build passes.
 - [ ] High-severity dependency audit passes.
 - [ ] Matching Vercel Preview is READY.
-- [ ] Authenticated live Gemini generation E2E passes against the dedicated KSI environment.
+- [ ] Authenticated live OpenAI generation E2E passes against the dedicated KSI environment.
+- [ ] Source-resource generation E2E passes with authorised workspace material.
+- [ ] Manual edit/save/reopen E2E passes.
+- [ ] Stage-level regeneration E2E proves all non-target stages remain unchanged.
 - [ ] Stage 2 completion report records exact accepted head and live evidence.
 
 ## 12. Explicitly out of scope

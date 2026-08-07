@@ -49,7 +49,9 @@ assert(
   `Duplicate local migration versions detected: ${migrationFiles.join(", ")}`,
 );
 
-const lessonMigration = await text("supabase/migrations/008_stage1_hqls_lesson_structure.sql");
+const lessonMigration = await text(
+  "supabase/migrations/008_stage1_hqls_lesson_structure.sql",
+);
 for (const [number, key] of [
   [1, "awakening"],
   [2, "exploration"],
@@ -72,8 +74,14 @@ assert(
 const diagnosisIntegrity = await text(
   "supabase/migrations/009_stage1_diagnosis_review_integrity.sql",
 );
-assert(diagnosisIntegrity.includes("review_diagnosis"), "Diagnosis review RPC is missing.");
-assert(diagnosisIntegrity.includes("finalise_diagnosis"), "Diagnosis finalisation RPC is missing.");
+assert(
+  diagnosisIntegrity.includes("review_diagnosis"),
+  "Diagnosis review RPC is missing.",
+);
+assert(
+  diagnosisIntegrity.includes("finalise_diagnosis"),
+  "Diagnosis finalisation RPC is missing.",
+);
 
 const storageIntegrity = await text(
   "supabase/migrations/006_stage1_resource_storage_integrity.sql",
@@ -103,6 +111,12 @@ for (const rootPath of productCodePaths) {
           !source.includes("pipupath-staging"),
         `Forbidden privileged credential or PipuPath backend reference found in ${relative}.`,
       );
+      assert(
+        !source.includes("GEMINI_API_KEY") &&
+          !source.includes("generateGemini") &&
+          !source.includes("GeminiProviderError"),
+        `Obsolete Gemini Stage 2 provider reference found in ${relative}.`,
+      );
     }
   }
 }
@@ -119,6 +133,15 @@ assert(
     stage2Spec.includes("Independent Validation"),
   "Stage 2 HQLS acceptance contract is missing or incomplete.",
 );
+assert(
+  stage2Spec.includes("OpenAI Responses API") &&
+    stage2Spec.includes("Authenticated live OpenAI generation E2E"),
+  "Stage 2 specification does not declare OpenAI as the active provider path.",
+);
+assert(
+  !stage2Spec.includes("Gemini"),
+  "Stage 2 specification still contains obsolete Gemini provider references.",
+);
 
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
@@ -129,26 +152,64 @@ for (const required of [
   "trial_second_has_no_genuine_reattempt",
   "integration_missing",
 ]) {
-  assert(stage2Engine.includes(required), `Stage 2 HQLS engine is missing ${required}.`);
+  assert(
+    stage2Engine.includes(required),
+    `Stage 2 HQLS engine is missing ${required}.`,
+  );
 }
 
 const stage2Route = await text("app/api/hqls/route.ts");
-assert(stage2Route.includes("createLesson"), "Stage 2 route does not use canonical lesson persistence.");
 assert(
-  stage2Route.includes("hqls_fidelity_checks") && stage2Route.includes("artifact_resource_links"),
+  stage2Route.includes("createLesson"),
+  "Stage 2 route does not use canonical lesson persistence.",
+);
+assert(
+  stage2Route.includes("hqls_fidelity_checks") &&
+    stage2Route.includes("artifact_resource_links"),
   "Stage 2 route is missing HQLS fidelity or source-provenance persistence.",
 );
 assert(
-  stage2Route.includes('action === "save_edits"') && stage2Route.includes('action === "regenerate_stage"'),
+  stage2Route.includes('action === "save_edits"') &&
+    stage2Route.includes('action === "regenerate_stage"'),
   "Stage 2 route is missing edit or stage-regeneration flow.",
 );
+assert(
+  stage2Route.includes('provider: "openai"') &&
+    stage2Route.includes("generateOpenAIJson"),
+  "Stage 2 route is not wired to OpenAI generation/provenance.",
+);
+assert(
+  !stage2Route.includes("Gemini") && !stage2Route.includes('provider: "google"'),
+  "Stage 2 route still contains obsolete Gemini/Google provider wiring.",
+);
 
-const gemini = await text("lib/ai/gemini.ts");
-assert(gemini.includes("process.env.GEMINI_API_KEY"), "Gemini server credential lookup is missing.");
-assert(!gemini.includes("NEXT_PUBLIC_GEMINI"), "Gemini credential must never be public/browser-scoped.");
+const openai = await text("lib/ai/openai.ts");
+assert(
+  openai.includes("process.env.OPENAI_API_KEY"),
+  "OpenAI server credential lookup is missing.",
+);
+assert(
+  openai.includes("https://api.openai.com/v1/responses"),
+  "OpenAI adapter is not using the Responses API.",
+);
+assert(
+  openai.includes('type: "json_schema"') && openai.includes("strict: true"),
+  "OpenAI adapter is not using strict Structured Outputs.",
+);
+assert(
+  openai.includes("store: false"),
+  "OpenAI generation requests must explicitly disable provider response storage for KSI Stage 2.",
+);
+assert(
+  !openai.includes("NEXT_PUBLIC_OPENAI"),
+  "OpenAI credential must never be public/browser-scoped.",
+);
 
 const hqlsClient = await text("components/hqls/hqls-client.tsx");
-assert(hqlsClient.includes("/api/hqls"), "HQLS teacher UI is not connected to the secure server route.");
+assert(
+  hqlsClient.includes("/api/hqls"),
+  "HQLS teacher UI is not connected to the secure server route.",
+);
 for (const action of [
   "Improve",
   "Simplify",
@@ -161,5 +222,5 @@ for (const action of [
 }
 
 console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique Stage 1 migrations, governed HQLS engine/validator/server route/UI present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique Stage 1 migrations, governed HQLS engine/validator/OpenAI Responses route/UI present.`,
 );
