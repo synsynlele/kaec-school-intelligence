@@ -280,6 +280,11 @@ function readString(record: Record<string, unknown>, key: string) {
   return value.trim();
 }
 
+function readOptionalString(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function readStringArray(record: Record<string, unknown>, key: string) {
   const value = record[key];
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
@@ -323,7 +328,7 @@ export function parseHqlsStageContent(
     productiveStruggle: readString(record, "productiveStruggle"),
     teachingContent: readString(record, "teachingContent"),
     respondsToFirstAttempt: readString(record, "respondsToFirstAttempt"),
-    reflectionPrompt: readString(record, "reflectionPrompt"),
+    reflectionPrompt: readOptionalString(record, "reflectionPrompt"),
     transferTask: readString(record, "transferTask"),
   };
 }
