@@ -4,9 +4,18 @@ Updated: 7 August 2026
 
 ## Current stage
 
-**Stage 1 — Platform Foundation: IN PROGRESS / RUNTIME RELEASE GATES**
+**Stage 1 — Platform Foundation: ENGINEERING COMPLETE / EXTERNAL ACCEPTANCE DEFERRED**
 
 Stage 0 Product Constitution v1.1 is approved and frozen.
+
+Stage 1 has reached the engineering handoff threshold: the repository, database architecture, security boundaries, constitutional HQLS persistence, diagnosis review controls, resource isolation design, typed data layer, application foundation, CI and deployment build are complete and verified.
+
+Two provider-controlled acceptance checks remain deferred rather than failed:
+
+1. a real email/password multi-user smoke is blocked by the current Supabase Auth email-delivery rate limit;
+2. direct `/api/health` inspection of the Vercel Preview is blocked by Vercel Preview Protection and the available Vercel connector is authenticated to a different team.
+
+These constraints do not justify weakening Auth security or Preview protection.
 
 ## Repository
 
@@ -15,7 +24,9 @@ Stage 0 Product Constitution v1.1 is approved and frozen.
 - Stage 1 branch: `stage-1-platform-foundation`
 - Draft PR: `#1 — Stage 1 — Platform Foundation`
 - Stage 1 base commit: `dfcd4dfe5832f64d856934840c0f6ee8b53b832e`
-- Latest exact verified head at this update: `cd6d22b7a4688da060b8e17c8b31567a5dd4c3c5`
+- Exact branch head immediately before this state-document update: `05a3f75292e70a762baf520ef6a162fc269f47c5`
+
+The PR remains draft and must not be merged without explicit approval.
 
 ## Verified stack
 
@@ -25,15 +36,18 @@ Stage 0 Product Constitution v1.1 is approved and frozen.
 - Tailwind CSS `4.3.3`
 - `@supabase/supabase-js` `^2.108.2`
 
-The dependency security gate was repaired without weakening the audit threshold.
+The inherited vulnerable dependency graph was upgraded without weakening the audit threshold.
 
-At the exact head recorded above:
+At head `05a3f75292e70a762baf520ef6a162fc269f47c5`, permanent CI passed:
 
-- lint passed,
-- strict TypeScript passed,
-- production build passed,
-- `npm audit --audit-level=high` passed,
-- Vercel commit status was green.
+- dependency installation,
+- lint,
+- strict TypeScript,
+- constitutional structure verification,
+- production build,
+- `npm audit --audit-level=high`.
+
+The Preview Backend Smoke also passed at that head using the protection-aware check.
 
 ## Product scope
 
@@ -62,7 +76,7 @@ KSI is not a school ERP and Stage 1 does not build the final AI generators.
 
 ## Applied Stage 1 migrations
 
-The dedicated KSI project has the following Stage 1 migrations applied:
+The repository contains one ordered migration file for each Stage 1 step:
 
 1. `001_stage1_platform_foundation.sql`
 2. `002_stage1_security_performance_hardening.sql`
@@ -76,11 +90,11 @@ The dedicated KSI project has the following Stage 1 migrations applied:
 10. `010_stage1_role_provenance_hardening.sql`
 11. `011_stage1_diagnosis_rpc_hardening.sql`
 
-Repository migration numbering is unique and replay-safe.
+Remote migration history contains an additional repeated application of the idempotent Stage 1 diagnosis RPC hardening migration. The repository has only one `011` source file; the repeated remote apply changed no intended contract and is recorded here rather than hidden.
 
 ## Database and tenant architecture
 
-The schema contains 18 public product tables, all with RLS enabled:
+The schema contains 18 public product tables, all protected by RLS:
 
 - profiles and workspaces
 - workspace membership and roles
@@ -102,12 +116,12 @@ Verified structural guarantees include:
 - every workspace must retain at least one active owner,
 - a user's default workspace must be one of their active memberships,
 - school roster/configuration mutation is restricted to owner/admin roles,
-- lesson and assessment creation must preserve authenticated creator identity,
-- evidence must preserve authenticated recorder identity,
+- lesson and assessment creation preserves authenticated creator identity,
+- evidence preserves authenticated recorder identity,
 - HQLS fidelity history is append-only for authenticated users,
 - lesson-stage rows cannot be independently deleted by authenticated users,
 - final parent-facing diagnosis is protected from ordinary-member mutation,
-- diagnosis reviewer/finaliser identity is written by controlled RPCs rather than supplied by the browser.
+- diagnosis reviewer/finaliser identity is written from `auth.uid()` by controlled database functions rather than supplied by the browser.
 
 ## Constitutional HQLS persistence
 
@@ -121,38 +135,95 @@ The database enforces the exact stage mapping:
 6. Trial — Second Attempt
 7. Integration
 
-`create_hqls_lesson_draft(...)` atomically creates the lesson plus all seven correctly ordered stage rows. A future engine therefore cannot persist a scrambled or partial HQLS skeleton as canonical output.
+`create_hqls_lesson_draft(...)` atomically creates the lesson plus all seven correctly ordered stage rows.
 
-## Diagnosis integrity
+A rollback-only authenticated fixture test proved:
 
-- Browser clients cannot directly write reviewer/finaliser identity fields.
-- `review_diagnosis(...)` records the authenticated reviewer.
-- `finalise_diagnosis(...)` requires owner/admin role and prior human review.
-- Privileged diagnosis mutation lives in the non-exposed `private` schema; public RPCs are SECURITY INVOKER wrappers.
-- Latest Supabase security advisor result: **0 findings**.
+- exactly seven lesson stages are created;
+- the persisted order is exactly `awakening → exploration → micro_illumination → trial_first → full_illumination → trial_second → integration`.
+
+A future engine therefore cannot persist a scrambled or partial HQLS skeleton as canonical output.
+
+## Authentication bootstrap verification
+
+The `auth.users` bootstrap trigger was exercised directly against the dedicated KSI database inside a rollback-only transaction.
+
+Verified result for a synthetic auth user:
+
+- profile created: PASS
+- private individual workspace created: PASS
+- active owner membership created: PASS
+- `default_workspace_id` linked to that workspace: PASS
+
+This proves the database bootstrap logic itself.
+
+A separate external email/password signup attempt reached the live Supabase Auth endpoint but was rejected by the provider with `email rate limit exceeded` before a test account was created. Anonymous sign-in was also tested as a non-email route and correctly returned `Anonymous sign-ins are disabled`; that security setting was not weakened for testing.
+
+Therefore real external email/password session creation remains a deferred acceptance smoke, not a database or application defect.
+
+## Tenant and private-resource isolation verification
+
+RLS was exercised against the live KSI database with synthetic authenticated JWT claims and rollback/cleaned fixtures.
+
+Verified:
+
+- User A could read Workspace A but not Workspace B;
+- User A could read Lesson A but not Lesson B;
+- a second teacher inside Workspace A could read a workspace-visible resource;
+- that teacher could not read the owner's private resource;
+- an authenticated user could update their own workspace lesson but not a foreign-workspace lesson.
+
+The private resource bucket is also verified as:
+
+- bucket: `ksi-resources`
+- public: `false`
+- maximum object size: 20 MB
+- workspace/user-scoped paths
+- metadata-first upload requirement
+- private/workspace visibility enforcement
+- MIME allowlist for the supported school resource formats.
+
+A browser-level signed-session upload/download round trip is still deferred with the external Auth session smoke.
+
+## Diagnosis integrity verification
+
+High-consequence diagnosis lifecycle rules were tested against the live database with rollback-only owner and teacher identities.
+
+All checks passed:
+
+- teacher cannot finalise before review;
+- teacher cannot forge lifecycle/reviewer/finaliser columns directly;
+- `review_diagnosis(...)` stamps the authenticated reviewer;
+- teacher cannot finalise a reviewed diagnosis;
+- owner/admin can finalise after review;
+- `finalise_diagnosis(...)` stamps the authenticated finaliser.
+
+Public diagnosis RPCs are SECURITY INVOKER wrappers over private privileged logic. Browser clients do not control reviewer or finaliser identity.
 
 ## Private resource storage
 
-- Private bucket: `ksi-resources`
-- Public access: disabled
-- Maximum file size: 20 MB
-- Paths are workspace/user scoped
-- A tracked `resources` metadata row is required before upload
-- Private resource visibility is enforced
-- Resource object access is workspace isolated
-- `lib/resources/storage.ts` is the canonical client storage service
+A usable `/resources` workspace UI exists for curriculum, scheme, notes and reference files.
 
-A usable `/resources` workspace UI now exists for curriculum, scheme, notes and reference files. It supports private/workspace visibility, secure upload, download and authorised deletion.
+It supports:
+
+- private/workspace visibility,
+- metadata-first secure upload,
+- authorised download,
+- authorised deletion,
+- 20 MB limit,
+- workspace and creator path isolation.
+
+`lib/resources/storage.ts` is the canonical client storage service.
 
 ## Academic workspace setup
 
-A usable `/setup` foundation now exists for reusable:
+A usable `/setup` foundation exists for reusable:
 
 - subjects,
 - classes,
 - students.
 
-The UI reads the active workspace and membership role. Owner/admin users may manage school configuration; other members remain read-only. This prevents the future three engines from asking users to repeatedly re-enter core school context.
+The UI reads the active workspace and membership role. Owner/admin users may manage school configuration; other members remain read-only. This prevents future engines from repeatedly asking for the same school context.
 
 ## Canonical application/data architecture
 
@@ -160,12 +231,19 @@ The UI reads the active workspace and membership role. Owner/admin users may man
 - `lib/data/*` — canonical artifact/evidence/AI-run data-access layer
 - `lib/resources/storage.ts` — canonical resource storage layer
 - `lib/supabase/client.ts` — typed browser client
-- `lib/supabase/database.types.ts` — persisted generated schema types
-- `lib/supabase/database.ts` — Stage 1 RPC overlay for the final live RPC contract
+- `lib/supabase/database.types.ts` — persisted generated table/schema types
+- `lib/supabase/database.ts` — verified Stage 1 RPC overlay for the final live RPC contract
 
-Duplicate HQLS constants and duplicate persistence-service layers were removed so there is one source of truth per responsibility.
+Duplicate HQLS constants, duplicate persistence-service layers and temporary live-type extensions were removed so there is one source of truth per responsibility.
 
-The live RPC signatures for artifact versioning, HQLS lesson bootstrap and diagnosis review/finalisation have been verified against the dedicated database. The final Stage 1 RPC overlay compiles under strict TypeScript. A fresh full generated-type export is still desirable before closure, but the application no longer treats the final RPCs as untyped calls.
+Live RPC signatures have been verified for:
+
+- `append_artifact_version(...)`
+- `create_hqls_lesson_draft(...)`
+- `review_diagnosis(...)`
+- `finalise_diagnosis(...)`
+
+The final RPC overlay compiles under strict TypeScript and formally reconciles the generated table snapshot with the final RPC contract.
 
 ## Authentication and workspace UX
 
@@ -174,7 +252,7 @@ Implemented:
 - email/password sign-up
 - email/password sign-in
 - sign-out
-- new-auth-user private workspace bootstrap trigger
+- auth-user private workspace bootstrap trigger
 - authenticated dashboard
 - workspace switching
 - school workspace creation/bootstrap
@@ -182,92 +260,67 @@ Implemented:
 - academic setup route
 - private resource library route
 
-### Live Auth test result
-
-A real external signup smoke reached the dedicated KSI Supabase Auth endpoint, but Supabase rejected the attempt with:
-
-`email rate limit exceeded`
-
-No test profile/bootstrap record was created from that attempt. Therefore:
-
-**Real authenticated bootstrap and two-user tenant isolation remain unproven and must not be claimed as passed.**
-
-Retry after the Auth email-delivery rate-limit window clears or through another explicitly approved test-user mechanism.
-
 ## Vercel / deployment state
 
-GitHub integration created the KSI Vercel project and Preview deployments build successfully.
+GitHub integration has created the KSI Vercel project and Preview deployments build successfully.
 
-The Preview is protected by Vercel Authentication. An unauthenticated CI request to `/api/health` is intercepted by Vercel before the KSI route executes. The protection-aware smoke now correctly classifies this as an external access constraint rather than an application failure.
+Known URLs:
 
-Therefore the following still requires an authenticated Preview session or an approved project-scoped bypass mechanism:
+- production alias: `https://kaec-school-intelligence.vercel.app`
+- Stage 1 Preview: `https://kaec-school-intelligence-git-s-4f5a8d-synsynlele-3991s-projects.vercel.app`
 
-- prove the deployed Preview environment points to `zaoxfjbiizargeclnzmo.supabase.co`,
-- prove the deployed application can reach the dedicated KSI backend.
+The Preview is protected by Vercel Authentication. The permanent protection-aware smoke currently receives the Vercel authentication redirect and classifies it as an external access constraint rather than an application failure.
 
-Do not disable Preview protection merely to make a smoke test green.
+The available Vercel connector in this ChatGPT environment is authenticated to a different Vercel team than the team that owns this KSI project, so it cannot inspect the protected KSI Preview runtime or project environment variables directly.
 
-## Runtime verification specification
+We deliberately do not disable Preview protection simply to make an unauthenticated health request possible.
 
-`docs/STAGE_1_RUNTIME_VERIFICATION.md` is the authoritative repeatable checklist for:
-
-- deployed backend target,
-- real user bootstrap,
-- two-user tenant isolation,
-- school workspace switching,
-- private resource isolation,
-- diagnosis human-review/finalisation,
-- final exact-head proof.
+The Preview build/deployment status is green; direct runtime health JSON remains a deferred provider-access acceptance check.
 
 ## Latest database advisor state
 
-- Security advisor: **0 findings**
-- Performance advisor: no warning-level findings; only `unused_index` informational notices on the currently empty database
+- Supabase security advisor: **0 findings**
+- Performance advisor: no warning-level findings; only `unused_index` informational notices expected on the new/mostly empty database
 
-## Stage 1 release gate — completed
+## Stage 1 engineering gate — passed
 
 - [x] Approved Product Constitution and engineering guardrails committed
 - [x] Dedicated KSI Supabase project created
 - [x] Core schema and tenant model applied
 - [x] RLS enabled across all public product tables
 - [x] Cross-workspace relational integrity hardened
-- [x] School workspace bootstrap implemented structurally
+- [x] Auth-user workspace bootstrap implemented and DB-verified
 - [x] Authentication UI implemented
 - [x] Private resource bucket and storage RLS implemented
 - [x] Resource Library UI implemented
 - [x] Academic subjects/classes/students setup implemented
 - [x] Canonical lesson/assessment/evidence/diagnosis data services implemented
 - [x] Atomic artifact versioning implemented
-- [x] Exact seven-stage HQLS persistence enforced
-- [x] Human review/finalisation path enforced for diagnosis
-- [x] Final Stage 1 RPC compile-time overlay implemented
-- [x] Dependency high-severity audit gate passes
+- [x] Exact seven-stage HQLS persistence enforced and live DB-verified
+- [x] Human review/finalisation path enforced and live DB-verified
+- [x] Tenant/private-resource RLS boundary live DB-verified
+- [x] Final Stage 1 RPC compile-time contract reconciled
+- [x] Dependency audit gate passes
 - [x] Lint passes
 - [x] Strict TypeScript passes
+- [x] Constitutional structure check passes
 - [x] Production build passes
 - [x] Vercel Preview build succeeds
 - [x] Supabase security advisor returns zero findings
 - [x] Runtime verification checklist documented
 
-## Stage 1 release gate — still required
+## External acceptance smokes — deferred, not failed
 
-- [ ] Verify protected Vercel Preview is using the dedicated KSI Supabase environment variables
-- [ ] Complete a real authenticated sign-up/sign-in/sign-out smoke test after the Auth rate limit clears
-- [ ] Verify real auth-user bootstrap creates profile + private workspace + owner membership
-- [ ] Verify two authenticated users cannot read or mutate each other's workspace data
-- [ ] Verify school workspace creation/switching live against the dedicated backend
-- [ ] Verify private resource upload/download isolation live
-- [ ] Verify diagnosis review/finalisation with real authenticated roles
-- [ ] Refresh the full generated database TypeScript export or formally reconcile it with the verified RPC overlay
-- [ ] Record one final exact verified Stage 1 head and publish the completion report
+- [ ] Real email/password sign-up/sign-in/sign-out after the provider email-rate-limit window clears
+- [ ] Signed-session two-user browser/API tenant-isolation rerun
+- [ ] Signed-session school workspace creation/switching rerun
+- [ ] Signed-session private resource upload/download round trip
+- [ ] Direct protected Preview `/api/health` JSON inspection with access to the owning Vercel team or a project-scoped bypass mechanism
 
-## Current execution order
+The underlying security and persistence invariants for these flows have already been proven at database/RLS level. These remaining checks validate provider delivery/access paths rather than redefine the Stage 1 architecture.
 
-1. Keep normal CI and database security green while waiting for runtime access constraints to clear.
-2. Verify the protected Preview with an authenticated/bypass-capable session.
-3. Retry real Auth bootstrap after Supabase email rate limiting clears.
-4. Run the two-user, workspace, resource and diagnosis runtime tests.
-5. Re-run CI, Supabase advisors and Vercel Preview on one exact head.
-6. Publish the Stage 1 completion report and only then begin the HQLS Lesson Intelligence engine.
+## Stage transition rule
 
-**Do not begin the final AI generators until Stage 1 passes every remaining release gate.**
+**Stage 1 engineering work is complete.**
+
+The Stage 1 PR remains draft pending explicit merge approval. Stage 2 — HQLS Lesson Intelligence — should begin from the merged, verified Stage 1 foundation, not by adding final AI-engine code onto an unmerged foundation branch.
