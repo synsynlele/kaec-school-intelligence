@@ -14,8 +14,36 @@ export function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleGoogleSignIn() {
+    setGoogleBusy(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (oauthError) {
+        throw oauthError;
+      }
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Google sign-in could not be started.",
+      );
+      setGoogleBusy(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,10 +123,27 @@ export function AuthForm() {
           {mode === "sign_in" ? "Welcome back" : "Create your workspace"}
         </h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          {mode === "sign_in"
-            ? "Sign in to your lessons, assessments and student diagnoses."
-            : "Start with a private workspace. You can create a school workspace after sign-in."}
+          Continue with Google for the fastest, recommended way into your secure
+          KSI workspace.
         </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void handleGoogleSignIn()}
+        disabled={googleBusy || busy}
+        className="flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-900 px-4 py-3.5 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <GoogleMark />
+        {googleBusy ? "Connecting to Google…" : "Continue with Google"}
+      </button>
+
+      <div className="my-6 flex items-center gap-3" aria-hidden="true">
+        <div className="h-px flex-1 bg-zinc-200" />
+        <span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">
+          or use email
+        </span>
+        <div className="h-px flex-1 bg-zinc-200" />
       </div>
 
       <div className="mb-6 grid grid-cols-2 rounded-xl bg-zinc-100 p-1 text-sm font-medium">
@@ -122,7 +167,7 @@ export function AuthForm() {
               : "text-zinc-500 hover:text-zinc-800"
           }`}
         >
-          Create account
+          Create with email
         </button>
       </div>
 
@@ -187,21 +232,49 @@ export function AuthForm() {
 
         <button
           type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-emerald-900 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={busy || googleBusy}
+          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 font-semibold text-zinc-800 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy
             ? "Please wait…"
             : mode === "sign_in"
-              ? "Sign in"
-              : "Create account"}
+              ? "Sign in with email"
+              : "Create account with email"}
         </button>
       </form>
 
       <p className="mt-6 text-xs leading-5 text-zinc-500">
-        KAEC School Intelligence uses secure workspace boundaries so school data,
-        student evidence and diagnoses remain private to authorised users.
+        Email and password remain available as a fallback. KAEC School Intelligence
+        uses secure workspace boundaries so school data, student evidence and diagnoses
+        remain private to authorised users.
       </p>
     </div>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5 rounded-full bg-white p-0.5"
+    >
+      <path
+        fill="#4285F4"
+        d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.87h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.35Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.97-.9 6.63-2.42l-3.24-2.51c-.9.6-2.05.96-3.39.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.59A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.39 13.9A6 6 0 0 1 6.08 12c0-.66.11-1.3.31-1.9V7.51H3.04A10 10 0 0 0 2 12c0 1.61.39 3.13 1.04 4.49l3.35-2.59Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.97c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.51l3.35 2.59C7.18 7.73 9.39 5.97 12 5.97Z"
+      />
+    </svg>
   );
 }
