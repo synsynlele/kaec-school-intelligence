@@ -159,6 +159,26 @@ assert(
   "Stage 2 specification still contains obsolete Gemini provider references.",
 );
 
+const officialLogo = await text("lib/branding/official-kaec-logo.ts");
+assert(
+  officialLogo.includes("KAEC_OFFICIAL_LOGO_DATA_URI") &&
+    officialLogo.includes("data:image/png;base64,"),
+  "The founder-approved official KAEC-NG logo asset is missing.",
+);
+
+for (const brandedSurface of [
+  "app/page.tsx",
+  "app/sign-in/page.tsx",
+  "app/dashboard/page.tsx",
+  "app/hqls/page.tsx",
+]) {
+  const surface = await text(brandedSurface);
+  assert(
+    surface.includes("KaecBrand"),
+    `Official KAEC-NG branding is missing from ${brandedSurface}.`,
+  );
+}
+
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
   "HQLS_ENGINE_v1.0",
@@ -249,6 +269,37 @@ for (const action of [
   assert(hqlsClient.includes(action), `HQLS stage action is missing: ${action}`);
 }
 
+const pdfRoute = await text("app/api/hqls/pdf/route.ts");
+assert(
+  pdfRoute.includes("createHqlsLessonPdf") &&
+    pdfRoute.includes("Only a saved HQLS-validated lesson") &&
+    pdfRoute.includes('"Content-Type": "application/pdf"'),
+  "Stage 2 secure validated-lesson PDF export route is missing or incomplete.",
+);
+
+const pdfGenerator = await text("lib/pdf/hqls-lesson-pdf.ts");
+for (const requirement of [
+  "KAEC_REPORT_LOGO_JPEG_BASE64",
+  "HQLS LESSON PLAN",
+  "Guide Guardrails",
+  "Full Illumination - teaching after struggle",
+  "Reflection - how thinking changed",
+  "HQLS VALIDATED",
+]) {
+  assert(
+    pdfGenerator.includes(requirement),
+    `Teacher-ready HQLS PDF is missing ${requirement}.`,
+  );
+}
+
+const exportsClient = await text("components/hqls/hqls-exports-client.tsx");
+assert(
+  exportsClient.includes("/api/hqls/pdf") &&
+    exportsClient.includes("Download PDF") &&
+    exportsClient.includes("KaecBrand"),
+  "HQLS PDF download experience or official branding is incomplete.",
+);
+
 console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed HQLS engine/validator/OpenAI Responses route/secure fidelity RPC/UI present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
 );
