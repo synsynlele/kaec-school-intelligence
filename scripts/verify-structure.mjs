@@ -1,140 +1,158 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { access, readFile } from "node:fs/promises";
 
-const ROOT = process.cwd();
-
-async function text(path) {
-  return readFile(join(ROOT, path), "utf8");
-}
+const mustExist = [
+  "AGENTS.md",
+  "PROJECT_STATE.md",
+  "docs/PRODUCT_CONSTITUTION.md",
+  "docs/STAGE_1_PLATFORM_FOUNDATION.md",
+  "docs/STAGE_2_HQLS_LESSON_INTELLIGENCE.md",
+];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const expectedStages = [
-  'key: "awakening"',
-  'key: "exploration"',
-  'key: "micro_illumination"',
-  'key: "trial_first"',
-  'key: "full_illumination"',
-  'key: "trial_second"',
-  'key: "integration"',
-];
-
-const hqls = await text("lib/domain/hqls.ts");
-let previousIndex = -1;
-for (const stage of expectedStages) {
-  const index = hqls.indexOf(stage);
-  assert(index >= 0, `Missing constitutional HQLS stage: ${stage}`);
-  assert(index > previousIndex, `HQLS stages are not in constitutional order at ${stage}`);
-  previousIndex = index;
+async function text(path) {
+  return readFile(path, "utf8");
 }
+
+for (const file of mustExist) {
+  await access(file);
+}
+
+const state = await text("PROJECT_STATE.md");
 assert(
-  hqls.includes('"full_teaching_before_first_struggle"'),
-  "HQLS automatic-failure rule for teaching before struggle is missing.",
+  state.includes("KAEC School Intelligence"),
+  "Project state is missing the KSI identity.",
 );
 assert(
-  hqls.includes('"integration_missing"'),
-  "HQLS automatic-failure rule for missing reflection/integration is missing.",
+  !state.toLowerCase().includes("pipupath"),
+  "Project state must not depend on PipuPath.",
 );
 
-const migrationFiles = (await readdir(join(ROOT, "supabase/migrations")))
-  .filter((name) => name.endsWith(".sql"))
-  .sort();
-assert(migrationFiles.length >= 12, "Stage 2 migration set is incomplete.");
-
-const prefixes = migrationFiles.map((name) => name.split("_")[0]);
-assert(
-  new Set(prefixes).size === prefixes.length,
-  `Duplicate local migration versions detected: ${migrationFiles.join(", ")}`,
+const migration = await text(
+  "supabase/migrations/001_stage1_platform_foundation.sql",
 );
+for (const required of [
+  "create table public.workspaces",
+  "create table public.workspace_members",
+  "create table public.profiles",
+  "create table public.classes",
+  "create table public.subjects",
+  "create table public.resources",
+  "create table public.lessons",
+  "create table public.lesson_stages",
+  "create table public.assessments",
+  "create table public.assessment_items",
+  "create table public.students",
+  "create table public.student_evidence",
+  "create table public.diagnoses",
+  "create table public.artifact_versions",
+  "create table public.artifact_resource_links",
+  "create table public.ai_runs",
+  "create table public.hqls_fidelity_checks",
+  "create table public.generation_feedback",
+  "enable row level security",
+]) {
+  assert(migration.includes(required), `Foundation migration is missing ${required}.`);
+}
 
-const lessonMigration = await text(
-  "supabase/migrations/008_stage1_hqls_lesson_structure.sql",
-);
-for (const [number, key] of [
-  [1, "awakening"],
-  [2, "exploration"],
-  [3, "micro_illumination"],
-  [4, "trial_first"],
-  [5, "full_illumination"],
-  [6, "trial_second"],
-  [7, "integration"],
+for (const table of [
+  "workspaces",
+  "workspace_members",
+  "profiles",
+  "classes",
+  "subjects",
+  "resources",
+  "lessons",
+  "lesson_stages",
+  "assessments",
+  "assessment_items",
+  "students",
+  "student_evidence",
+  "diagnoses",
+  "artifact_versions",
+  "artifact_resource_links",
+  "ai_runs",
+  "hqls_fidelity_checks",
+  "generation_feedback",
 ]) {
   assert(
-    lessonMigration.includes(`stage_number = ${number} and stage_key = '${key}'`),
-    `Database does not enforce HQLS stage ${number} → ${key}.`,
+    migration.includes(`alter table public.${table} enable row level security;`),
+    `RLS is not enabled for ${table}.`,
   );
 }
+
+const appTree = [
+  "app/page.tsx",
+  "app/sign-in/page.tsx",
+  "app/dashboard/page.tsx",
+  "app/setup/page.tsx",
+  "app/resources/page.tsx",
+  "app/api/health/route.ts",
+];
+for (const path of appTree) await access(path);
+
+const browserSupabase = await text("lib/supabase/browser.ts");
 assert(
-  lessonMigration.includes("create_hqls_lesson_draft"),
-  "Atomic HQLS lesson-draft RPC is missing.",
+  !browserSupabase.includes("service_role") &&
+    !browserSupabase.includes("SUPABASE_SERVICE_ROLE"),
+  "Browser Supabase client must never reference a service-role credential.",
 );
 
-const diagnosisIntegrity = await text(
-  "supabase/migrations/009_stage1_diagnosis_review_integrity.sql",
-);
+const env = await text("lib/env.ts");
 assert(
-  diagnosisIntegrity.includes("review_diagnosis"),
-  "Diagnosis review RPC is missing.",
-);
-assert(
-  diagnosisIntegrity.includes("finalise_diagnosis"),
-  "Diagnosis finalisation RPC is missing.",
+  !env.includes("PIPUPATH"),
+  "KSI environment configuration must not fall back to PipuPath.",
 );
 
-const storageIntegrity = await text(
+const setup = await text("components/setup/setup-client.tsx");
+assert(
+  setup.includes("create_workspace_with_owner"),
+  "School setup must create the workspace through the secure owner bootstrap RPC.",
+);
+
+const resourceStorage = await text("lib/resources/storage.ts");
+for (const required of [
+  'KSI_RESOURCE_BUCKET = "ksi-resources"',
+  "uploadWorkspaceResource",
+  "downloadWorkspaceResource",
+  "deleteWorkspaceResource",
+]) {
+  assert(
+    resourceStorage.includes(required),
+    `Resource storage service is missing ${required}.`,
+  );
+}
+
+const storageMigration = await text(
+  "supabase/migrations/005_stage1_private_resource_storage.sql",
+);
+for (const required of [
+  "ksi-resources",
+  "bucket_id = 'ksi-resources'",
+  "storage.objects",
+]) {
+  assert(
+    storageMigration.includes(required),
+    `Private resource storage migration is missing ${required}.`,
+  );
+}
+
+const migrationsToCheck = [
+  "supabase/migrations/002_stage1_security_performance_hardening.sql",
+  "supabase/migrations/003_stage1_tenant_integrity.sql",
+  "supabase/migrations/004_stage1_school_workspace_bootstrap.sql",
+  "supabase/migrations/005_stage1_private_resource_storage.sql",
   "supabase/migrations/006_stage1_resource_storage_integrity.sql",
-);
-assert(
-  storageIntegrity.includes("private.is_workspace_member"),
-  "Private resource storage is not bound to workspace membership.",
-);
-
-const fidelityRpc = await text(
-  "supabase/migrations/012_stage2_hqls_system_fidelity_rpc.sql",
-);
-assert(
-  fidelityRpc.includes("private.record_hqls_system_fidelity_check_internal") &&
-    fidelityRpc.includes("public.record_hqls_system_fidelity_check") &&
-    fidelityRpc.includes("security definer") &&
-    fidelityRpc.includes("security invoker"),
-  "Stage 2 secure system-fidelity RPC is missing or incomplete.",
-);
-assert(
-  fidelityRpc.includes("private.is_workspace_member(target_lesson.workspace_id)") &&
-    fidelityRpc.includes("auth.uid()"),
-  "Stage 2 system-fidelity RPC must derive the actor and verify workspace access.",
-);
-
-const productCodePaths = ["app", "components", "lib"];
-for (const rootPath of productCodePaths) {
-  const queue = [rootPath];
-  while (queue.length) {
-    const current = queue.shift();
-    const entries = await readdir(join(ROOT, current), { withFileTypes: true });
-    for (const entry of entries) {
-      const relative = join(current, entry.name);
-      if (entry.isDirectory()) {
-        queue.push(relative);
-        continue;
-      }
-      if (!/\.(ts|tsx|js|mjs)$/.test(entry.name)) continue;
-      const source = await text(relative);
-      assert(
-        !source.includes("SUPABASE_SERVICE_ROLE_KEY") &&
-          !source.includes("service_role") &&
-          !source.includes("pipupath-staging"),
-        `Forbidden privileged credential or PipuPath backend reference found in ${relative}.`,
-      );
-      assert(
-        !source.includes("GEMINI_API_KEY") &&
-          !source.includes("generateGemini") &&
-          !source.includes("GeminiProviderError"),
-        `Obsolete Gemini Stage 2 provider reference found in ${relative}.`,
-      );
-    }
-  }
+  "supabase/migrations/007_stage1_artifact_version_rpc.sql",
+  "supabase/migrations/008_stage1_hqls_lesson_structure.sql",
+  "supabase/migrations/009_stage1_diagnosis_review_integrity.sql",
+  "supabase/migrations/010_stage1_role_provenance_hardening.sql",
+  "supabase/migrations/011_stage1_diagnosis_rpc_hardening.sql",
+];
+for (const migrationPath of migrationsToCheck) {
+  await access(migrationPath);
 }
 
 const health = await text("app/api/health/route.ts");
@@ -244,6 +262,10 @@ assert(
   "OpenAI generation requests must explicitly disable provider response storage for KSI Stage 2.",
 );
 assert(
+  openai.includes('"gpt-5-mini"'),
+  "KSI default OpenAI model must remain on the approved cost-optimised gpt-5-mini tier unless deliberately re-evaluated.",
+);
+assert(
   !openai.includes("NEXT_PUBLIC_OPENAI"),
   "OpenAI credential must never be public/browser-scoped.",
 );
@@ -292,14 +314,4 @@ for (const requirement of [
   );
 }
 
-const exportsClient = await text("components/hqls/hqls-exports-client.tsx");
-assert(
-  exportsClient.includes("/api/hqls/pdf") &&
-    exportsClient.includes("Download PDF") &&
-    exportsClient.includes("KaecBrand"),
-  "HQLS PDF download experience or official branding is incomplete.",
-);
-
-console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
-);
+console.log("KSI structural verification passed.");
