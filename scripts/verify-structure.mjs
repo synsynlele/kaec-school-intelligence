@@ -41,7 +41,7 @@ assert(
 const migrationFiles = (await readdir(join(ROOT, "supabase/migrations")))
   .filter((name) => name.endsWith(".sql"))
   .sort();
-assert(migrationFiles.length >= 11, "Stage 1 migration set is incomplete.");
+assert(migrationFiles.length >= 12, "Stage 2 migration set is incomplete.");
 
 const prefixes = migrationFiles.map((name) => name.split("_")[0]);
 assert(
@@ -89,6 +89,22 @@ const storageIntegrity = await text(
 assert(
   storageIntegrity.includes("private.is_workspace_member"),
   "Private resource storage is not bound to workspace membership.",
+);
+
+const fidelityRpc = await text(
+  "supabase/migrations/012_stage2_hqls_system_fidelity_rpc.sql",
+);
+assert(
+  fidelityRpc.includes("private.record_hqls_system_fidelity_check_internal") &&
+    fidelityRpc.includes("public.record_hqls_system_fidelity_check") &&
+    fidelityRpc.includes("security definer") &&
+    fidelityRpc.includes("security invoker"),
+  "Stage 2 secure system-fidelity RPC is missing or incomplete.",
+);
+assert(
+  fidelityRpc.includes("private.is_workspace_member(target_lesson.workspace_id)") &&
+    fidelityRpc.includes("auth.uid()"),
+  "Stage 2 system-fidelity RPC must derive the actor and verify workspace access.",
 );
 
 const productCodePaths = ["app", "components", "lib"];
@@ -152,6 +168,7 @@ for (const required of [
   "trial_second_has_no_genuine_reattempt",
   "integration_reflection_missing",
   "reflectionPrompt",
+  "readOptionalString",
   "teaching_content_outside_full_illumination",
 ]) {
   assert(
@@ -166,9 +183,13 @@ assert(
   "Stage 2 route does not use canonical lesson persistence.",
 );
 assert(
-  stage2Route.includes("hqls_fidelity_checks") &&
+  stage2Route.includes("record_hqls_system_fidelity_check") &&
     stage2Route.includes("artifact_resource_links"),
-  "Stage 2 route is missing HQLS fidelity or source-provenance persistence.",
+  "Stage 2 route is missing secure HQLS fidelity or source-provenance persistence.",
+);
+assert(
+  !stage2Route.includes('.from("hqls_fidelity_checks").insert'),
+  "Stage 2 route must not forge system fidelity through the direct authenticated table-insert path.",
 );
 assert(
   stage2Route.includes('action === "save_edits"') &&
@@ -229,5 +250,5 @@ for (const action of [
 }
 
 console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique Stage 1 migrations, governed HQLS engine/validator/OpenAI Responses route/UI present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed HQLS engine/validator/OpenAI Responses route/secure fidelity RPC/UI present.`,
 );
