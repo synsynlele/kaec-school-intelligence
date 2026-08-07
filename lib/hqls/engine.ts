@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.0";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.0";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.1";
 
 export type HqlsStageAction =
   | "improve"
@@ -41,6 +41,7 @@ export type HqlsStageContent = {
   productiveStruggle: string;
   teachingContent: string;
   respondsToFirstAttempt: string;
+  reflectionPrompt: string;
   transferTask: string;
 };
 
@@ -92,6 +93,7 @@ export const HQLS_STAGE_JSON_SCHEMA = {
     productiveStruggle: { type: "string" },
     teachingContent: { type: "string" },
     respondsToFirstAttempt: { type: "string" },
+    reflectionPrompt: { type: "string" },
     transferTask: { type: "string" },
   },
   required: [
@@ -107,6 +109,7 @@ export const HQLS_STAGE_JSON_SCHEMA = {
     "productiveStruggle",
     "teachingContent",
     "respondsToFirstAttempt",
+    "reflectionPrompt",
     "transferTask",
   ],
 };
@@ -157,7 +160,9 @@ Every stage must include:
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
 Use teachingContent only for Stage 5 Full Illumination; it must be clear, sufficient, concise and targeted rather than a lecture dump.
 Use respondsToFirstAttempt in Stage 5 to state exactly which likely gaps from Trial 1 the teaching addresses; use an empty string elsewhere.
-Use transferTask for Integration or another genuinely appropriate transfer moment; use an empty string when not relevant.
+Use reflectionPrompt only for Stage 7 Integration. It must explicitly ask learners to reflect on how their thinking, understanding or approach changed; use an empty string elsewhere.
+Use transferTask only for Stage 7 Integration. It must require application beyond the immediate exercise; use an empty string elsewhere.
+For Trial 1, Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving, but natural wording is allowed.
 Do not invent expensive resources. Prefer activities feasible in ordinary Nigerian/African school conditions unless supplied context says otherwise.
 `;
 
@@ -203,7 +208,7 @@ CLASS CONTEXT: ${clean(input.classContext)}
 TEACHER INSTRUCTIONS: ${clean(input.teacherInstructions)}
 AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "None selected"}
 
-Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 6 must make improvement from Stage 4 observable. Stage 7 must make reflection and transfer genuine, not ceremonial.
+Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
 `;
 }
 
@@ -229,7 +234,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1 and never remove Reflection/Integration.
+Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
 `;
 }
 
@@ -256,7 +261,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1; Stage 6 must remain a genuine re-application; Stage 7 must retain reflection and transfer.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1; Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
 `;
 }
 
@@ -318,6 +323,7 @@ export function parseHqlsStageContent(
     productiveStruggle: readString(record, "productiveStruggle"),
     teachingContent: readString(record, "teachingContent"),
     respondsToFirstAttempt: readString(record, "respondsToFirstAttempt"),
+    reflectionPrompt: readString(record, "reflectionPrompt"),
     transferTask: readString(record, "transferTask"),
   };
 }
@@ -374,6 +380,13 @@ export function validateHqlsLesson(
         `${definition.title} must make learner activity visible.`,
       );
     }
+    if (stage.guideGuardrails.length === 0) {
+      fail(
+        definition.key,
+        "guide_guardrail_missing",
+        `${definition.title} must include explicit Guide Guardrails that protect learner ownership.`,
+      );
+    }
     if (stage.evidenceToNotice.length === 0) {
       fail(
         definition.key,
@@ -381,21 +394,17 @@ export function validateHqlsLesson(
         `${definition.title} must tell the Guide what learner evidence to notice.`,
       );
     }
+    if (stage.stageNumber !== 5 && stage.teachingContent.length > 0) {
+      fail(
+        definition.key,
+        "teaching_content_outside_full_illumination",
+        `${definition.title} may not contain full teaching content; Full Illumination is the teaching stage.`,
+      );
+    }
   });
 
   const awakening = lesson.stages[0];
-  const awakeningText = [
-    awakening.experience,
-    awakening.teachingContent,
-    ...awakening.teacherPrompts,
-  ].join(" ");
-  if (awakening.teachingContent.length > 0) {
-    fail(
-      "awakening",
-      "awakening_starts_with_content_dump",
-      "Awakening may not contain teaching content before learners enter the problem.",
-    );
-  }
+  const awakeningText = [awakening.experience, ...awakening.teacherPrompts].join(" ");
   if (
     includesAny(awakeningText, [
       /today we are learning/i,
@@ -411,7 +420,9 @@ export function validateHqlsLesson(
       "Awakening appears to begin with explanation, definition, rule or notes instead of curiosity/tension.",
     );
   }
-  evidence.push("Awakening is checked for problem-first entry and absence of teaching content.");
+  evidence.push(
+    "Awakening is checked for problem-first entry and explicit absence of premature teaching content.",
+  );
 
   const exploration = lesson.stages[1];
   const explorationText = [exploration.experience, ...exploration.teacherPrompts].join(" ");
@@ -429,22 +440,8 @@ export function validateHqlsLesson(
       "Exploration must permit crude or wrong thinking without premature correction.",
     );
   }
-  if (exploration.teachingContent.length > 0) {
-    fail(
-      "exploration",
-      "full_teaching_before_first_struggle",
-      "Exploration may not contain full teaching content.",
-    );
-  }
 
   const micro = lesson.stages[2];
-  if (micro.teachingContent.length > 0 || micro.teacherPrompts.length > 3) {
-    fail(
-      "micro_illumination",
-      "micro_illumination_becomes_full_solution",
-      "Micro-Illumination must stay minimal: a small guardrail, not full teaching or a worked solution.",
-    );
-  }
   if (micro.guideGuardrails.length === 0) {
     fail(
       "micro_illumination",
@@ -452,6 +449,9 @@ export function validateHqlsLesson(
       "Micro-Illumination needs an explicit Guide Guardrail that protects learner struggle.",
     );
   }
+  evidence.push(
+    "Micro-Illumination is checked structurally for minimal guidance without teaching content, rather than by an arbitrary prompt-count limit.",
+  );
 
   const trialFirst = lesson.stages[3];
   if (trialFirst.productiveStruggle.length < 20) {
@@ -461,22 +461,9 @@ export function validateHqlsLesson(
       "Trial 1 must state the productive struggle expected from learners.",
     );
   }
-  const trialGuardrails = trialFirst.guideGuardrails.join(" ");
-  if (!/(rescu|correct|answer|solve|tell)/i.test(trialGuardrails)) {
-    fail(
-      "trial_first",
-      "trial_first_is_rescued",
-      "Trial 1 must explicitly guard against rescuing, solving, correcting or giving the answer.",
-    );
-  }
-  if (trialFirst.teachingContent.length > 0) {
-    fail(
-      "trial_first",
-      "full_teaching_before_first_struggle",
-      "Trial 1 may not contain the full teaching explanation.",
-    );
-  }
-  evidence.push("Trial 1 is checked for real cognitive effort and explicit no-rescue guardrails.");
+  evidence.push(
+    "Trial 1 is checked for real cognitive effort, no teaching content and explicit Guide Guardrails; natural guardrail wording is accepted.",
+  );
 
   const illumination = lesson.stages[4];
   if (illumination.teachingContent.length < 80) {
@@ -493,7 +480,9 @@ export function validateHqlsLesson(
       "Full Illumination must explicitly connect its teaching to gaps exposed by Trial 1.",
     );
   }
-  evidence.push("Full Illumination is checked for adequate targeted teaching and an explicit Trial 1 gap connection.");
+  evidence.push(
+    "Full Illumination is checked for adequate targeted teaching and an explicit Trial 1 gap connection.",
+  );
 
   const trialSecond = lesson.stages[5];
   if (trialSecond.learnerActions.length === 0 || trialSecond.evidenceToNotice.length === 0) {
@@ -503,36 +492,28 @@ export function validateHqlsLesson(
       "Trial 2 must require learner re-application and make improvement observable.",
     );
   }
-  if (trialSecond.teachingContent.length > 0) {
-    fail(
-      "trial_second",
-      "teacher_carries_cognitive_load",
-      "Trial 2 returns ownership to learners; it should not add another teaching dump.",
-    );
-  }
+  evidence.push(
+    "Trial 2 is checked for learner re-application, observable evidence and return of cognitive ownership after illumination.",
+  );
 
   const integration = lesson.stages[6];
-  const integrationText = [
-    integration.experience,
-    integration.transferTask,
-    ...integration.teacherPrompts,
-    ...integration.learnerActions,
-  ].join(" ");
-  if (!/(reflect|thinking changed|used to think|now think|real life|outside|future|apply|transfer)/i.test(integrationText)) {
+  if (integration.reflectionPrompt.length < 20) {
     fail(
       "integration",
-      "integration_missing",
-      "Integration must include genuine reflection on changed thinking and/or transfer beyond the immediate lesson.",
+      "integration_reflection_missing",
+      "Integration must contain an explicit prompt for learners to reflect on how their thinking, understanding or approach changed.",
     );
   }
-  if (!integration.transferTask) {
+  if (integration.transferTask.length < 20) {
     fail(
       "integration",
       "integration_transfer_missing",
-      "Integration needs a real-life or future transfer task/question.",
+      "Integration needs a substantive real-life, future or new-context transfer task/question.",
     );
   }
-  evidence.push("Integration is checked for reflection and transfer beyond task completion.");
+  evidence.push(
+    "Integration is checked through dedicated reflectionPrompt and transferTask fields, avoiding fragile keyword guessing.",
+  );
 
   const stageValidation = Object.fromEntries(
     HQLS_STAGES.map((stage) => {
