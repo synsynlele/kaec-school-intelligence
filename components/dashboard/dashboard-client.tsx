@@ -209,26 +209,30 @@ export function DashboardClient() {
 
   async function createSchoolWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user || !schoolName.trim()) return;
+    const trimmedSchoolName = schoolName.trim();
+    if (!user || !trimmedSchoolName) return;
 
     setCreatingSchool(true);
     setError(null);
 
     try {
       const supabase = getBrowserSupabaseClient();
-      const { data: workspace, error: workspaceError } = await supabase
-        .from("workspaces")
-        .insert({
-          name: schoolName.trim(),
-          workspace_type: "school",
-          created_by: user.id,
-        })
-        .select("id,name,workspace_type,created_at")
-        .single();
+      const created: Workspace = {
+        id: crypto.randomUUID(),
+        name: trimmedSchoolName,
+        workspace_type: "school",
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: workspaceError } = await supabase.from("workspaces").insert({
+        id: created.id,
+        name: created.name,
+        workspace_type: created.workspace_type,
+        created_by: user.id,
+      });
 
       if (workspaceError) throw workspaceError;
 
-      const created = workspace as Workspace;
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ default_workspace_id: created.id })
