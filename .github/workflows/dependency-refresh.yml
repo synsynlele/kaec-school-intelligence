@@ -1,0 +1,43 @@
+name: Dependency Refresh
+
+on:
+  push:
+    branches:
+      - stage-1-platform-foundation
+    paths:
+      - .github/workflows/dependency-refresh.yml
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Refresh vulnerable dependencies
+        run: |
+          npm install --package-lock-only --save-exact next@16.3.0 @tailwindcss/postcss@latest tailwindcss@latest
+          npm audit fix --package-lock-only
+
+      - name: Show remaining audit findings
+        run: npm audit --audit-level=high || true
+
+      - name: Upload refreshed manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-dependency-manifests
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error
