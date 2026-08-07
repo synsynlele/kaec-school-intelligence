@@ -13,8 +13,9 @@ This repository is governed by the approved KAEC School Intelligence Product Con
 1. `docs/PRODUCT_CONSTITUTION.md`
 2. `docs/STAGE_1_PLATFORM_FOUNDATION.md`
 3. `PROJECT_STATE.md`
+4. `docs/STAGE_1_RUNTIME_VERIFICATION.md` when changing auth, workspace, storage, diagnosis approval, deployment or Stage 1 release-gate behaviour
 
-Do not begin implementation before reading all three.
+Do not begin implementation before reading the relevant governing documents.
 
 ## Product boundary
 
@@ -58,6 +59,17 @@ Do not create an "HQLS Lite" pathway that removes constitutional requirements.
 - Separate observed evidence from inferred interpretation in diagnosis.
 - Require human review before parent-facing diagnosis reaches Final status.
 - Do not silently modify constitutional behaviour.
+- Keep one canonical data-access/storage layer per responsibility; remove duplicate abstractions rather than letting them drift.
+
+## Security and verification discipline
+
+- Never use `pipupath-staging` for KSI migrations or test data.
+- Do not make production data mutations unless explicitly authorised and the target environment is confirmed disposable/staging.
+- Do not enable anonymous authentication merely to manufacture test identities.
+- Do not disable Vercel Preview Protection merely to make an unauthenticated smoke test pass.
+- Do not weaken RLS, audit thresholds, diagnosis approval rules or tenant boundaries to get a green build.
+- Never claim a runtime gate passed from structural inspection alone.
+- If a live test is blocked by an external provider limit or access control, record the blocker explicitly and keep the gate open.
 
 ## Working discipline
 
@@ -65,9 +77,8 @@ Do not create an "HQLS Lite" pathway that removes constitutional requirements.
 - Do not rebuild completed work.
 - Prefer small, reviewable stages.
 - Keep strict TypeScript.
-- Run formatting/lint/typecheck/build and relevant tests before declaring a stage complete.
-- Never use `pipupath-staging` for KSI migrations or test data.
-- Do not make production data mutations unless explicitly authorised and the target environment is confirmed disposable/staging.
+- Run lint, typecheck, constitutional structure verification, production build and relevant tests before declaring a stage complete.
+- Re-fetch the current branch/file SHA before sequential GitHub updates; concurrent automation may advance the branch.
 
 ## Change control
 
