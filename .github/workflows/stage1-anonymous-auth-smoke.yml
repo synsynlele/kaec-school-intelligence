@@ -1,0 +1,128 @@
+name: Stage 1 Anonymous Auth Smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/stage1-anonymous-auth-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  auth-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      KSI_SUPABASE_URL: https://zaoxfjbiizargeclnzmo.supabase.co
+      KSI_SUPABASE_PUBLISHABLE_KEY: sb_publishable_grqUBVOShJOM3i9jMF9ucg_gI4xr-58
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Exercise two real Supabase sessions
+        run: |
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const url = process.env.KSI_SUPABASE_URL;
+          const key = process.env.KSI_SUPABASE_PUBLISHABLE_KEY;
+
+          function makeClient() {
+            return createClient(url, key, {
+              auth: { persistSession: false, autoRefreshToken: false },
+            });
+          }
+
+          async function anonymous(label) {
+            const supabase = makeClient();
+            const { data, error } = await supabase.auth.signInAnonymously({
+              options: { data: { full_name: `KSI Stage 1 ${label}` } },
+            });
+            if (error) throw new Error(`${label}: ${error.message}`);
+            if (!data.user?.id || !data.session?.access_token) {
+              throw new Error(`${label}: anonymous auth returned no authenticated session`);
+            }
+            console.log(`fixture_${label.toLowerCase()}=${data.user.id}`);
+            return { supabase, userId: data.user.id };
+          }
+
+          async function state(fixture) {
+            const { data: profile, error: profileError } = await fixture.supabase
+              .from('profiles')
+              .select('default_workspace_id')
+              .eq('id', fixture.userId)
+              .single();
+            if (profileError) throw profileError;
+
+            const { data: workspaces, error: workspaceError } = await fixture.supabase
+              .from('workspaces')
+              .select('id,workspace_type');
+            if (workspaceError) throw workspaceError;
+
+            if (!profile.default_workspace_id || workspaces.length !== 1) {
+              throw new Error('Auth bootstrap did not create exactly one visible private workspace');
+            }
+
+            return { workspaceId: profile.default_workspace_id, workspaces };
+          }
+
+          (async () => {
+            const a = await anonymous('A');
+            const b = await anonymous('B');
+            const stateA = await state(a);
+            const stateB = await state(b);
+
+            if (stateA.workspaceId === stateB.workspaceId) {
+              throw new Error('Authenticated fixtures unexpectedly share a workspace');
+            }
+
+            const { data: foreignRead, error: foreignReadError } = await a.supabase
+              .from('workspaces')
+              .select('id')
+              .eq('id', stateB.workspaceId);
+            if (foreignReadError) throw foreignReadError;
+            if (foreignRead.length !== 0) {
+              throw new Error('User A can read User B workspace');
+            }
+
+            const foreignWrite = await a.supabase.from('lessons').insert({
+              workspace_id: stateB.workspaceId,
+              created_by: a.userId,
+              title: 'Forbidden tenant write',
+              topic: 'Isolation',
+              objective: 'Must fail',
+            });
+            if (!foreignWrite.error) {
+              throw new Error('User A wrote into User B workspace');
+            }
+
+            const ownLesson = await a.supabase
+              .from('lessons')
+              .insert({
+                workspace_id: stateA.workspaceId,
+                created_by: a.userId,
+                title: 'Allowed tenant write',
+                topic: 'Isolation',
+                objective: 'Must succeed',
+              })
+              .select('id')
+              .single();
+            if (ownLesson.error) throw ownLesson.error;
+
+            console.log('runtime_result=real_authenticated_tenant_isolation_passed');
+          })().catch((error) => {
+            console.error(error?.message ?? error);
+            process.exitCode = 1;
+          });
+          NODE
