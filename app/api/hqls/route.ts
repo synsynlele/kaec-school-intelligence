@@ -26,7 +26,6 @@ import {
   type GeneratedHqlsLesson,
   type HqlsLessonRequest,
   type HqlsStageAction,
-  type HqlsStageContent,
 } from "@/lib/hqls/engine";
 import { KSI_RESOURCE_BUCKET } from "@/lib/resources/storage";
 import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
@@ -91,13 +90,34 @@ function toJson(value: unknown): Json {
   return value as Json;
 }
 
+function errorRecord(caught: unknown): Record<string, unknown> | null {
+  if (!caught || typeof caught !== "object" || Array.isArray(caught)) return null;
+  return caught as Record<string, unknown>;
+}
+
 function errorMessage(caught: unknown) {
   if (caught instanceof Error) return caught.message;
+  const record = errorRecord(caught);
+  if (record && typeof record.message === "string" && record.message.trim()) {
+    const details =
+      typeof record.details === "string" && record.details.trim()
+        ? ` ${record.details.trim()}`
+        : "";
+    const hint =
+      typeof record.hint === "string" && record.hint.trim()
+        ? ` ${record.hint.trim()}`
+        : "";
+    return `${record.message.trim()}${details}${hint}`.trim();
+  }
   return "The HQLS request could not be completed.";
 }
 
 function errorCode(caught: unknown) {
   if (caught instanceof OpenAIProviderError) return caught.code;
+  const record = errorRecord(caught);
+  if (record && typeof record.code === "string" && record.code.trim()) {
+    return `HQLS_DB_${record.code.trim()}`;
+  }
   return "HQLS_REQUEST_FAILED";
 }
 
@@ -112,6 +132,7 @@ function errorStatus(caught: unknown) {
     }
     return 502;
   }
+  if (errorRecord(caught)?.code) return 500;
   return 400;
 }
 
@@ -397,22 +418,20 @@ async function loadResourceContext(
 
 async function persistFidelityCheck(args: {
   supabase: KsiSupabaseClient;
-  workspaceId: string;
   lessonId: string;
-  userId: string;
   validation: ReturnType<typeof validateHqlsLesson>;
 }) {
-  const { error } = await args.supabase.from("hqls_fidelity_checks").insert({
-    workspace_id: args.workspaceId,
-    lesson_id: args.lessonId,
-    checked_by: args.userId,
-    check_origin: "system",
-    passed: args.validation.passed,
-    score: args.validation.score,
-    violations: toJson(args.validation.violations),
-    evidence: toJson(args.validation.evidence),
-    engine_version: HQLS_ENGINE_VERSION,
-  });
+  const { error } = await args.supabase.rpc(
+    "record_hqls_system_fidelity_check",
+    {
+      target_lesson_id: args.lessonId,
+      target_passed: args.validation.passed,
+      target_score: args.validation.score,
+      target_violations: toJson(args.validation.violations),
+      target_evidence: toJson(args.validation.evidence),
+      target_engine_version: HQLS_ENGINE_VERSION,
+    },
+  );
   if (error) throw error;
 }
 
@@ -614,11 +633,10 @@ async function handleGenerate(
 
     const savedLesson = persisted.lesson as LessonRow;
     await saveLessonValidation({ supabase, lesson: savedLesson, validation });
+    await attachAiRunArtifact(supabase, runId, savedLesson.id);
     await persistFidelityCheck({
       supabase,
-      workspaceId: input.workspaceId,
       lessonId: savedLesson.id,
-      userId,
       validation,
     });
     await linkResources({
@@ -628,7 +646,6 @@ async function handleGenerate(
       userId,
       resources: resources.rows,
     });
-    await attachAiRunArtifact(supabase, runId, savedLesson.id);
     await completeAiRun(supabase, runId, "succeeded");
 
     const refreshed = await fetchLessonWithStages(supabase, savedLesson.id);
@@ -696,9 +713,7 @@ async function handleSaveEdits(
   });
   await persistFidelityCheck({
     supabase,
-    workspaceId: current.lesson.workspace_id,
     lessonId,
-    userId,
     validation,
   });
 
@@ -927,9 +942,7 @@ async function handleRegenerateStage(
     });
     await persistFidelityCheck({
       supabase,
-      workspaceId: current.lesson.workspace_id,
       lessonId,
-      userId,
       validation,
     });
 
