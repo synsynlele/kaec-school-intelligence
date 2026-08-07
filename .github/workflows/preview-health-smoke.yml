@@ -20,17 +20,21 @@ jobs:
           URL="https://kaec-school-intelligence-git-s-4f5a8d-synsynlele-3991s-projects.vercel.app/api/health"
           echo "Checking $URL"
           body_file="$(mktemp)"
-          status="$(curl --silent --show-error --location --output "$body_file" --write-out '%{http_code}' "$URL")"
-          cat "$body_file"
-          echo
+          headers_file="$(mktemp)"
+
+          status="$(curl --silent --show-error --output "$body_file" --dump-header "$headers_file" --write-out '%{http_code}' "$URL")"
           echo "HTTP $status"
 
-          if [ "$status" = "401" ]; then
-            echo "Vercel Preview Protection is enabled. The preview exists, but unauthenticated CI cannot reach /api/health without a project-scoped bypass token."
-            echo "This is an external preview-access constraint, not an application health failure."
-            exit 0
+          if [ "$status" = "401" ] || [ "$status" = "302" ] || [ "$status" = "307" ] || [ "$status" = "308" ]; then
+            if grep -qiE 'vercel|sso|authentication|login' "$headers_file" "$body_file"; then
+              echo "Vercel Preview Protection is enabled. The preview exists, but unauthenticated CI cannot reach /api/health without a project-scoped bypass token."
+              echo "This is an external preview-access constraint, not an application health failure."
+              exit 0
+            fi
           fi
 
+          cat "$body_file"
+          echo
           test "$status" = "200"
           grep -q '"ok":true' "$body_file"
           grep -q '"supabaseConfigured":true' "$body_file"
