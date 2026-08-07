@@ -6,7 +6,7 @@ Updated: 7 August 2026
 
 **Stage 1 — Platform Foundation: IN PROGRESS**
 
-Stage 0 Product Constitution v1.1 is approved.
+Stage 0 Product Constitution v1.1 is approved and frozen.
 
 ## Repository
 
@@ -33,15 +33,14 @@ Version 1 is locked to:
 
 plus only the infrastructure necessary for those engines.
 
-## Current repository state before Stage 1
+## Current repository baseline
 
-The repository is still near its cleaned Create Next App foundation:
+The repository remains close to a cleaned Create Next App foundation:
 
 - `app/page.tsx` renders only the KSI title.
 - `app/layout.tsx` carries KSI metadata.
 - Supabase client package is installed.
-- No KSI database schema is committed.
-- No KSI authentication flow is implemented.
+- No KSI authentication flow is implemented yet.
 - No dedicated KSI Supabase project exists in the connected Supabase account.
 
 ## Remote environment status
@@ -54,19 +53,42 @@ Therefore:
 
 **Do not apply KSI migrations to any existing Supabase project until a dedicated KSI project is created and confirmed.**
 
-## Stage 1 work started
+## Stage 1 completed work so far
 
-- Stage 1 branch created.
-- Product Constitution added to the branch.
-- Engineering guardrails added to `AGENTS.md` while preserving the repository's Next.js 16 agent rule.
-- Stage 1 architecture specification is being added.
-- HQLS domain constants and database foundation are next.
+- Stage 1 branch exists.
+- Approved Product Constitution is committed to the branch.
+- Engineering guardrails are present in `AGENTS.md` while preserving the repository's Next.js 16 agent rule.
+- Stage 1 architecture specification is committed.
+- Canonical HQLS domain constants are now encoded in `lib/hqls/constants.ts`.
+- Foundation database migration is now committed at `supabase/migrations/001_stage1_platform_foundation.sql`.
+- The migration models workspaces, membership, subjects, classes, students, resources, structured HQLS lessons/stages, fidelity checks, assessments/items, student evidence, diagnoses, artifact versions, artifact-resource provenance, AI runs and generation feedback.
+- The migration includes initial workspace-scoped RLS and a new-user private workspace bootstrap.
+- Diagnosis schema enforces human review/finalisation metadata before a report can reach `final` status.
+
+Latest implementation commits in this work session:
+
+- `0cca4546e647f6b8d45fc3169ba398f51949d306` — encode HQLS constitutional constants
+- `14c2ad84a8b7e443d303f159aded69b92bee093f` — add Stage 1 database foundation
 
 ## Next remote dependency
 
-Create a dedicated KSI Supabase project after:
+A dedicated KSI Supabase project must be created before the migration can be applied or auth/storage can be tested remotely.
 
-1. the Supabase organisation is explicitly selected, and
-2. the Supabase project cost is shown and confirmed.
+Supabase project creation requires:
 
-Then apply and verify the Stage 1 migration in that KSI environment only.
+1. explicit selection of the Supabase organisation, and
+2. cost retrieval and explicit cost confirmation before creation.
+
+Once the dedicated KSI project exists:
+
+1. apply the Stage 1 migration there only,
+2. generate TypeScript database types,
+3. run security and performance advisors,
+4. fix all critical findings,
+5. configure auth/session infrastructure,
+6. verify workspace bootstrap and tenant isolation,
+7. add private resource storage policies.
+
+## Stage 1 remains blocked only on the remote KSI backend target for the next substage
+
+Repository implementation can continue, but remote database, authentication and storage verification must not use `pipupath-staging`.
