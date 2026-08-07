@@ -1,6 +1,6 @@
 # KAEC School Intelligence — Stage 2 HQLS Lesson Intelligence
 
-Status: IN PROGRESS / ACCEPTANCE  
+Status: FUNCTIONALLY ACCEPTED / READY FOR MERGE APPROVAL  
 Branch: `stage-2-hqls-lesson-intelligence`  
 Base: merged Stage 1 `main` @ `4e1bdfb973bc4761895c84730fd5dcec0f0f9ad1`  
 Constitution: `docs/PRODUCT_CONSTITUTION.md` v1.1 APPROVED
@@ -27,110 +27,88 @@ Every lesson must preserve the exact sequence:
 6. Trial — Second Attempt
 7. Integration
 
-Immutable roles:
-
+Roles are fixed:
 - learner = Hero
 - teacher = Guide
 - problem = Villain
 
 Non-negotiables:
-
-- no full teaching before first meaningful struggle
+- no full teaching before the first meaningful struggle
 - no struggle without guardrails
 - no second attempt without illumination
 - no learning without reflection
-- learner thinking must remain visible
-- teacher restraint must protect cognitive ownership
-- dignity must remain intact
+- no HQLS Lite
 
-There is no HQLS Lite path.
+## 3. AI provider
 
-## 3. Required inputs
+Stage 2 uses the OpenAI Responses API with strict Structured Outputs.
 
-Basic generation requires:
+- `OPENAI_API_KEY` is server-only.
+- `KSI_OPENAI_MODEL` controls the model.
+- accepted live runs used `gpt-5.6-terra`.
+- generator self-claims never replace the independent deterministic HQLS validator.
 
+## 4. Lesson context
+
+Essential context:
+- workspace
 - subject
+- class / level
 - topic
-- class level
-- age or age range
-- lesson duration
-- lesson objective
+- objective
+- age range
+- duration
 
-Optional advanced context may include:
-
+Optional advanced context:
 - previous learning
 - available resources / constraints
 - class context
 - teacher instructions
-- selected workspace curriculum, scheme, notes or reference resources
+- up to three authorised workspace resources
 
-The UI must use progressive disclosure rather than presenting one long form.
+## 5. Structured lesson output
 
-## 4. Structured output contract
+Each lesson contains exactly seven structured stages.
 
-The AI response must be structured, schema-validated data rather than one prose block.
-
-Each of the seven stage objects contains:
-
-- stage number, key and title
-- learning experience / task
-- exact teacher prompts or actions where useful
-- expected learner actions
+Each stage includes:
+- stage number / key / title
+- purpose
+- learner experience / task
+- teacher prompts
+- learner actions
 - Guide Guardrails
-- evidence for the teacher to notice
+- evidence to notice
 - productive struggle where relevant
 - teaching content where relevant
-- explicit connection from Full Illumination to gaps exposed in Trial 1
-- explicit reflection prompt in Integration
-- transfer / real-life task in Integration
+- Full Illumination response to Trial 1 gaps
+- explicit Integration reflection prompt
+- Integration transfer / real-life task
 
-Stage 5 teaching must be sufficient for clarity but concise and targeted. It must not become a lecture dump or erase learner ownership.
+## 6. HQLS fidelity validation
 
-## 5. Generation architecture
+Deterministic validation runs after generation and after repair.
 
-Stage 2 follows the constitutional orchestration hierarchy:
-
-**Constitutional Rules → HQLS Module Rules → School/Resource Context → User Request → Structured Generation → Independent Validation → Repair**
-
-Rules:
-
-- AI credentials remain server-side.
-- Provider/model can be changed without rewriting HQLS constitutional rules.
-- Engine and prompt versions are explicit and persisted.
-- Selected source resources are workspace-scoped and provenance is persisted.
-- The browser never receives the provider API key.
-
-Initial provider adapter: **OpenAI Responses API with Structured Outputs**, using a server-only `OPENAI_API_KEY`. The model is configurable through `KSI_OPENAI_MODEL`; the HQLS engine remains provider-independent at the constitutional contract and validation layers.
-
-Selected authorised PDFs/images/text resources may be supplied to the OpenAI request only after existing KSI RLS/storage permission checks succeed. Provider storage is disabled for these generation requests where supported by the API request contract.
-
-## 6. Fidelity validator
-
-A model claiming its own output is valid is insufficient.
-
-Stage 2 uses deterministic constitutional validation after structured generation. Validation checks include:
-
-- exactly seven stages in exact order
-- Awakening contains no content dump / premature teaching
-- Exploration protects crude thinking and avoids early correction
-- Micro-Illumination remains minimal
-- Trial 1 contains real productive struggle and no rescue
-- Full Illumination contains teaching after effort and responds to Trial 1 gaps
+It verifies the constitutional sequence and laws, including:
+- Awakening does not dump teaching
+- Exploration permits discovery before correction
+- Micro-Illumination gives only enough light to proceed
+- Trial 1 contains meaningful productive struggle and Guide Guardrails
+- Full Illumination teaches after effort and responds to Trial 1 gaps
 - Trial 2 requires genuine re-application and observable improvement
-- Integration contains explicit changed-thinking reflection and transfer
-- learner actions are present and teacher cognitive ownership does not dominate
+- Integration contains changed-thinking reflection and transfer
+- learner cognitive ownership remains visible
 
-If validation fails, the server runs a repair pass and validates again. A lesson that still fails is not persisted or presented as HQLS-complete.
+Still-invalid output is rejected.
 
-Every accepted generation writes a system-origin `hqls_fidelity_checks` record through the secure Stage 2 authenticated RPC. Browser clients cannot forge a system fidelity result directly.
+Every accepted generation writes a system-origin fidelity record through the secure authenticated Stage 2 RPC; browser clients cannot forge system fidelity results directly.
 
 ## 7. Editing and regeneration
 
-Teachers may edit any generated stage.
+Teachers can edit saved stage content and save it back to the authorised lesson.
 
-Required Stage 2 controls:
+Every true manual save creates an artifact version with origin `manual_edit`.
 
-- Save edits
+Stage actions include:
 - Improve
 - Simplify
 - Increase Challenge
@@ -138,107 +116,80 @@ Required Stage 2 controls:
 - Reduce Resource Dependence
 - Regenerate
 
-Regeneration is stage-level whenever possible. It changes only the explicitly selected stage and must not silently overwrite manual edits elsewhere.
-
-Every manual save or AI regeneration creates an artifact version.
+Regeneration is stage-level whenever possible. It changes only the explicitly selected stage and creates an artifact version with origin `regeneration`.
 
 ## 8. Saved lesson and export experience
 
-Stage 2 must support:
+Stage 2 supports:
+- saved lesson list
+- reopen after refresh / later session
+- visible fidelity state
+- source provenance
+- structured seven-stage editor
+- teacher-ready PDF export from the latest saved validated lesson
 
-- list recent/saved lessons in the active workspace
-- reopen a lesson after refresh or re-login
-- display all seven stages as structured cards/sections
-- show HQLS fidelity status and violations/evidence when relevant
-- show source resource labels/provenance
-- preserve draft vs validated lesson status
-- prepare a teacher-ready PDF only from a saved HQLS-validated lesson
-- make the PDF reflect the latest saved teacher-reviewed content, not a transient AI response
-- include lesson metadata, seven HQLS stages, Guide Guardrails, evidence, Full Illumination, reflection and transfer
-
-No output should appear as an undifferentiated AI wall of text.
+The PDF includes:
+- official KAEC-NG branding
+- lesson metadata
+- all seven HQLS stages
+- Guide Guardrails
+- evidence to notice
+- Full Illumination
+- reflection and transfer
+- discreet HQLS validation status
 
 ## 9. Security, provenance and branding
 
-- All lesson, stage, resource, fidelity, artifact-version and AI-run writes remain workspace-scoped under RLS.
-- API routes authenticate the real Supabase user token before generation or PDF export.
-- Selected resources must be readable by the authenticated user under existing RLS/storage rules.
-- `OPENAI_API_KEY` is server-only and must never use a `NEXT_PUBLIC_` prefix.
-- AI runs record engine version, prompt version, provider/model, status and input summary.
-- Generated lesson rows record engine and prompt versions.
-- Resource links are recorded in `artifact_resource_links`.
-- No Supabase service-role key is required for normal teacher generation or export.
-- The founder-supplied **official KAEC-NG logo is the canonical KSI mark**. Do not invent, redraw or substitute another logo.
-- The official logo must be used on relevant KSI branded surfaces and generated teacher-facing lesson reports.
+- all records remain workspace-scoped under RLS
+- API routes authenticate the real Supabase user token
+- resources must be readable under existing RLS/storage rules
+- `OPENAI_API_KEY` remains server-only
+- AI runs record engine/prompt/provider/model/status/input summary
+- resource links are recorded in `artifact_resource_links`
+- no service-role key is required for normal teacher generation/export
+- the founder-supplied official KAEC-NG logo is the canonical KSI mark
 
-## 10. Stage 2 UI
+## 10. Live acceptance
 
-Primary route: `/hqls`
+All functional Stage 2 acceptance gates passed:
 
-The surface should remain calm and teacher-facing:
+- [x] branch starts from merged Stage 1 main
+- [x] essential and optional lesson context
+- [x] server-only OpenAI configuration
+- [x] Responses API Structured Outputs
+- [x] exact seven-stage schema
+- [x] deterministic fidelity validation
+- [x] repair-or-reject behavior
+- [x] lesson + seven stages persistence
+- [x] engine/prompt/provider/model provenance
+- [x] secure system fidelity persistence
+- [x] saved/reopen flow
+- [x] true manual edit/save/reopen; `manual_edit` artifact version persisted
+- [x] stage regeneration; database proof confirms only selected Indices Stage 3 changed
+- [x] resource-grounded generation using `HQLS Eng wk 3 lesson 1.pdf`
+- [x] resource provenance persisted
+- [x] legacy prompt-v1.0 lesson compatibility
+- [x] cross-account/workspace isolation
+- [x] dashboard entry
+- [x] useful error states
+- [x] official KAEC-NG favicon
+- [x] teacher-ready branded PDF export
+- [x] PDF logo/divider placement
+- [x] lint
+- [x] strict TypeScript
+- [x] constitutional structure verification
+- [x] production build
+- [x] dependency audit
+- [x] authenticated live OpenAI generation
 
-- official KAEC-NG branding
-- essential lesson context first
-- optional advanced context collapsed/disclosed separately
-- clear Generate HQLS Lesson action
-- saved lesson list / recent work
-- seven structured stage cards
-- explicit Edit / Save controls
-- stage-level AI actions
-- fidelity status visible but not noisy
-- dedicated teacher-ready lesson PDF export experience
+## 11. Final cosmetic correction
 
-Dashboard HQLS Lesson Intelligence becomes an active entry point. Assessment and Diagnosis remain future stages.
+The black transparency matte behind the KAEC-NG logo in generated PDFs has been removed in code by compositing the founder-supplied transparent official logo onto the white PDF page before JPEG embedding.
 
-## 11. Stage 2 exit criteria
+This is cosmetic only; it changes no HQLS logic, security, persistence or AI behavior. The correction passed the full GitHub engineering gate. Vercel temporarily rejected that final cosmetic preview build because the free-plan build-rate limit was reached again. The founder explicitly requested no further browser retest for this cosmetic correction.
 
-Stage 2 is complete only when all of the following are proven:
+## 12. Governance
 
-- [x] Stage 2 branch starts from merged Stage 1 main.
-- [x] Required lesson inputs and progressive optional context are implemented.
-- [x] OpenAI API key remains server-side.
-- [x] OpenAI Responses API Structured Outputs are used for generated schemas.
-- [x] Structured seven-stage schema is enforced before persistence.
-- [x] Deterministic HQLS fidelity validation is independent of generator self-claims.
-- [x] Failed generation is repaired or rejected rather than presented as compliant.
-- [x] Valid generation persists lesson + seven stage rows.
-- [x] Engine/prompt/provider/model provenance is persisted.
-- [x] HQLS fidelity check is persisted through the secure system-fidelity RPC.
-- [x] Selected resource provenance is implemented.
-- [x] Saved lesson survives refresh/re-login.
-- [ ] Manual stage edits save and create an artifact version — live acceptance pending.
-- [ ] Stage-level regeneration works without overwriting other stages — live acceptance pending.
-- [x] Generated lesson can be reopened from saved work.
-- [x] Legacy prompt-v1.0 lesson compatibility is repaired and accepted live.
-- [ ] Cross-workspace lesson/resource isolation regression reverified for Stage 2.
-- [x] Dashboard entry point works.
-- [x] Error states expose useful backend/fidelity information.
-- [x] Official KAEC-NG logo is the canonical branded asset in Stage 2 surfaces.
-- [x] Teacher-ready validated-lesson PDF export is implemented.
-- [ ] Teacher-ready PDF download is accepted live in browser.
-- [x] Desktop/mobile implementation remains responsive by design/build validation.
-- [x] Lint passes.
-- [x] Strict TypeScript passes.
-- [x] Constitutional structure check passes.
-- [x] Production build passes.
-- [x] High-severity dependency audit passes.
-- [x] Matching Vercel Preview is READY.
-- [x] Authenticated live OpenAI generation E2E passes against the dedicated KSI environment.
-- [ ] Source-resource generation E2E passes with authorised workspace material.
-- [ ] Manual edit/save/reopen E2E passes.
-- [ ] Stage-level regeneration E2E proves all non-target stages remain unchanged.
-- [ ] Stage 2 completion report records exact accepted head and live evidence.
+Stage 2 is functionally complete and awaits explicit founder approval to merge PR #2.
 
-## 12. Explicitly out of scope
-
-Do not add in Stage 2:
-
-- Assessment Generator implementation
-- Diagnosis Generator implementation
-- school ERP features
-- parent/student portals
-- classroom observation product UI
-- teacher certification
-- PipuPath
-
-Stage 2 must strengthen the first engine without reopening or diluting the verified Stage 1 platform foundation.
+Stage 3 — Assessment Intelligence must begin from the accepted Stage 2 merge commit, not from an unmerged branch.
