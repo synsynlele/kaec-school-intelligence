@@ -1,6 +1,6 @@
 "use client";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { KsiSupabaseClient } from "@/lib/supabase/database";
 
 export const KSI_RESOURCE_BUCKET = "ksi-resources";
 export const KSI_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
@@ -40,7 +40,7 @@ function safeFileName(fileName: string) {
 }
 
 export async function uploadWorkspaceResource(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   input: UploadWorkspaceResourceInput,
 ): Promise<StoredResource> {
   if (input.file.size > KSI_RESOURCE_MAX_BYTES) {
@@ -68,7 +68,7 @@ export async function uploadWorkspaceResource(
 
   if (metadataError) throw metadataError;
 
-  const resourceId = resource.id as string;
+  const resourceId = resource.id;
 
   try {
     const { error: uploadError } = await supabase.storage
@@ -87,11 +87,7 @@ export async function uploadWorkspaceResource(
 
     if (readyError) throw readyError;
 
-    return {
-      id: resourceId,
-      storagePath,
-      title,
-    };
+    return { id: resourceId, storagePath, title };
   } catch (caught) {
     await supabase.storage.from(KSI_RESOURCE_BUCKET).remove([storagePath]);
     await supabase.from("resources").delete().eq("id", resourceId);
@@ -100,7 +96,7 @@ export async function uploadWorkspaceResource(
 }
 
 export async function downloadWorkspaceResource(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   storagePath: string,
 ) {
   const { data, error } = await supabase.storage
@@ -112,7 +108,7 @@ export async function downloadWorkspaceResource(
 }
 
 export async function deleteWorkspaceResource(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   resourceId: string,
   storagePath: string,
 ) {
