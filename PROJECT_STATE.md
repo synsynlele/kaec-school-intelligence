@@ -15,7 +15,7 @@ Stage 0 Product Constitution v1.1 is approved and frozen.
 - Stage 1 branch: `stage-1-platform-foundation`
 - Stage 1 base commit: `dfcd4dfe5832f64d856934840c0f6ee8b53b832e`
 
-## Verified stack from current repository
+## Verified stack
 
 - Next.js `16.2.9`
 - React `19.2.4`
@@ -33,62 +33,103 @@ Version 1 is locked to:
 
 plus only the infrastructure necessary for those engines.
 
-## Current repository baseline
+The governing product loop is:
 
-The repository remains close to a cleaned Create Next App foundation:
+**HQLS Lesson → Assessment → Student Evidence → Diagnosis → Action / Intervention → Next HQLS Lesson**
 
-- `app/page.tsx` renders only the KSI title.
-- `app/layout.tsx` carries KSI metadata.
-- Supabase client package is installed.
-- No KSI authentication flow is implemented yet.
-- No dedicated KSI Supabase project exists in the connected Supabase account.
+## Dedicated Supabase environment
 
-## Remote environment status
+A dedicated KAEC School Intelligence Supabase project now exists.
 
-Connected Supabase projects currently visible:
+- Project: `kaec-school-intelligence`
+- Project ref: `zaoxfjbiizargeclnzmo`
+- Region: `eu-west-1`
+- Status at creation: `ACTIVE_HEALTHY`
+- API URL: `https://zaoxfjbiizargeclnzmo.supabase.co`
 
-- `pipupath-staging` — belongs to PipuPath and is not an authorised KSI target.
+`pipupath-staging` remains a separate PipuPath environment and is not an authorised KSI target.
 
-Therefore:
+## Stage 1 database state
 
-**Do not apply KSI migrations to any existing Supabase project until a dedicated KSI project is created and confirmed.**
+The following KSI migrations are committed and have been applied successfully to the dedicated KSI project:
 
-## Stage 1 completed work so far
+1. `001_stage1_platform_foundation.sql`
+2. `002_stage1_security_performance_hardening.sql`
+3. `003_stage1_tenant_integrity.sql`
 
-- Stage 1 branch exists.
-- Approved Product Constitution is committed to the branch.
-- Engineering guardrails are present in `AGENTS.md` while preserving the repository's Next.js 16 agent rule.
-- Stage 1 architecture specification is committed.
-- Canonical HQLS domain constants are now encoded in `lib/hqls/constants.ts`.
-- Foundation database migration is now committed at `supabase/migrations/001_stage1_platform_foundation.sql`.
-- The migration models workspaces, membership, subjects, classes, students, resources, structured HQLS lessons/stages, fidelity checks, assessments/items, student evidence, diagnoses, artifact versions, artifact-resource provenance, AI runs and generation feedback.
-- The migration includes initial workspace-scoped RLS and a new-user private workspace bootstrap.
-- Diagnosis schema enforces human review/finalisation metadata before a report can reach `final` status.
+The schema now includes:
 
-Latest implementation commits in this work session:
+- profiles and workspaces
+- workspace membership and roles
+- subjects, classes and students
+- private resource metadata
+- structured HQLS lessons and seven lesson stages
+- HQLS fidelity checks
+- assessments and assessment items
+- student evidence
+- diagnoses with human review/finalisation metadata
+- artifact versions
+- artifact/resource provenance
+- AI run provenance
+- generation feedback
 
-- `0cca4546e647f6b8d45fc3169ba398f51949d306` — encode HQLS constitutional constants
-- `14c2ad84a8b7e443d303f159aded69b92bee093f` — add Stage 1 database foundation
+## Security state
 
-## Next remote dependency
+- RLS is enabled across user/workspace tables.
+- SECURITY DEFINER helper functions were moved out of the exposed `public` API schema.
+- Direct execution of internal trigger/helper functions is restricted.
+- Workspace relationships are constrained so linked records cannot silently cross tenant boundaries.
+- Workspace IDs and creator/recorder provenance are protected from silent rewrites.
+- Every workspace must retain at least one active owner.
+- A parent-facing diagnosis cannot reach `final` without recorded human review and finalisation metadata.
+- Latest Supabase security advisor result: **0 findings**.
+- Latest performance advisor has no warning-level findings; only `unused_index` informational notices are present on the new, currently empty database.
 
-A dedicated KSI Supabase project must be created before the migration can be applied or auth/storage can be tested remotely.
+## Type and environment state
 
-Supabase project creation requires:
+- Supabase TypeScript types have been generated successfully from the live KSI schema; repository persistence of the generated type file is still pending.
+- `.env.example` defines the public Supabase URL and publishable-key contract without committing live credentials.
+- `lib/env.ts` validates public Supabase configuration.
+- `lib/supabase/client.ts` provides a persistent browser Supabase client.
+- No service-role key has been retrieved or exposed to client code.
 
-1. explicit selection of the Supabase organisation, and
-2. cost retrieval and explicit cost confirmation before creation.
+## Domain model state
 
-Once the dedicated KSI project exists:
+Canonical product domain definitions live under `lib/domain/`.
 
-1. apply the Stage 1 migration there only,
-2. generate TypeScript database types,
-3. run security and performance advisors,
-4. fix all critical findings,
-5. configure auth/session infrastructure,
-6. verify workspace bootstrap and tenant isolation,
-7. add private resource storage policies.
+- `hqls.ts` — seven HQLS stages and fidelity failures
+- `assessment.ts` — assessment modes, critical-thinking experience types and difficulty vocabulary
+- `diagnosis.ts` — diagnosis modes, evidence layers and lifecycle states
 
-## Stage 1 remains blocked only on the remote KSI backend target for the next substage
+A duplicate HQLS constants source was removed so the codebase does not carry competing definitions. Diagnosis lifecycle now includes the constitutionally required `reviewed` state.
 
-Repository implementation can continue, but remote database, authentication and storage verification must not use `pipupath-staging`.
+## Current application state
+
+- The application UI remains intentionally thin.
+- Final Lesson, Assessment and Diagnosis generator interfaces have not been started.
+- Authentication/workspace UX is the next active substage.
+- A dedicated KSI Vercel project does not yet exist in the connected Vercel team.
+
+## Stage 1 validation still required
+
+- [ ] Persist generated database TypeScript types in the repository.
+- [ ] Implement sign-up/sign-in/sign-out against the dedicated KSI project.
+- [ ] Verify auth-user bootstrap creates profile + private workspace + owner membership.
+- [ ] Verify two authenticated users cannot read or mutate each other's workspace data.
+- [ ] Add school-workspace creation/bootstrap flow.
+- [ ] Add typed persistence services for lessons, assessments, evidence and diagnoses.
+- [ ] Add private resource storage bucket and storage RLS policies.
+- [ ] Run formatting, lint, strict TypeScript and production build.
+- [ ] Create/verify KSI deployment environment and authenticated smoke test.
+- [ ] Commit Stage 1 completion report with exact verified head.
+
+## Current execution order
+
+1. Complete Stage 1.3 authentication and workspace bootstrap.
+2. Run live tenant-isolation tests with real test identities.
+3. Persist live generated database types.
+4. Build Stage 1.4 typed persistence services.
+5. Build Stage 1.5 private resource storage.
+6. Complete Stage 1.6 validation and release gate.
+
+Do not begin the final AI generators until the Stage 1 platform foundation passes its release gate.
