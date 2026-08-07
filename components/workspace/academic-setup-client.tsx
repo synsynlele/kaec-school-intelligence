@@ -76,14 +76,17 @@ async function loadSetupContext(): Promise<SetupContext | null> {
     classResult.error ??
     studentResult.error;
   if (firstError) throw firstError;
-  if (!workspaceResult.data || !membershipResult.data) {
+
+  const workspace = workspaceResult.data;
+  const membership = membershipResult.data;
+  if (!workspace || !membership) {
     throw new Error("Active workspace membership could not be resolved.");
   }
 
   return {
     userId: user.id,
-    workspace: workspaceResult.data,
-    role: membershipResult.data.role,
+    workspace,
+    role: membership.role,
     subjects: subjectResult.data ?? [],
     classes: classResult.data ?? [],
     students: studentResult.data ?? [],
@@ -219,8 +222,8 @@ export function AcademicSetupClient() {
         .insert({
           workspace_id: context.workspace.id,
           created_by: context.userId,
-          class_id: studentClassId || null,
           display_name: studentName.trim(),
+          class_id: studentClassId || null,
           external_reference: studentReference.trim() || null,
         });
       if (insertError) throw insertError;
@@ -248,7 +251,7 @@ export function AcademicSetupClient() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-stone-50 px-6">
         <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700">
-          {error ?? "The active workspace could not be loaded."}
+          {error ?? "Academic setup could not be loaded."}
         </div>
       </main>
     );
@@ -256,141 +259,127 @@ export function AcademicSetupClient() {
 
   return (
     <main className="min-h-screen bg-stone-50 text-zinc-950">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">KAEC School Intelligence</p>
-            <p className="mt-1 text-sm text-zinc-500">Academic workspace foundation</p>
-          </div>
-          <Link href="/dashboard" className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:border-zinc-400">
-            Back to dashboard
-          </Link>
-        </div>
-      </header>
-
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 border-b border-zinc-200 pb-7 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-zinc-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-zinc-500">{context.workspace.name}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Academic Setup</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-              Establish reusable subjects, classes and student records once. HQLS, Assessment and Diagnosis will inherit this context instead of making teachers re-enter it on every task.
+            <Link href="/dashboard" className="text-sm font-medium text-emerald-900">
+              ← Dashboard
+            </Link>
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
+              Stage 1 Academic Setup
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{context.workspace.name}</h1>
+            <p className="mt-2 text-sm text-zinc-500">
+              Define the school context that future HQLS lessons, assessments and diagnoses will reuse.
             </p>
           </div>
-          <div className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600">
+          <span className="w-fit rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600">
             Role: {context.role}
-          </div>
+          </span>
         </div>
 
-        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-        {success ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</div> : null}
+        {error ? <Message tone="error">{error}</Message> : null}
+        {success ? <Message tone="success">{success}</Message> : null}
+
         {!canManage ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            You can view this school setup, but only workspace owners or administrators can change the school roster and configuration.
-          </div>
-        ) : null}
+          <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
+            Teachers can view this setup, but only workspace owners and admins can change subjects, classes or students.
+          </section>
+        ) : (
+          <section className="grid gap-5 py-8 lg:grid-cols-3">
+            <SetupForm title="Add subject" onSubmit={addSubject} busy={saving === "subject"}>
+              <Input label="Subject name" value={subjectName} onChange={setSubjectName} placeholder="Mathematics" required />
+              <Input label="Code (optional)" value={subjectCode} onChange={setSubjectCode} placeholder="MATH" />
+            </SetupForm>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-3">
-          <SetupPanel title="Subjects" count={context.subjects.length}>
-            {canManage ? (
-              <form onSubmit={addSubject} className="space-y-3 border-b border-zinc-100 pb-5">
-                <TextInput label="Subject name" value={subjectName} setValue={setSubjectName} placeholder="Mathematics" required />
-                <TextInput label="Code (optional)" value={subjectCode} setValue={setSubjectCode} placeholder="MTH" />
-                <SubmitButton busy={saving === "subject"}>Add subject</SubmitButton>
-              </form>
-            ) : null}
-            <div className="divide-y divide-zinc-100">
-              {context.subjects.length ? context.subjects.map((subject) => (
-                <div key={subject.id} className="py-3">
-                  <p className="text-sm font-semibold">{subject.name}</p>
-                  <p className="mt-1 text-xs text-zinc-400">{subject.code || "No code"}</p>
-                </div>
-              )) : <EmptyText text="No subjects yet." />}
-            </div>
-          </SetupPanel>
+            <SetupForm title="Add class" onSubmit={addClass} busy={saving === "class"}>
+              <Input label="Class name" value={className} onChange={setClassName} placeholder="JSS 1" required />
+              <Input label="Age range" value={ageRange} onChange={setAgeRange} placeholder="10–12" />
+              <Input label="Academic session" value={academicSession} onChange={setAcademicSession} placeholder="2026/2027" />
+            </SetupForm>
 
-          <SetupPanel title="Classes" count={context.classes.length}>
-            {canManage ? (
-              <form onSubmit={addClass} className="space-y-3 border-b border-zinc-100 pb-5">
-                <TextInput label="Class name" value={className} setValue={setClassName} placeholder="JSS 2" required />
-                <TextInput label="Age range (optional)" value={ageRange} setValue={setAgeRange} placeholder="12–14" />
-                <TextInput label="Academic session (optional)" value={academicSession} setValue={setAcademicSession} placeholder="2026/2027" />
-                <SubmitButton busy={saving === "class"}>Add class</SubmitButton>
-              </form>
-            ) : null}
-            <div className="divide-y divide-zinc-100">
-              {context.classes.length ? context.classes.map((item) => (
-                <div key={item.id} className="py-3">
-                  <p className="text-sm font-semibold">{item.name}</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {[item.age_range, item.academic_session].filter(Boolean).join(" · ") || "No extra details"}
-                  </p>
-                </div>
-              )) : <EmptyText text="No classes yet." />}
-            </div>
-          </SetupPanel>
+            <SetupForm title="Add student" onSubmit={addStudent} busy={saving === "student"}>
+              <Input label="Student name" value={studentName} onChange={setStudentName} placeholder="Student name" required />
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-zinc-800">Class</span>
+                <select value={studentClassId} onChange={(event) => setStudentClassId(event.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 outline-none focus:border-emerald-700">
+                  <option value="">Not assigned</option>
+                  {context.classes.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+              <Input label="Reference (optional)" value={studentReference} onChange={setStudentReference} placeholder="Admission / local reference" />
+            </SetupForm>
+          </section>
+        )}
 
-          <SetupPanel title="Students" count={context.students.length}>
-            {canManage ? (
-              <form onSubmit={addStudent} className="space-y-3 border-b border-zinc-100 pb-5">
-                <TextInput label="Student name" value={studentName} setValue={setStudentName} placeholder="Student name" required />
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-zinc-600">Class (optional)</span>
-                  <select value={studentClassId} onChange={(event) => setStudentClassId(event.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-700">
-                    <option value="">No class selected</option>
-                    {context.classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                  </select>
-                </label>
-                <TextInput label="School reference (optional)" value={studentReference} setValue={setStudentReference} placeholder="Admission / student ID" />
-                <SubmitButton busy={saving === "student"}>Add student</SubmitButton>
-              </form>
-            ) : null}
-            <div className="divide-y divide-zinc-100">
-              {context.students.length ? context.students.map((student) => (
-                <div key={student.id} className="py-3">
-                  <p className="text-sm font-semibold">{student.display_name}</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {[student.class_id ? classNames.get(student.class_id) : null, student.external_reference].filter(Boolean).join(" · ") || "No class assigned"}
-                  </p>
-                </div>
-              )) : <EmptyText text="No students yet." />}
-            </div>
-          </SetupPanel>
-        </div>
+        <section className="grid gap-5 pb-10 lg:grid-cols-3">
+          <DataCard title="Subjects" empty="No subjects yet.">
+            {context.subjects.map((item) => (
+              <DataRow key={item.id} primary={item.name} secondary={item.code || "No code"} />
+            ))}
+          </DataCard>
+          <DataCard title="Classes" empty="No classes yet.">
+            {context.classes.map((item) => (
+              <DataRow key={item.id} primary={item.name} secondary={[item.age_range, item.academic_session].filter(Boolean).join(" · ") || "No additional details"} />
+            ))}
+          </DataCard>
+          <DataCard title="Students" empty="No students yet.">
+            {context.students.map((item) => (
+              <DataRow key={item.id} primary={item.display_name} secondary={item.class_id ? classNames.get(item.class_id) ?? "Assigned class" : "Not assigned to a class"} />
+            ))}
+          </DataCard>
+        </section>
       </div>
     </main>
   );
 }
 
-function SetupPanel({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function Message({ tone, children }: { tone: "error" | "success"; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{count}</span>
-      </div>
+    <div className={`mt-6 rounded-2xl px-4 py-3 text-sm ${tone === "error" ? "border border-red-200 bg-red-50 text-red-700" : "border border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
       {children}
-    </section>
+    </div>
   );
 }
 
-function TextInput({ label, value, setValue, placeholder, required = false }: { label: string; value: string; setValue: (value: string) => void; placeholder: string; required?: boolean }) {
+function SetupForm({ title, onSubmit, busy, children }: { title: string; onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>; busy: boolean; children: React.ReactNode }) {
+  return (
+    <form onSubmit={onSubmit} className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+      <div className="mt-5 space-y-4">{children}</div>
+      <button type="submit" disabled={busy} className="mt-5 w-full rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+        {busy ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}
+
+function Input({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; required?: boolean }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-zinc-600">{label}</span>
-      <input required={required} value={value} onChange={(event) => setValue(event.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-700" />
+      <span className="mb-1.5 block text-sm font-medium text-zinc-800">{label}</span>
+      <input required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-zinc-300 px-3.5 py-2.5 outline-none focus:border-emerald-700" />
     </label>
   );
 }
 
-function SubmitButton({ busy, children }: { busy: boolean; children: React.ReactNode }) {
+function DataCard({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
   return (
-    <button type="submit" disabled={busy} className="w-full rounded-xl bg-emerald-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50">
-      {busy ? "Saving…" : children}
-    </button>
+    <div className="rounded-3xl border border-zinc-200 bg-white p-6">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mt-4 divide-y divide-zinc-100">{hasChildren ? children : <p className="py-3 text-sm text-zinc-500">{empty}</p>}</div>
+    </div>
   );
 }
 
-function EmptyText({ text }: { text: string }) {
-  return <p className="py-7 text-center text-sm text-zinc-400">{text}</p>;
+function DataRow({ primary, secondary }: { primary: string; secondary: string }) {
+  return (
+    <div className="py-3">
+      <p className="text-sm font-medium text-zinc-900">{primary}</p>
+      <p className="mt-1 text-xs text-zinc-500">{secondary}</p>
+    </div>
+  );
 }
