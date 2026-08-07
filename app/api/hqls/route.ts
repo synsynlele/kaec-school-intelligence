@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { generateGeminiJson, GeminiProviderError, type GeminiPart } from "@/lib/ai/gemini";
+import {
+  generateOpenAIJson,
+  OpenAIProviderError,
+  type OpenAIPart,
+} from "@/lib/ai/openai";
 import { completeAiRun, startAiRun } from "@/lib/data/ai-runs";
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import { createLesson } from "@/lib/data/lessons";
@@ -54,7 +58,7 @@ type LessonStageRow = Database["public"]["Tables"]["lesson_stages"]["Row"];
 type ResourceContext = {
   rows: ResourceRow[];
   labels: string[];
-  parts: GeminiPart[];
+  parts: OpenAIPart[];
   warnings: string[];
   sourceContext: Json[];
 };
@@ -93,14 +97,19 @@ function errorMessage(caught: unknown) {
 }
 
 function errorCode(caught: unknown) {
-  if (caught instanceof GeminiProviderError) return caught.code;
+  if (caught instanceof OpenAIProviderError) return caught.code;
   return "HQLS_REQUEST_FAILED";
 }
 
 function errorStatus(caught: unknown) {
-  if (caught instanceof GeminiProviderError) {
+  if (caught instanceof OpenAIProviderError) {
     if (caught.code === "AI_PROVIDER_NOT_CONFIGURED") return 503;
-    if (caught.code.startsWith("GEMINI_HTTP_429")) return 429;
+    if (
+      caught.code === "HQLS_RATE_LIMIT" ||
+      caught.code.startsWith("OPENAI_HTTP_429")
+    ) {
+      return 429;
+    }
     return 502;
   }
   return 400;
@@ -115,7 +124,16 @@ function requireString(value: unknown, label: string) {
 
 function uniqueStrings(value: unknown) {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim()))];
+  return [
+    ...new Set(
+      value
+        .filter(
+          (item): item is string =>
+            typeof item === "string" && Boolean(item.trim()),
+        )
+        .map((item) => item.trim()),
+    ),
+  ];
 }
 
 function validateGenerateInput(value: unknown): HqlsLessonRequest {
@@ -124,29 +142,49 @@ function validateGenerateInput(value: unknown): HqlsLessonRequest {
   }
   const input = value as Record<string, unknown>;
   const durationMinutes = Number(input.durationMinutes);
-  if (!Number.isFinite(durationMinutes) || durationMinutes < 10 || durationMinutes > 240) {
+  if (
+    !Number.isFinite(durationMinutes) ||
+    durationMinutes < 10 ||
+    durationMinutes > 240
+  ) {
     throw new Error("Lesson duration must be between 10 and 240 minutes.");
   }
 
   const resourceIds = uniqueStrings(input.resourceIds);
   if (resourceIds.length > MAX_SELECTED_RESOURCES) {
-    throw new Error(`Select no more than ${MAX_SELECTED_RESOURCES} source resources per generation.`);
+    throw new Error(
+      `Select no more than ${MAX_SELECTED_RESOURCES} source resources per generation.`,
+    );
   }
 
   return {
     workspaceId: requireString(input.workspaceId, "Workspace"),
-    subjectId: typeof input.subjectId === "string" && input.subjectId ? input.subjectId : null,
+    subjectId:
+      typeof input.subjectId === "string" && input.subjectId
+        ? input.subjectId
+        : null,
     subject: requireString(input.subject, "Subject"),
-    classId: typeof input.classId === "string" && input.classId ? input.classId : null,
+    classId:
+      typeof input.classId === "string" && input.classId ? input.classId : null,
     classLevel: requireString(input.classLevel, "Class level"),
     ageRange: requireString(input.ageRange, "Age or age range"),
     durationMinutes: Math.round(durationMinutes),
     topic: requireString(input.topic, "Topic"),
     objective: requireString(input.objective, "Lesson objective"),
-    previousLearning: typeof input.previousLearning === "string" ? input.previousLearning.trim() : "",
-    availableResources: typeof input.availableResources === "string" ? input.availableResources.trim() : "",
-    classContext: typeof input.classContext === "string" ? input.classContext.trim() : "",
-    teacherInstructions: typeof input.teacherInstructions === "string" ? input.teacherInstructions.trim() : "",
+    previousLearning:
+      typeof input.previousLearning === "string"
+        ? input.previousLearning.trim()
+        : "",
+    availableResources:
+      typeof input.availableResources === "string"
+        ? input.availableResources.trim()
+        : "",
+    classContext:
+      typeof input.classContext === "string" ? input.classContext.trim() : "",
+    teacherInstructions:
+      typeof input.teacherInstructions === "string"
+        ? input.teacherInstructions.trim()
+        : "",
     resourceIds,
   };
 }
@@ -181,7 +219,10 @@ async function getAuthenticatedClient(request: Request) {
   return { supabase, user };
 }
 
-async function requireWorkspace(supabase: KsiSupabaseClient, workspaceId: string) {
+async function requireWorkspace(
+  supabase: KsiSupabaseClient,
+  workspaceId: string,
+) {
   const { data, error } = await supabase
     .from("workspaces")
     .select("id,name,workspace_type")
@@ -245,7 +286,7 @@ async function enforceAiRateLimit(
     .gte("started_at", since);
   if (error) throw error;
   if ((count ?? 0) >= AI_RUNS_PER_MINUTE) {
-    throw new GeminiProviderError(
+    throw new OpenAIProviderError(
       "HQLS_RATE_LIMIT",
       "You have generated several lessons very quickly. Wait about a minute and try again.",
     );
@@ -258,7 +299,13 @@ async function loadResourceContext(
   resourceIds: string[],
 ): Promise<ResourceContext> {
   if (resourceIds.length === 0) {
-    return { rows: [], labels: [], parts: [], warnings: [], sourceContext: [] };
+    return {
+      rows: [],
+      labels: [],
+      parts: [],
+      warnings: [],
+      sourceContext: [],
+    };
   }
 
   const { data, error } = await supabase
@@ -270,12 +317,16 @@ async function loadResourceContext(
 
   const rows = (data ?? []) as ResourceRow[];
   if (rows.length !== resourceIds.length) {
-    throw new Error("One or more selected resources are unavailable in this workspace.");
+    throw new Error(
+      "One or more selected resources are unavailable in this workspace.",
+    );
   }
 
-  const orderedRows = resourceIds.map((id) => rows.find((row) => row.id === id)).filter((row): row is ResourceRow => Boolean(row));
+  const orderedRows = resourceIds
+    .map((id) => rows.find((row) => row.id === id))
+    .filter((row): row is ResourceRow => Boolean(row));
   const labels: string[] = [];
-  const parts: GeminiPart[] = [];
+  const parts: OpenAIPart[] = [];
   const warnings: string[] = [];
   const sourceContext: Json[] = [];
   let inlineBytes = 0;
@@ -299,7 +350,9 @@ async function loadResourceContext(
     }
 
     if (!row.storage_path || !row.mime_type) {
-      warnings.push(`${row.title}: no readable file content is available yet.`);
+      warnings.push(
+        `${row.title}: no readable file content is available yet.`,
+      );
       continue;
     }
 
@@ -310,23 +363,33 @@ async function loadResourceContext(
 
     if (SUPPORTED_TEXT_MIME.has(row.mime_type)) {
       const text = await blob.text();
-      parts.push({ text: `\nAUTHORISED SOURCE: ${label}\n${text.slice(0, 100_000)}` });
+      parts.push({
+        text: `\nAUTHORISED SOURCE: ${label}\n${text.slice(0, 100_000)}`,
+      });
       continue;
     }
 
     if (SUPPORTED_INLINE_MIME.has(row.mime_type)) {
       if (inlineBytes + blob.size > MAX_INLINE_RESOURCE_BYTES) {
-        warnings.push(`${row.title}: skipped because selected source files exceed the safe inline generation limit.`);
+        warnings.push(
+          `${row.title}: skipped because selected source files exceed the safe inline generation limit.`,
+        );
         continue;
       }
       inlineBytes += blob.size;
       const data64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
-      parts.push({ inlineData: { mimeType: row.mime_type, data: data64 } });
-      parts.push({ text: `The preceding file is authorised source material: ${label}.` });
+      parts.push({
+        inlineData: { mimeType: row.mime_type, data: data64 },
+      });
+      parts.push({
+        text: `The preceding file is authorised source material: ${label}.`,
+      });
       continue;
     }
 
-    warnings.push(`${row.title}: this file type cannot be read directly by the Stage 2 generator yet; its title/provenance is still recorded.`);
+    warnings.push(
+      `${row.title}: this file type cannot be read directly by the Stage 2 generator yet; its title/provenance is still recorded.`,
+    );
   }
 
   return { rows: orderedRows, labels, parts, warnings, sourceContext };
@@ -390,28 +453,38 @@ async function fetchLessonWithStages(
   supabase: KsiSupabaseClient,
   lessonId: string,
 ) {
-  const [{ data: lesson, error: lessonError }, { data: stages, error: stagesError }] =
-    await Promise.all([
-      supabase.from("lessons").select("*").eq("id", lessonId).single(),
-      supabase
-        .from("lesson_stages")
-        .select("*")
-        .eq("lesson_id", lessonId)
-        .order("stage_number"),
-    ]);
+  const [
+    { data: lesson, error: lessonError },
+    { data: stages, error: stagesError },
+  ] = await Promise.all([
+    supabase.from("lessons").select("*").eq("id", lessonId).single(),
+    supabase
+      .from("lesson_stages")
+      .select("*")
+      .eq("lesson_id", lessonId)
+      .order("stage_number"),
+  ]);
   if (lessonError) throw lessonError;
   if (stagesError) throw stagesError;
   if (!lesson || !stages || stages.length !== 7) {
     throw new Error("The saved HQLS lesson is incomplete.");
   }
-  return { lesson: lesson as LessonRow, stages: stages as LessonStageRow[] };
+  return {
+    lesson: lesson as LessonRow,
+    stages: stages as LessonStageRow[],
+  };
 }
 
-function lessonFromRows(lesson: LessonRow, stages: LessonStageRow[]): GeneratedHqlsLesson {
+function lessonFromRows(
+  lesson: LessonRow,
+  stages: LessonStageRow[],
+): GeneratedHqlsLesson {
   return {
     title: lesson.title,
     lessonIntent: lesson.objective,
-    stages: stages.map((stage, index) => parseHqlsStageContent(stage.content, index + 1)),
+    stages: stages.map((stage, index) =>
+      parseHqlsStageContent(stage.content, index + 1),
+    ),
   };
 }
 
@@ -432,6 +505,14 @@ async function saveLessonValidation(args: {
   if (error) throw error;
 }
 
+function configuredOpenAIModel() {
+  return (
+    process.env.KSI_OPENAI_MODEL?.trim() ||
+    process.env.KSI_AI_MODEL?.trim() ||
+    "gpt-5.6-terra"
+  );
+}
+
 async function handleGenerate(
   supabase: KsiSupabaseClient,
   userId: string,
@@ -449,15 +530,14 @@ async function handleGenerate(
       input.resourceIds ?? [],
     );
 
-    const configuredModel = process.env.KSI_AI_MODEL?.trim() || "gemini-2.5-flash";
     runId = await startAiRun(supabase, {
       workspaceId: input.workspaceId,
       userId,
       engine: "hqls_lesson",
       engineVersion: HQLS_ENGINE_VERSION,
       promptVersion: HQLS_PROMPT_VERSION,
-      provider: "google",
-      model: configuredModel,
+      provider: "openai",
+      model: configuredOpenAIModel(),
       artifactType: "lesson",
       inputSummary: {
         subject: input.subject,
@@ -470,37 +550,46 @@ async function handleGenerate(
       },
     });
 
-    const generated = await generateGeminiJson<unknown>({
+    const generated = await generateOpenAIJson<unknown>({
       systemInstruction: buildHqlsGenerationSystemInstruction(),
       parts: [
         { text: buildHqlsGenerationPrompt(input, resources.labels) },
         ...resources.parts,
       ],
       responseSchema: HQLS_LESSON_JSON_SCHEMA,
+      schemaName: "ksi_hqls_lesson",
+      maxOutputTokens: 14000,
     });
 
     let lesson = parseGeneratedHqlsLesson(generated.data);
     let validation = validateHqlsLesson(lesson);
 
     if (!validation.passed) {
-      const repaired = await generateGeminiJson<unknown>({
+      const repaired = await generateOpenAIJson<unknown>({
         systemInstruction: buildHqlsGenerationSystemInstruction(),
         parts: [
           { text: buildHqlsRepairPrompt(input, lesson, validation) },
           ...resources.parts,
         ],
         responseSchema: HQLS_LESSON_JSON_SCHEMA,
-        temperature: 0.25,
+        schemaName: "ksi_hqls_lesson_repair",
+        maxOutputTokens: 14000,
       });
       lesson = parseGeneratedHqlsLesson(repaired.data);
       validation = validateHqlsLesson(lesson);
     }
 
     if (!validation.passed) {
-      await completeAiRun(supabase, runId, "failed", "HQLS_FIDELITY_FAILED");
+      await completeAiRun(
+        supabase,
+        runId,
+        "failed",
+        "HQLS_FIDELITY_FAILED",
+      );
       return json(
         {
-          error: "The generated lesson did not meet HQLS fidelity after repair, so it was not saved.",
+          error:
+            "The generated lesson did not meet HQLS fidelity after repair, so it was not saved.",
           code: "HQLS_FIDELITY_FAILED",
           validation,
         },
@@ -554,7 +643,12 @@ async function handleGenerate(
     });
   } catch (caught) {
     if (runId) {
-      await completeAiRun(supabase, runId, "failed", errorCode(caught)).catch(() => undefined);
+      await completeAiRun(
+        supabase,
+        runId,
+        "failed",
+        errorCode(caught),
+      ).catch(() => undefined);
     }
     throw caught;
   }
@@ -574,7 +668,9 @@ async function handleSaveEdits(
   const editedLesson: GeneratedHqlsLesson = {
     title: current.lesson.title,
     lessonIntent: current.lesson.objective,
-    stages: body.stages.map((stage, index) => parseHqlsStageContent(stage, index + 1)),
+    stages: body.stages.map((stage, index) =>
+      parseHqlsStageContent(stage, index + 1),
+    ),
   };
   const validation = validateHqlsLesson(editedLesson);
 
@@ -593,7 +689,11 @@ async function handleSaveEdits(
     }),
   );
 
-  await saveLessonValidation({ supabase, lesson: current.lesson, validation });
+  await saveLessonValidation({
+    supabase,
+    lesson: current.lesson,
+    validation,
+  });
   await persistFidelityCheck({
     supabase,
     workspaceId: current.lesson.workspace_id,
@@ -634,7 +734,9 @@ async function loadLinkedResourceContext(
   return loadResourceContext(
     supabase,
     lesson.workspace_id,
-    (links ?? []).map((link) => link.resource_id).slice(0, MAX_SELECTED_RESOURCES),
+    (links ?? [])
+      .map((link) => link.resource_id)
+      .slice(0, MAX_SELECTED_RESOURCES),
   );
 }
 
@@ -672,7 +774,11 @@ async function handleRegenerateStage(
   try {
     const lessonId = requireString(body.lessonId, "Lesson id");
     const stageNumber = Number(body.stageNumber);
-    if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > 7) {
+    if (
+      !Number.isInteger(stageNumber) ||
+      stageNumber < 1 ||
+      stageNumber > 7
+    ) {
       throw new Error("Select a valid HQLS stage to regenerate.");
     }
     const allowedActions: HqlsStageAction[] = [
@@ -688,7 +794,11 @@ async function handleRegenerateStage(
     }
 
     const current = await fetchLessonWithStages(supabase, lessonId);
-    await enforceAiRateLimit(supabase, userId, current.lesson.workspace_id);
+    await enforceAiRateLimit(
+      supabase,
+      userId,
+      current.lesson.workspace_id,
+    );
     const names = await resolveSavedLessonNames(supabase, current.lesson);
     const resources = await loadLinkedResourceContext(supabase, current.lesson);
     const currentLesson = lessonFromRows(current.lesson, current.stages);
@@ -702,15 +812,14 @@ async function handleRegenerateStage(
       durationMinutes: current.lesson.duration_minutes,
     });
 
-    const configuredModel = process.env.KSI_AI_MODEL?.trim() || "gemini-2.5-flash";
     runId = await startAiRun(supabase, {
       workspaceId: current.lesson.workspace_id,
       userId,
       engine: "hqls_stage_regeneration",
       engineVersion: HQLS_ENGINE_VERSION,
       promptVersion: HQLS_PROMPT_VERSION,
-      provider: "google",
-      model: configuredModel,
+      provider: "openai",
+      model: configuredOpenAIModel(),
       artifactType: "lesson",
       artifactId: lessonId,
       inputSummary: {
@@ -721,7 +830,7 @@ async function handleRegenerateStage(
       },
     });
 
-    const first = await generateGeminiJson<unknown>({
+    const first = await generateOpenAIJson<unknown>({
       systemInstruction: buildHqlsGenerationSystemInstruction(),
       parts: [
         {
@@ -735,7 +844,8 @@ async function handleRegenerateStage(
         ...resources.parts,
       ],
       responseSchema: HQLS_STAGE_JSON_SCHEMA,
-      temperature: 0.3,
+      schemaName: "ksi_hqls_stage",
+      maxOutputTokens: 6000,
     });
 
     let replacement = parseHqlsStageContent(first.data, stageNumber);
@@ -759,11 +869,12 @@ async function handleRegenerateStage(
       })}\n\nDeterministic fidelity issues that must be repaired:\n${targetViolations
         .map((item) => `- ${item.code}: ${item.message}`)
         .join("\n")}`;
-      const repaired = await generateGeminiJson<unknown>({
+      const repaired = await generateOpenAIJson<unknown>({
         systemInstruction: buildHqlsGenerationSystemInstruction(),
         parts: [{ text: repairPrompt }, ...resources.parts],
         responseSchema: HQLS_STAGE_JSON_SCHEMA,
-        temperature: 0.2,
+        schemaName: "ksi_hqls_stage_repair",
+        maxOutputTokens: 6000,
       });
       replacement = parseHqlsStageContent(repaired.data, stageNumber);
       candidate = {
@@ -779,10 +890,16 @@ async function handleRegenerateStage(
     }
 
     if (targetViolations.length > 0) {
-      await completeAiRun(supabase, runId, "failed", "HQLS_STAGE_FIDELITY_FAILED");
+      await completeAiRun(
+        supabase,
+        runId,
+        "failed",
+        "HQLS_STAGE_FIDELITY_FAILED",
+      );
       return json(
         {
-          error: "The regenerated stage still violates HQLS fidelity, so the saved lesson was not changed.",
+          error:
+            "The regenerated stage still violates HQLS fidelity, so the saved lesson was not changed.",
           code: "HQLS_STAGE_FIDELITY_FAILED",
           validation,
         },
@@ -794,14 +911,20 @@ async function handleRegenerateStage(
       .from("lesson_stages")
       .update({
         content: toJson(replacement),
-        validation: toJson(validation.stageValidation[replacement.stageKey]),
+        validation: toJson(
+          validation.stageValidation[replacement.stageKey],
+        ),
       })
       .eq("lesson_id", lessonId)
       .eq("stage_number", stageNumber)
       .eq("stage_key", replacement.stageKey);
     if (stageError) throw stageError;
 
-    await saveLessonValidation({ supabase, lesson: current.lesson, validation });
+    await saveLessonValidation({
+      supabase,
+      lesson: current.lesson,
+      validation,
+    });
     await persistFidelityCheck({
       supabase,
       workspaceId: current.lesson.workspace_id,
@@ -835,7 +958,12 @@ async function handleRegenerateStage(
     });
   } catch (caught) {
     if (runId) {
-      await completeAiRun(supabase, runId, "failed", errorCode(caught)).catch(() => undefined);
+      await completeAiRun(
+        supabase,
+        runId,
+        "failed",
+        errorCode(caught),
+      ).catch(() => undefined);
     }
     throw caught;
   }
@@ -861,7 +989,9 @@ export async function POST(request: Request) {
     return json({ error: "Unsupported HQLS action." }, 400);
   } catch (caught) {
     const message = errorMessage(caught);
-    const status = /session|authentication/i.test(message) ? 401 : errorStatus(caught);
+    const status = /session|authentication/i.test(message)
+      ? 401
+      : errorStatus(caught);
     return json({ error: message, code: errorCode(caught) }, status);
   }
 }
