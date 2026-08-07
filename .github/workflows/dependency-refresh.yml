@@ -8,7 +8,7 @@ on:
       - .github/workflows/dependency-refresh.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: stage-1-platform-foundation
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -30,14 +32,17 @@ jobs:
           npm install --package-lock-only --save-exact next@16.3.0 @tailwindcss/postcss@latest tailwindcss@latest
           npm audit fix --package-lock-only
 
-      - name: Show remaining audit findings
-        run: npm audit --audit-level=high || true
+      - name: Verify high-severity audit gate
+        run: npm audit --audit-level=high
 
-      - name: Upload refreshed manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: refreshed-dependency-manifests
-          path: |
-            package.json
-            package-lock.json
-          if-no-files-found: error
+      - name: Commit refreshed manifests
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency manifest changes were needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Harden dependency security"
+          git push origin HEAD:stage-1-platform-foundation
