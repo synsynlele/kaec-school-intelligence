@@ -6,7 +6,12 @@ export const DIAGNOSIS_MODES = [
 
 export type DiagnosisMode = (typeof DIAGNOSIS_MODES)[number];
 
-export const DIAGNOSIS_STATUSES = ["draft", "final", "archived"] as const;
+export const DIAGNOSIS_STATUSES = [
+  "draft",
+  "reviewed",
+  "final",
+  "archived",
+] as const;
 
 export type DiagnosisStatus = (typeof DIAGNOSIS_STATUSES)[number];
 
