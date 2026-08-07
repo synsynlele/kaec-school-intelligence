@@ -12,7 +12,6 @@ export type LessonStageInput = {
 
 export type CreateLessonInput = {
   workspaceId: string;
-  userId: string;
   title: string;
   topic: string;
   objective: string;
@@ -47,59 +46,83 @@ export async function createLesson(
 ) {
   if (input.stages) assertCompleteHqlsStages(input.stages);
 
-  const { data: lesson, error: lessonError } = await supabase
-    .from("lessons")
-    .insert({
-      workspace_id: input.workspaceId,
-      created_by: input.userId,
-      class_id: input.classId ?? null,
-      subject_id: input.subjectId ?? null,
-      title: input.title.trim(),
-      topic: input.topic.trim(),
-      age_range: input.ageRange ?? null,
-      duration_minutes: input.durationMinutes ?? null,
-      objective: input.objective.trim(),
-      status: "draft",
-      engine_version: input.engineVersion ?? null,
-      prompt_version: input.promptVersion ?? null,
-      source_context: input.sourceContext ?? [],
-    })
-    .select("*")
-    .single();
+  const { data: lessonId, error: createError } = await supabase.rpc(
+    "create_hqls_lesson_draft",
+    {
+      target_workspace_id: input.workspaceId,
+      target_title: input.title,
+      target_topic: input.topic,
+      target_objective: input.objective,
+      target_age_range: input.ageRange ?? null,
+      target_duration_minutes: input.durationMinutes ?? null,
+      target_class_id: input.classId ?? null,
+      target_subject_id: input.subjectId ?? null,
+      target_source_context: input.sourceContext ?? [],
+    },
+  );
 
-  if (lessonError) throw lessonError;
+  if (createError) throw createError;
+  if (typeof lessonId !== "string") {
+    throw new Error("HQLS lesson draft did not return a lesson id.");
+  }
 
   try {
-    if (input.stages?.length) {
-      const { error: stageError } = await supabase.from("lesson_stages").insert(
-        input.stages.map((stage) => ({
-          lesson_id: lesson.id,
-          stage_number: stage.index,
-          stage_key: stage.key,
-          content: stage.content,
-          validation: stage.validation ?? {},
-        })),
-      );
+    if (input.engineVersion || input.promptVersion) {
+      const { error: provenanceError } = await supabase
+        .from("lessons")
+        .update({
+          engine_version: input.engineVersion ?? null,
+          prompt_version: input.promptVersion ?? null,
+        })
+        .eq("id", lessonId);
 
-      if (stageError) throw stageError;
+      if (provenanceError) throw provenanceError;
     }
+
+    if (input.stages) {
+      await Promise.all(
+        input.stages.map(async (stage) => {
+          const { error } = await supabase
+            .from("lesson_stages")
+            .update({
+              content: stage.content,
+              validation: stage.validation ?? {},
+            })
+            .eq("lesson_id", lessonId)
+            .eq("stage_number", stage.index)
+            .eq("stage_key", stage.key);
+
+          if (error) throw error;
+        }),
+      );
+    }
+
+    const [{ data: lesson, error: lessonError }, { data: stages, error: stagesError }] =
+      await Promise.all([
+        supabase.from("lessons").select("*").eq("id", lessonId).single(),
+        supabase
+          .from("lesson_stages")
+          .select("*")
+          .eq("lesson_id", lessonId)
+          .order("stage_number"),
+      ]);
+
+    if (lessonError) throw lessonError;
+    if (stagesError) throw stagesError;
 
     await appendArtifactVersion(supabase, {
       workspaceId: input.workspaceId,
       artifactType: "lesson",
-      artifactId: lesson.id,
-      snapshot: {
-        lesson,
-        stages: input.stages ?? [],
-      },
+      artifactId: lessonId,
+      snapshot: { lesson, stages },
       origin: input.engineVersion ? "generated" : "manual_edit",
       engineVersion: input.engineVersion,
       promptVersion: input.promptVersion,
     });
 
-    return lesson;
+    return { lesson, stages };
   } catch (caught) {
-    await supabase.from("lessons").delete().eq("id", lesson.id);
+    await supabase.from("lessons").delete().eq("id", lessonId);
     throw caught;
   }
 }
