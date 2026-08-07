@@ -113,6 +113,53 @@ assert(
   "Health contract no longer pins the dedicated KSI Supabase project.",
 );
 
+const stage2Spec = await text("docs/STAGE_2_HQLS_LESSON_INTELLIGENCE.md");
+assert(
+  stage2Spec.includes("Generate seven-stage HQLS lesson") &&
+    stage2Spec.includes("Independent Validation"),
+  "Stage 2 HQLS acceptance contract is missing or incomplete.",
+);
+
+const stage2Engine = await text("lib/hqls/engine.ts");
+for (const required of [
+  "HQLS_ENGINE_v1.0",
+  "HQLS_PROMPT_v1.0",
+  "validateHqlsLesson",
+  "full_illumination_ignores_revealed_gaps",
+  "trial_second_has_no_genuine_reattempt",
+  "integration_missing",
+]) {
+  assert(stage2Engine.includes(required), `Stage 2 HQLS engine is missing ${required}.`);
+}
+
+const stage2Route = await text("app/api/hqls/route.ts");
+assert(stage2Route.includes("createLesson"), "Stage 2 route does not use canonical lesson persistence.");
+assert(
+  stage2Route.includes("hqls_fidelity_checks") && stage2Route.includes("artifact_resource_links"),
+  "Stage 2 route is missing HQLS fidelity or source-provenance persistence.",
+);
+assert(
+  stage2Route.includes('action === "save_edits"') && stage2Route.includes('action === "regenerate_stage"'),
+  "Stage 2 route is missing edit or stage-regeneration flow.",
+);
+
+const gemini = await text("lib/ai/gemini.ts");
+assert(gemini.includes("process.env.GEMINI_API_KEY"), "Gemini server credential lookup is missing.");
+assert(!gemini.includes("NEXT_PUBLIC_GEMINI"), "Gemini credential must never be public/browser-scoped.");
+
+const hqlsClient = await text("components/hqls/hqls-client.tsx");
+assert(hqlsClient.includes("/api/hqls"), "HQLS teacher UI is not connected to the secure server route.");
+for (const action of [
+  "Improve",
+  "Simplify",
+  "Increase Challenge",
+  "Make More Practical",
+  "Reduce Resource Dependence",
+  "Regenerate",
+]) {
+  assert(hqlsClient.includes(action), `HQLS stage action is missing: ${action}`);
+}
+
 console.log(
-  `Stage 1 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, tenant/storage/diagnosis guards present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique Stage 1 migrations, governed HQLS engine/validator/server route/UI present.`,
 );
