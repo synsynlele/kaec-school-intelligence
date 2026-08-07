@@ -1,10 +1,9 @@
 name: Preview Backend Smoke
 
 on:
-  push:
-    branches:
-      - stage-1-platform-foundation
+  pull_request:
     paths:
+      - app/api/health/route.ts
       - .github/workflows/preview-health-smoke.yml
 
 permissions:
@@ -27,5 +26,6 @@ jobs:
           echo "HTTP $status"
           test "$status" = "200"
           grep -q '"ok":true' "$body_file"
+          grep -q '"supabaseConfigured":true' "$body_file"
           grep -q '"dedicatedKsiTarget":true' "$body_file"
           grep -q '"backendReachable":true' "$body_file"
