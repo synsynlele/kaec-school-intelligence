@@ -146,11 +146,13 @@ assert(
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
   "HQLS_ENGINE_v1.0",
-  "HQLS_PROMPT_v1.0",
+  "HQLS_PROMPT_v1.1",
   "validateHqlsLesson",
   "full_illumination_ignores_revealed_gaps",
   "trial_second_has_no_genuine_reattempt",
-  "integration_missing",
+  "integration_reflection_missing",
+  "reflectionPrompt",
+  "teaching_content_outside_full_illumination",
 ]) {
   assert(
     stage2Engine.includes(required),
@@ -209,6 +211,11 @@ const hqlsClient = await text("components/hqls/hqls-client.tsx");
 assert(
   hqlsClient.includes("/api/hqls"),
   "HQLS teacher UI is not connected to the secure server route.",
+);
+assert(
+  hqlsClient.includes("Reflection — how thinking changed") &&
+    hqlsClient.includes("payload.validation"),
+  "HQLS teacher UI must expose explicit reflection and fidelity failure details.",
 );
 for (const action of [
   "Improve",
