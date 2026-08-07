@@ -154,10 +154,13 @@ export async function generateOpenAIJson<T>(
     );
   }
 
+  // KSI defaults to GPT-5 mini for cost-sensitive production generation.
+  // Keep the environment override so specific deployments can benchmark or upgrade
+  // without changing application code.
   const model =
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5.6-terra";
+    "gpt-5-mini";
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
