@@ -84,7 +84,7 @@ Each stage includes:
 - explicit Integration reflection prompt
 - Integration transfer / real-life task
 
-## 6. HQLS fidelity validation
+## 6. Independent Validation — HQLS fidelity
 
 Deterministic validation runs after generation and after repair.
 
@@ -180,7 +180,7 @@ All functional Stage 2 acceptance gates passed:
 - [x] constitutional structure verification
 - [x] production build
 - [x] dependency audit
-- [x] authenticated live OpenAI generation
+- [x] Authenticated live OpenAI generation E2E
 
 ## 11. Final cosmetic correction
 
