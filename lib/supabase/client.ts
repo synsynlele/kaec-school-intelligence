@@ -1,13 +1,13 @@
 "use client";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "@/lib/env";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
 
-let browserClient: SupabaseClient<Database> | undefined;
+let browserClient: KsiSupabaseClient | undefined;
 
-export function getBrowserSupabaseClient(): SupabaseClient<Database> {
+export function getBrowserSupabaseClient(): KsiSupabaseClient {
   if (browserClient) {
     return browserClient;
   }
