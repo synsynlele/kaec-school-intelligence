@@ -83,19 +83,10 @@ export async function createDiagnosisDraft(
 export async function reviewDiagnosis(
   supabase: SupabaseClient,
   diagnosisId: string,
-  reviewerId: string,
 ) {
-  const reviewedAt = new Date().toISOString();
-  const { data: diagnosis, error } = await supabase
-    .from("diagnoses")
-    .update({
-      status: "reviewed",
-      reviewed_by: reviewerId,
-      reviewed_at: reviewedAt,
-    })
-    .eq("id", diagnosisId)
-    .select("*")
-    .single();
+  const { data: diagnosis, error } = await supabase.rpc("review_diagnosis", {
+    target_diagnosis_id: diagnosisId,
+  });
 
   if (error) throw error;
 
@@ -115,34 +106,10 @@ export async function reviewDiagnosis(
 export async function finaliseDiagnosis(
   supabase: SupabaseClient,
   diagnosisId: string,
-  finalisedBy: string,
 ) {
-  const { data: current, error: currentError } = await supabase
-    .from("diagnoses")
-    .select("*")
-    .eq("id", diagnosisId)
-    .single();
-
-  if (currentError) throw currentError;
-
-  if (
-    current.status !== "reviewed" ||
-    !current.reviewed_by ||
-    !current.reviewed_at
-  ) {
-    throw new Error("Diagnosis must be human-reviewed before finalisation.");
-  }
-
-  const { data: diagnosis, error } = await supabase
-    .from("diagnoses")
-    .update({
-      status: "final",
-      finalised_by: finalisedBy,
-      finalised_at: new Date().toISOString(),
-    })
-    .eq("id", diagnosisId)
-    .select("*")
-    .single();
+  const { data: diagnosis, error } = await supabase.rpc("finalise_diagnosis", {
+    target_diagnosis_id: diagnosisId,
+  });
 
   if (error) throw error;
 
