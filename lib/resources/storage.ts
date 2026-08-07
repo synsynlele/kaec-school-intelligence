@@ -1,7 +1,8 @@
-"use client";
-
 import type { KsiSupabaseClient } from "@/lib/supabase/database";
 
+// Shared resource constants intentionally live in a server-safe module. This file has
+// no `use client` boundary so server routes can use the canonical bucket name while
+// the functions below remain callable from browser code through their callers.
 export const KSI_RESOURCE_BUCKET = "ksi-resources";
 export const KSI_RESOURCE_MAX_BYTES = 20 * 1024 * 1024;
 
