@@ -157,7 +157,7 @@ export function getOpenAIModelPolicy(): OpenAIModelPolicy {
     process.env.KSI_OPENAI_PRIMARY_MODEL?.trim() ||
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5-nano";
+    "gpt-4o-mini";
   const repair =
     process.env.KSI_OPENAI_REPAIR_MODEL?.trim() || "gpt-5-mini";
   return { primary, repair };
@@ -187,12 +187,12 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // Cost policy: use the cheapest candidate for the first attempt, while all
-  // deterministic KAEC validators remain authoritative. Repair calls use the
-  // stronger fallback model so quality is recovered only when it is needed.
+  // Quality-first cost policy: use a low-cost general generation model for
+  // the first attempt while all deterministic KAEC validators remain
+  // authoritative. Repair calls use the stronger fallback only when needed.
   // KSI_OPENAI_PRIMARY_MODEL intentionally takes precedence over the legacy
-  // KSI_OPENAI_MODEL variable so Preview can benchmark nano without changing
-  // the currently configured Production model.
+  // KSI_OPENAI_MODEL variable so Preview can benchmark a candidate without
+  // changing the currently configured Production model.
   const { model, modelRole } = chooseOpenAIModel(input);
 
   console.info("KSI OpenAI generation", {
