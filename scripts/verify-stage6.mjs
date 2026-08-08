@@ -10,6 +10,7 @@ const assert = (condition, message) => {
 const [
   constitution,
   spec,
+  securityRegression,
   hqlsClient,
   assessmentClient,
   diagnosisClient,
@@ -19,9 +20,11 @@ const [
   nextLessonPage,
   nextLessonClient,
   packageJson,
+  vercel,
 ] = await Promise.all([
   text("docs/PRODUCT_CONSTITUTION.md"),
   text("docs/STAGE_6_V1_INTEGRATION_LAUNCH_READINESS.md"),
+  text("docs/STAGE_6_SECURITY_REGRESSION.md"),
   text("components/hqls/hqls-client.tsx"),
   text("components/assessment/world-class-assessment-client.tsx"),
   text("components/diagnosis/kaec-diagnosis-client.tsx"),
@@ -31,6 +34,7 @@ const [
   text("app/interventions/next-lesson/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
   text("package.json"),
+  text("vercel.json"),
 ]);
 
 for (const required of [
@@ -42,6 +46,7 @@ for (const required of [
   "User-facing failure and recovery behaviour",
   "Desktop and mobile usability",
   "Complete authenticated regression",
+  "branch-level Git deployment gating",
   "DO NOT MERGE until full Version 1 live acceptance passes",
 ]) {
   assert(spec.includes(required), `Stage 6 release contract is missing: ${required}`);
@@ -53,6 +58,20 @@ assert(
     constitution.includes("Lesson → Assessment → Diagnosis context transfer works"),
   "Stage 6 must remain anchored to the Constitution's three-engine Platform Gate.",
 );
+
+for (const required of [
+  "PASS — READ-ONLY LIVE DATABASE SECURITY AUDIT",
+  "0 visible rows",
+  "private.is_workspace_member",
+  "creator or workspace owner/admin",
+  "intervention handoff delete: owner/admin **and draft status only**",
+  "no anonymous data exposure",
+]) {
+  assert(
+    securityRegression.includes(required),
+    `Stage 6 live security regression evidence is missing: ${required}`,
+  );
+}
 
 for (const required of [
   "requestedLessonId",
@@ -154,11 +173,20 @@ assert(
 );
 
 assert(
+  vercel.includes('"deploymentEnabled"') &&
+    vercel.includes('"*": false') &&
+    vercel.includes('"main": true') &&
+    vercel.includes('"*-preview": true') &&
+    !vercel.includes("ignoreCommand"),
+  "Stage 6 must use quota-safe Vercel branch gating instead of canceled ignored builds.",
+);
+
+assert(
   packageJson.includes('"verify:structure"') &&
     packageJson.includes("verify-stage6.mjs"),
   "Permanent Stage 6 structural verification must remain enabled.",
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, release-facing workflow labels, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, release-facing workflow labels, quota-safe preview gating, and launch-readiness contract are present.",
 );
