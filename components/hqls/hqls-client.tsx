@@ -858,14 +858,24 @@ export function HqlsClient() {
                   </p>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={() => void saveEdits()}
-                disabled={saving || !dirty}
-                className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {saving ? "Saving + checking…" : dirty ? "Save edits" : "Saved"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {selectedLesson.status === "validated" ? (
+                  <Link
+                    href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}
+                    className="rounded-xl bg-emerald-950 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-900"
+                  >
+                    Build Assessment
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void saveEdits()}
+                  disabled={saving || !dirty}
+                  className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {saving ? "Saving + checking…" : dirty ? "Save edits" : "Saved"}
+                </button>
+              </div>
             </div>
 
             {validation && !validation.passed ? (
