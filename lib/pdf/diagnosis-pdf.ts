@@ -5,6 +5,8 @@ export type DiagnosisPdfInput = {
   workspaceName: string;
   studentName: string;
   className: string;
+  academicSession: string;
+  term: string;
   diagnosisMode: string;
   assessmentTitle: string;
   diagnosis: GeneratedDiagnosis;
@@ -12,27 +14,27 @@ export type DiagnosisPdfInput = {
   finalisedAt: string;
 };
 
-type TextOptions = {
+type Color = [number, number, number];
+
+type FlowTextOptions = {
   bold?: boolean;
   size?: number;
-  color?: [number, number, number];
-  indent?: number;
+  color?: Color;
   gapBefore?: number;
   gapAfter?: number;
+  indent?: number;
 };
 
-const PAGE_WIDTH = 595.28;
-const PAGE_HEIGHT = 841.89;
-const LEFT = 54;
-const RIGHT = 54;
-const TOP = 64;
-const BOTTOM = 58;
-const CONTENT_WIDTH = PAGE_WIDTH - LEFT - RIGHT;
-const NAVY: [number, number, number] = [0.05, 0.24, 0.38];
-const BLUE: [number, number, number] = [0.03, 0.48, 0.72];
-const GREEN: [number, number, number] = [0.03, 0.42, 0.25];
-const TEXT: [number, number, number] = [0.12, 0.12, 0.14];
-const MUTED: [number, number, number] = [0.38, 0.4, 0.44];
+const PAGE_WIDTH = 841.89;
+const PAGE_HEIGHT = 595.28;
+const MARGIN_X = 28;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+const FOREST: Color = [0.015, 0.22, 0.09];
+const CREAM: Color = [0.965, 0.94, 0.84];
+const TEXT: Color = [0.10, 0.10, 0.11];
+const MUTED: Color = [0.38, 0.39, 0.40];
+const BORDER: Color = [0.78, 0.79, 0.77];
+const SOFT: Color = [0.975, 0.975, 0.968];
 
 function ascii(value: string) {
   return value
@@ -48,22 +50,34 @@ function ascii(value: string) {
 }
 
 function pdfEscape(value: string) {
-  return ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return ascii(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+function rgb([r, g, b]: Color) {
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
+}
+
+function strokeRgb([r, g, b]: Color) {
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
 }
 
 function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
   const clean = ascii(text);
   if (!clean) return [];
   const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
-  const maxChars = Math.max(12, Math.floor(maxWidth / averageGlyph));
+  const maxChars = Math.max(10, Math.floor(maxWidth / averageGlyph));
   const lines: string[] = [];
   for (const paragraph of clean.split(/\n+/)) {
     const words = paragraph.split(/\s+/).filter(Boolean);
     let line = "";
     for (const word of words) {
       const next = line ? `${line} ${word}` : word;
-      if (next.length <= maxChars) line = next;
-      else {
+      if (next.length <= maxChars) {
+        line = next;
+      } else {
         if (line) lines.push(line);
         line = word;
       }
@@ -73,8 +87,16 @@ function wrapText(text: string, maxWidth: number, fontSize: number, bold = false
   return lines;
 }
 
-function rgb([r, g, b]: [number, number, number]) {
-  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
+function dateLabel(value: string) {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 }
 
 function titleCase(value: string) {
@@ -86,140 +108,377 @@ function titleCase(value: string) {
     .join(" ");
 }
 
-function dateLabel(value: string) {
-  if (!value) return "Not recorded";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+function rectTop(
+  commands: string[],
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+  fill: Color | null,
+  stroke: Color | null = BORDER,
+) {
+  const y = PAGE_HEIGHT - top - height;
+  if (fill) {
+    commands.push(rgb(fill));
+    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re f`);
+  }
+  if (stroke) {
+    commands.push(strokeRgb(stroke));
+    commands.push("0.7 w");
+    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re S`);
+  }
 }
 
-class PdfComposer {
-  private pages: string[][] = [];
-  private current: string[] = [];
-  private y = PAGE_HEIGHT - TOP;
+function textAtTop(
+  commands: string[],
+  value: string,
+  x: number,
+  top: number,
+  size = 9,
+  bold = false,
+  color: Color = TEXT,
+) {
+  const y = PAGE_HEIGHT - top - size;
+  commands.push(rgb(color));
+  commands.push(
+    `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)} Tm (${pdfEscape(value)}) Tj ET`,
+  );
+}
+
+function boxedText(
+  commands: string[],
+  value: string,
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+  options: {
+    size?: number;
+    bold?: boolean;
+    color?: Color;
+    padding?: number;
+    maxLines?: number;
+    prefix?: string;
+  } = {},
+) {
+  const size = options.size ?? 8.2;
+  const bold = options.bold ?? false;
+  const padding = options.padding ?? 7;
+  const leading = size * 1.28;
+  const possibleLines = Math.max(
+    1,
+    Math.floor((height - padding * 2) / leading),
+  );
+  const maxLines = Math.min(options.maxLines ?? possibleLines, possibleLines);
+  const prefix = options.prefix ?? "";
+  const lines = wrapText(`${prefix}${value}`, width - padding * 2, size, bold);
+  const shown = lines.slice(0, maxLines);
+  if (lines.length > maxLines && shown.length) {
+    const last = shown.length - 1;
+    shown[last] = `${shown[last].replace(/[. ]+$/g, "")}...`;
+  }
+  shown.forEach((line, index) => {
+    textAtTop(
+      commands,
+      line,
+      x + padding,
+      top + padding + index * leading,
+      size,
+      bold,
+      options.color ?? TEXT,
+    );
+  });
+}
+
+function listInCell(
+  commands: string[],
+  items: string[],
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+) {
+  const content = items.length
+    ? items.map((item) => `- ${ascii(item)}`).join("\n")
+    : "- Insufficient Evidence to state a supported finding at this time.";
+  boxedText(commands, content, x, top, width, height, {
+    size: 8.15,
+    padding: 7,
+  });
+}
+
+function groupedMatrix(
+  commands: string[],
+  top: number,
+  groupLeft: string,
+  groupRight: string,
+  subheads: [string, string, string, string],
+  columns: [string[], string[], string[], string[]],
+  contentHeight: number,
+) {
+  const colWidth = CONTENT_WIDTH / 4;
+  const groupHeight = 24;
+  const subHeight = 22;
+  const left = MARGIN_X;
+
+  rectTop(commands, left, top, colWidth * 2, groupHeight, FOREST, FOREST);
+  rectTop(
+    commands,
+    left + colWidth * 2,
+    top,
+    colWidth * 2,
+    groupHeight,
+    FOREST,
+    FOREST,
+  );
+  textAtTop(commands, groupLeft, left + 12, top + 5, 9.5, true, [1, 1, 1]);
+  textAtTop(
+    commands,
+    groupRight,
+    left + colWidth * 2 + 12,
+    top + 5,
+    9.5,
+    true,
+    [1, 1, 1],
+  );
+
+  for (let index = 0; index < 4; index += 1) {
+    const x = left + colWidth * index;
+    rectTop(commands, x, top + groupHeight, colWidth, subHeight, CREAM, BORDER);
+    const headerWidth = wrapText(subheads[index], colWidth - 12, 8.2, true)[0] ?? subheads[index];
+    textAtTop(commands, headerWidth, x + 7, top + groupHeight + 5, 8.2, true);
+    rectTop(
+      commands,
+      x,
+      top + groupHeight + subHeight,
+      colWidth,
+      contentHeight,
+      [1, 1, 1],
+      BORDER,
+    );
+    listInCell(
+      commands,
+      columns[index],
+      x,
+      top + groupHeight + subHeight,
+      colWidth,
+      contentHeight,
+    );
+  }
+
+  return groupHeight + subHeight + contentHeight;
+}
+
+function firstPage(input: DiagnosisPdfInput) {
+  const commands: string[] = [];
+  const diagnosis = input.diagnosis;
+
+  commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
+  textAtTop(commands, input.workspaceName.toUpperCase(), 82, 28, 10.5, true, FOREST);
+  textAtTop(
+    commands,
+    "STUDENT DIAGNOSIS",
+    PAGE_WIDTH - 196,
+    29,
+    18,
+    true,
+    FOREST,
+  );
+
+  rectTop(commands, 190, 23, 410, 55, [1, 1, 1], TEXT);
+  textAtTop(commands, `NAME: ${input.studentName}`, 202, 32, 9.2, true);
+  textAtTop(commands, `CLASS: ${input.className}`, 410, 32, 9.2, true);
+  textAtTop(
+    commands,
+    `SESSION: ${input.academicSession || "Not specified"}`,
+    202,
+    54,
+    9.2,
+    true,
+  );
+  textAtTop(
+    commands,
+    `TERM: ${input.term || "Not specified"}`,
+    410,
+    54,
+    9.2,
+    true,
+  );
+
+  rectTop(commands, MARGIN_X, 88, CONTENT_WIDTH, 58, CREAM, BORDER);
+  textAtTop(commands, "DIAGNOSIS:", MARGIN_X + 10, 98, 10, true, FOREST);
+  boxedText(
+    commands,
+    diagnosis.conciseDiagnosis,
+    MARGIN_X + 92,
+    93,
+    CONTENT_WIDTH - 102,
+    48,
+    { size: 8.6, padding: 4 },
+  );
+
+  const findingsHeight = groupedMatrix(
+    commands,
+    156,
+    "ACADEMICS / SKILLS",
+    "CHARACTER (Discipline)",
+    ["Strengths", "Challenges", "Strengths", "Challenges"],
+    [
+      diagnosis.academicSkillStrengths.map((item) => item.statement),
+      diagnosis.academicSkillChallenges.map((item) => item.statement),
+      diagnosis.characterStrengths.map((item) => item.statement),
+      diagnosis.characterChallenges.map((item) => item.statement),
+    ],
+    137,
+  );
+
+  groupedMatrix(
+    commands,
+    156 + findingsHeight + 10,
+    "ACTION PLAN (Academics / Skills)",
+    "ACTION PLAN (Character)",
+    ["SCHOOL", "PARENTS", "SCHOOL", "PARENTS"],
+    [
+      diagnosis.schoolAcademicActions.map(
+        (item) => `${item.action} (${item.timeframe})`,
+      ),
+      diagnosis.parentAcademicActions.map(
+        (item) => `${item.action} (${item.timeframe})`,
+      ),
+      diagnosis.schoolCharacterActions.map(
+        (item) => `${item.action} (${item.timeframe})`,
+      ),
+      diagnosis.parentCharacterActions.map(
+        (item) => `${item.action} (${item.timeframe})`,
+      ),
+    ],
+    137,
+  );
+
+  textAtTop(
+    commands,
+    "SCHOOL APPROVAL: Digitally approved through KAEC School Intelligence",
+    MARGIN_X,
+    565,
+    7.8,
+    true,
+    MUTED,
+  );
+  textAtTop(
+    commands,
+    dateLabel(input.finalisedAt),
+    PAGE_WIDTH - 118,
+    565,
+    7.8,
+    false,
+    MUTED,
+  );
+
+  return commands;
+}
+
+class FlowPage {
+  readonly commands: string[] = [];
+  private y = 516;
 
   constructor(private readonly input: DiagnosisPdfInput) {
-    this.newPage();
-  }
-
-  private header() {
-    this.current.push("q 34 0 0 34 54 756 cm /Im1 Do Q");
-    this.current.push(rgb(NAVY));
-    this.current.push("BT /F2 13 Tf 1 0 0 1 101 782 Tm (KAEC-NG) Tj ET");
-    this.current.push(rgb(MUTED));
-    this.current.push("BT /F1 8.5 Tf 1 0 0 1 101 768 Tm (KAEC School Intelligence - Student Diagnosis) Tj ET");
-    this.current.push(rgb(BLUE));
-    this.current.push("54 746 487 1.3 re f");
-    this.y = 724;
-  }
-
-  private newPage() {
-    if (this.current.length) this.pages.push(this.current);
-    this.current = [];
-    this.header();
+    this.commands.push("q 36 0 0 36 30 523 cm /Im1 Do Q");
+    textAtTop(this.commands, input.workspaceName.toUpperCase(), 78, 31, 10, true, FOREST);
+    textAtTop(
+      this.commands,
+      "GROWTH & REVIEW NOTES",
+      PAGE_WIDTH - 220,
+      30,
+      15,
+      true,
+      FOREST,
+    );
+    this.commands.push(rgb(FOREST));
+    this.commands.push(`28 ${PAGE_HEIGHT - 76} ${CONTENT_WIDTH} 1.2 re f`);
   }
 
   private ensure(height: number) {
-    if (this.y - height < BOTTOM + 18) this.newPage();
+    return this.y - height > 42;
   }
 
-  line(text: string, options: TextOptions = {}) {
-    const size = options.size ?? 10;
+  line(value: string, options: FlowTextOptions = {}) {
+    const size = options.size ?? 9.5;
     const bold = options.bold ?? false;
-    const indent = options.indent ?? 0;
     const gapBefore = options.gapBefore ?? 0;
-    const gapAfter = options.gapAfter ?? 2;
-    const wrapped = wrapText(text, CONTENT_WIDTH - indent, size, bold);
-    if (!wrapped.length) return;
+    const gapAfter = options.gapAfter ?? 3;
+    const indent = options.indent ?? 0;
+    const lines = wrapText(value, CONTENT_WIDTH - indent, size, bold);
+    if (!lines.length) return;
     const leading = size * 1.35;
-    this.ensure(gapBefore + wrapped.length * leading + gapAfter);
+    const required = gapBefore + lines.length * leading + gapAfter;
+    if (!this.ensure(required)) return;
     this.y -= gapBefore;
-    this.current.push(rgb(options.color ?? TEXT));
-    for (const wrappedLine of wrapped) {
-      this.current.push(`BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(LEFT + indent).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(wrappedLine)}) Tj ET`);
+    this.commands.push(rgb(options.color ?? TEXT));
+    for (const line of lines) {
+      this.commands.push(
+        `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(MARGIN_X + indent).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
+      );
       this.y -= leading;
     }
     this.y -= gapAfter;
   }
 
-  rule() {
-    this.ensure(8);
-    this.current.push("0.850 0.860 0.880 rg");
-    this.current.push(`${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`);
-    this.y -= 8;
-  }
-
   section(title: string) {
-    this.line(title, { bold: true, size: 11.2, color: NAVY, gapBefore: 6, gapAfter: 4 });
+    this.line(title, {
+      bold: true,
+      size: 11,
+      color: FOREST,
+      gapBefore: 8,
+      gapAfter: 4,
+    });
   }
 
-  bullet(text: string) {
-    this.line(`- ${text}`, { indent: 10, size: 9.4, gapAfter: 2 });
+  bullet(value: string) {
+    this.line(`- ${value}`, { size: 9.2, indent: 8, gapAfter: 2 });
   }
 
-  findingList(items: { statement: string }[], fallback: string) {
-    if (!items.length) this.bullet(fallback);
-    else items.forEach((item) => this.bullet(item.statement));
-  }
-
-  actionList(items: { action: string; timeframe: string }[], fallback: string) {
-    if (!items.length) this.bullet(fallback);
-    else items.forEach((item) => this.bullet(`${item.action} (${item.timeframe})`));
-  }
-
-  addReport() {
-    const { diagnosis } = this.input;
-    this.line("STUDENT GROWTH & DIAGNOSIS REPORT", { bold: true, size: 17, color: NAVY });
-    this.line(this.input.studentName, { bold: true, size: 14, gapAfter: 6 });
-    this.line(`School: ${this.input.workspaceName}`, { size: 9.4 });
-    this.line(`Class: ${this.input.className}`, { size: 9.4 });
-    this.line(`Diagnosis mode: ${titleCase(this.input.diagnosisMode)}`, { size: 9.4 });
-    if (this.input.assessmentTitle) this.line(`Assessment evidence: ${this.input.assessmentTitle}`, { size: 9.4 });
-    this.rule();
-
-    this.section("Concise Diagnosis");
-    this.line(diagnosis.conciseDiagnosis, { size: 9.8 });
-
-    this.section("Academics / Skills - Strengths");
-    this.findingList(diagnosis.academicSkillStrengths, "Insufficient Evidence to state a current strength in this area.");
-
-    this.section("Academics / Skills - Challenges");
-    this.findingList(diagnosis.academicSkillChallenges, "Insufficient Evidence to state a current challenge in this area.");
-
-    this.section("Character (Discipline) - Strengths");
-    this.findingList(diagnosis.characterStrengths, "Insufficient Evidence to state a current character strength.");
-
-    this.section("Character (Discipline) - Challenges");
-    this.findingList(diagnosis.characterChallenges, "Insufficient Evidence to state a current character challenge.");
-
-    this.rule();
-    this.section("Action Plan - Academics / Skills");
-    this.line("School", { bold: true, size: 9.7, color: BLUE });
-    this.actionList(diagnosis.schoolAcademicActions, "Continue observation and gather more evidence before prescribing an academic/skills intervention.");
-    this.line("Parents", { bold: true, size: 9.7, color: BLUE, gapBefore: 4 });
-    this.actionList(diagnosis.parentAcademicActions, "Support regular learning routines while the school gathers more evidence.");
-
-    this.section("Action Plan - Character");
-    this.line("School", { bold: true, size: 9.7, color: BLUE });
-    this.actionList(diagnosis.schoolCharacterActions, "Continue respectful observation before drawing a character conclusion.");
-    this.line("Parents", { bold: true, size: 9.7, color: BLUE, gapBefore: 4 });
-    this.actionList(diagnosis.parentCharacterActions, "Continue supportive routines while more character evidence is gathered.");
+  build() {
+    const diagnosis = this.input.diagnosis;
+    this.line(
+      `${this.input.studentName} | ${this.input.className} | ${this.input.academicSession} | ${this.input.term}`,
+      { bold: true, size: 9.6, color: MUTED, gapAfter: 8 },
+    );
 
     this.section("Builder Growth Direction");
-    this.line(diagnosis.builderGrowthDirection, { size: 9.8 });
+    this.line(diagnosis.builderGrowthDirection, { size: 10 });
 
     this.section("Encouragement Note");
-    this.line(diagnosis.encouragementNote, { size: 9.8, color: GREEN });
+    this.line(diagnosis.encouragementNote, { size: 10, color: FOREST });
 
-    this.section("Evidence Note");
+    this.section("Evidence Limitations");
     diagnosis.evidenceLimitations.forEach((item) => this.bullet(item));
 
-    this.rule();
-    this.line(`Human review recorded: ${dateLabel(this.input.reviewedAt)}`, { size: 8.8, color: MUTED });
-    this.line(`School approval recorded: ${dateLabel(this.input.finalisedAt)}`, { size: 8.8, color: MUTED });
-    this.line("Prepared through KAEC School Intelligence. This is an educational growth report, not a medical, psychiatric or psychological diagnosis.", { size: 8.5, color: MUTED, gapBefore: 4 });
+    this.section("Report Basis");
+    this.line(`Diagnosis mode: ${titleCase(this.input.diagnosisMode)}`, {
+      size: 9.2,
+    });
+    if (this.input.assessmentTitle) {
+      this.line(`Assessment evidence: ${this.input.assessmentTitle}`, { size: 9.2 });
+    }
+    this.line(
+      "The parent sheet summarises first-hand school evidence, saved assessment evidence where used, and the actions agreed for the learner's next growth period.",
+      { size: 9.2 },
+    );
 
-    if (this.current.length) this.pages.push(this.current);
-    return this.pages;
+    this.section("Human Review & Approval");
+    this.line(`Teacher review recorded: ${dateLabel(this.input.reviewedAt)}`, {
+      size: 9.2,
+    });
+    this.line(`School approval recorded: ${dateLabel(this.input.finalisedAt)}`, {
+      size: 9.2,
+    });
+
+    this.line(
+      "Prepared through KAEC School Intelligence. This is an educational growth report, not a medical, psychiatric or psychological diagnosis.",
+      { size: 8.5, color: MUTED, gapBefore: 12 },
+    );
+
+    return this.commands;
   }
 }
 
@@ -228,12 +487,21 @@ function buildPdfObjects(pageCommands: string[][]) {
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
+
   objects[1] = Buffer.from("<< /Type /Catalog /Pages 2 0 R >>");
-  objects[2] = Buffer.from(`<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`);
-  objects[3] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-  objects[4] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  objects[2] = Buffer.from(
+    `<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`,
+  );
+  objects[3] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  );
+  objects[4] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+  );
   objects[5] = Buffer.concat([
-    Buffer.from(`<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`),
+    Buffer.from(
+      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+    ),
     logo,
     Buffer.from("\nendstream"),
   ]);
@@ -243,7 +511,7 @@ function buildPdfObjects(pageCommands: string[][]) {
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (KAEC-NG | Student Diagnosis Intelligence | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (KAEC-NG | Student Diagnosis Intelligence | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "latin1");
@@ -252,8 +520,11 @@ function buildPdfObjects(pageCommands: string[][]) {
       contentBytes,
       Buffer.from("\nendstream"),
     ]);
-    objects[pageRef] = Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentRef} 0 R >>`);
+    objects[pageRef] = Buffer.from(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentRef} 0 R >>`,
+    );
   }
+
   return objects;
 }
 
@@ -262,6 +533,7 @@ function serializePdf(objects: Buffer[]) {
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
   let offset = header.length;
+
   for (let index = 1; index < objects.length; index += 1) {
     const object = objects[index];
     if (!object) continue;
@@ -271,21 +543,43 @@ function serializePdf(objects: Buffer[]) {
     chunks.push(prefix, object, suffix);
     offset += prefix.length + object.length + suffix.length;
   }
+
   const xrefOffset = offset;
   const maxObject = objects.length - 1;
   const xref = ["xref", `0 ${maxObject + 1}`, "0000000000 65535 f "];
-  for (let index = 1; index <= maxObject; index += 1) xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
-  xref.push("trailer", `<< /Size ${maxObject + 1} /Root 1 0 R >>`, "startxref", String(xrefOffset), "%%EOF");
+  for (let index = 1; index <= maxObject; index += 1) {
+    xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
+  }
+  xref.push(
+    "trailer",
+    `<< /Size ${maxObject + 1} /Root 1 0 R >>`,
+    "startxref",
+    String(xrefOffset),
+    "%%EOF",
+  );
   chunks.push(Buffer.from(`${xref.join("\n")}\n`, "latin1"));
   return new Uint8Array(Buffer.concat(chunks));
 }
 
 export function createDiagnosisPdf(input: DiagnosisPdfInput) {
-  if (!input.reviewedAt || !input.finalisedAt) throw new Error("Parent diagnosis PDF requires completed human review and approval.");
-  return serializePdf(buildPdfObjects(new PdfComposer(input).addReport()));
+  if (!input.reviewedAt || !input.finalisedAt) {
+    throw new Error(
+      "Parent diagnosis PDF requires completed human review and approval.",
+    );
+  }
+  if (!input.academicSession || !input.term) {
+    throw new Error("Parent diagnosis PDF requires Academic Session and Term.");
+  }
+
+  const pages = [firstPage(input), new FlowPage(input).build()];
+  return serializePdf(buildPdfObjects(pages));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {
-  const slug = ascii(studentName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+  const slug = ascii(studentName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
   return `${slug || "student"}-kaec-diagnosis.pdf`;
 }
