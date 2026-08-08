@@ -232,15 +232,14 @@ export function KaecDiagnosisClient() {
 
     setClassSessions(sessions);
     setData(payload);
-    setStudentId((current) => {
-      const next = current || payload.students[0]?.id || "";
-      const student = payload.students.find((item) => item.id === next);
-      if (student?.classId && sessions[student.classId]) {
-        setAcademicSession((value) => value || sessions[student.classId]);
-      }
-      return next;
-    });
-  }, [authenticatedFetch]);
+
+    const nextStudentId = studentId || payload.students[0]?.id || "";
+    if (!studentId && nextStudentId) setStudentId(nextStudentId);
+    const student = payload.students.find((item) => item.id === nextStudentId);
+    if (student?.classId && sessions[student.classId] && !academicSession) {
+      setAcademicSession(sessions[student.classId]);
+    }
+  }, [academicSession, authenticatedFetch, studentId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -474,8 +473,11 @@ export function KaecDiagnosisClient() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+      const reportStudent = data?.students.find(
+        (item) => item.id === active.row.student_id,
+      );
       anchor.href = url;
-      anchor.download = `${selectedStudent?.name || "student"}-kaec-diagnosis.pdf`;
+      anchor.download = `${reportStudent?.name || "student"}-kaec-diagnosis.pdf`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (caught) {
@@ -868,7 +870,7 @@ export function KaecDiagnosisClient() {
 
                 <details className="mt-5 rounded-2xl border border-zinc-200 p-4" open>
                   <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
-                    Observed Evidence -> Patterns -> Possible Interpretations
+                    Observed Evidence / Patterns / Possible Interpretations
                   </summary>
                   <div className="mt-4 grid gap-4">
                     <ReviewGroup title="Observed Evidence">
@@ -1197,7 +1199,7 @@ function ParentQuadrant({
       <div className="bg-emerald-950 px-4 py-2 text-center text-sm font-semibold text-white">
         {title}
       </div>
-      <div className="grid grid-cols-2 divide-x divide-zinc-200">
+      <div className="grid grid-cols-1 divide-y divide-zinc-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <EditableFindingColumn
           title={leftTitle}
           items={left}
@@ -1239,7 +1241,7 @@ function CharacterQuadrant({
       <div className="bg-emerald-950 px-4 py-2 text-center text-sm font-semibold text-white">
         {title}
       </div>
-      <div className="grid grid-cols-2 divide-x divide-zinc-200">
+      <div className="grid grid-cols-1 divide-y divide-zinc-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <EditableCharacterColumn
           title={leftTitle}
           items={left}
@@ -1363,7 +1365,7 @@ function ActionQuadrant({
       <div className="bg-emerald-950 px-4 py-2 text-center text-sm font-semibold text-white">
         {title}
       </div>
-      <div className="grid grid-cols-2 divide-x divide-zinc-200">
+      <div className="grid grid-cols-1 divide-y divide-zinc-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <EditableActionColumn
           title="SCHOOL"
           items={school}
@@ -1563,7 +1565,7 @@ function PreviewQuadrant({
       <div className="bg-emerald-950 px-3 py-2 text-center text-xs font-semibold text-white">
         {title}
       </div>
-      <div className="grid grid-cols-2 divide-x divide-zinc-200">
+      <div className="grid grid-cols-1 divide-y divide-zinc-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <PreviewColumn title={leftTitle} items={left} />
         <PreviewColumn title={rightTitle} items={right} />
       </div>
