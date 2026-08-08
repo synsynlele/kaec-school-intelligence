@@ -13,7 +13,7 @@ export default function NextInterventionLessonPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 5 · Closed Learning Loop
+              Closed Learning Loop
             </p>
             <p className="mt-1 text-sm font-medium">
               Carry a confirmed intervention into the existing HQLS engine and create the next evidence opportunity.
