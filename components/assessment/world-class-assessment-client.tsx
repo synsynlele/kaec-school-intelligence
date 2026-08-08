@@ -218,6 +218,12 @@ function rebalanceTopics(topics: TopicDraft[]) {
   });
 }
 
+function requestedWorkflowId(key: "lesson" | "assessment") {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get(key)?.trim();
+  return value || null;
+}
+
 async function loadWorkspaceState(): Promise<WorkspaceState | null> {
   const supabase = getBrowserSupabaseClient();
   const {
@@ -397,6 +403,35 @@ export function WorldClassAssessmentClient() {
         setSubject(next.subjects[0]?.name ?? "");
         setClassLevel(next.classes[0]?.name ?? "");
         setAgeRange(next.classes[0]?.age_range ?? "");
+
+        const assessmentId = requestedWorkflowId("assessment");
+        if (assessmentId) {
+          if (!next.assessments.some((item) => item.id === assessmentId)) {
+            setError(
+              "The linked assessment is not available in the active workspace.",
+            );
+            return;
+          }
+          void openAssessment(assessmentId).then((opened) => {
+            if (!cancelled && opened) {
+              setNotice("Opened the assessment linked from the previous workflow.");
+            }
+          });
+          return;
+        }
+
+        const lessonId = requestedWorkflowId("lesson");
+        if (!lessonId) return;
+        if (!next.lessons.some((lesson) => lesson.id === lessonId)) {
+          setError(
+            "The linked HQLS lesson is not available as a validated assessment source in the active workspace.",
+          );
+          return;
+        }
+        applySourceLessonFromState(next, lessonId);
+        setNotice(
+          "Validated HQLS lesson loaded. Review the assessment blueprint, then generate the assessment.",
+        );
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -452,24 +487,53 @@ export function WorldClassAssessmentClient() {
     return payload;
   }
 
-  function applySourceLesson(lessonId: string) {
+  function applySourceLessonFromState(
+    currentState: WorkspaceState,
+    lessonId: string,
+  ) {
     setSourceLessonId(lessonId);
-    if (!state || !lessonId) return;
-    const lesson = state.lessons.find((item) => item.id === lessonId);
-    if (!lesson) return;
+    const lesson = currentState.lessons.find((item) => item.id === lessonId);
+    if (!lesson) return false;
     setTopics([{ topic: lesson.topic, objective: lesson.objective, weight: 100 }]);
     setTitle(`${lesson.title} — Assessment`);
     if (lesson.subject_id) {
-      const match = state.subjects.find((item) => item.id === lesson.subject_id);
+      const match = currentState.subjects.find(
+        (item) => item.id === lesson.subject_id,
+      );
       if (match) setSubject(match.name);
     }
     if (lesson.class_id) {
-      const match = state.classes.find((item) => item.id === lesson.class_id);
+      const match = currentState.classes.find(
+        (item) => item.id === lesson.class_id,
+      );
       if (match) {
         setClassLevel(match.name);
         setAgeRange(match.age_range ?? lesson.age_range ?? "");
       }
     }
+    return true;
+  }
+
+  function applySourceLesson(lessonId: string) {
+    setError(null);
+    setNotice(null);
+    if (!lessonId) {
+      setSourceLessonId("");
+      router.replace("/assessment", { scroll: false });
+      return;
+    }
+    if (!state || !applySourceLessonFromState(state, lessonId)) {
+      setError(
+        "The selected HQLS lesson is not available as a validated assessment source.",
+      );
+      return;
+    }
+    router.replace(`/assessment?lesson=${encodeURIComponent(lessonId)}`, {
+      scroll: false,
+    });
+    setNotice(
+      "Validated HQLS lesson loaded as the assessment source. Review the blueprint before generating.",
+    );
   }
 
   function addTopic() {
@@ -591,7 +655,7 @@ export function WorldClassAssessmentClient() {
     }
   }
 
-  async function openAssessment(assessmentId: string) {
+  async function openAssessment(assessmentId: string): Promise<boolean> {
     setError(null);
     setNotice(null);
     try {
@@ -627,12 +691,23 @@ export function WorldClassAssessmentClient() {
       setEditor(nextEditor);
       setValidation(readValidation(blueprint.validation));
       setDirty(false);
+      router.replace(
+        `/assessment?assessment=${encodeURIComponent(assessmentId)}`,
+        { scroll: false },
+      );
+      window.setTimeout(() => {
+        document
+          .getElementById("assessment-selected")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+      return true;
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
           : "The saved assessment could not be opened.",
       );
+      return false;
     }
   }
 
@@ -1108,7 +1183,11 @@ export function WorldClassAssessmentClient() {
                       key={assessment.id}
                       type="button"
                       onClick={() => void openAssessment(assessment.id)}
-                      className="rounded-2xl border border-zinc-200 p-3 text-left transition hover:border-emerald-800/40 hover:bg-emerald-50/30"
+                      className={`rounded-2xl border p-3 text-left transition ${
+                        selectedAssessment?.id === assessment.id
+                          ? "border-emerald-700 bg-emerald-50"
+                          : "border-zinc-200 hover:border-emerald-800/40 hover:bg-emerald-50/30"
+                      }`}
                     >
                       <span className="block text-sm font-semibold">
                         {assessment.title}
@@ -1127,7 +1206,10 @@ export function WorldClassAssessmentClient() {
         </section>
 
         {selectedAssessment && editor ? (
-          <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8">
+          <section
+            id="assessment-selected"
+            className="mt-8 scroll-mt-6 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8"
+          >
             <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800">
@@ -1140,7 +1222,23 @@ export function WorldClassAssessmentClient() {
                   {selectedKind} · {selectedDifficulty} · {editor.items.length} items · {editor.blueprint.totalMarks} marks
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                {selectedAssessment.source_lesson_id ? (
+                  <Link
+                    href={`/hqls?lesson=${encodeURIComponent(selectedAssessment.source_lesson_id)}`}
+                    className="min-h-11 rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950"
+                  >
+                    Open Source HQLS Lesson
+                  </Link>
+                ) : null}
+                {selectedAssessment.status !== "archived" ? (
+                  <Link
+                    href={`/diagnosis?assessment=${encodeURIComponent(selectedAssessment.id)}`}
+                    className="min-h-11 rounded-xl bg-blue-700 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                  >
+                    Use in Diagnosis
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void saveEdits()}
