@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs",
+    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs",
     "validate": "npm run lint && npm run typecheck && npm run verify:structure && npm run build"
   },
   "dependencies": {
