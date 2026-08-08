@@ -280,7 +280,7 @@ export function ResourceLibraryClient() {
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Resource Library</h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-600">
-            Upload the curriculum, scheme of work, notes and reference files that future KSI engines are allowed to use as source context. Files remain private to authorised workspace members.
+            Upload curriculum, schemes of work, notes and reference files that KSI can use as governed source context for HQLS lessons and assessments. Files remain private to authorised workspace members.
           </p>
 
           {error ? (
@@ -377,7 +377,7 @@ export function ResourceLibraryClient() {
             <div className="py-16 text-center">
               <p className="font-medium text-zinc-700">No resources yet.</p>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
-                Add the first authorised source. Future HQLS and assessment generation will be able to preserve provenance back to these files.
+                Add the first authorised source. HQLS and assessment generation can preserve provenance back to these files.
               </p>
             </div>
           ) : (
