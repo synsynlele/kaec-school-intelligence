@@ -35,6 +35,12 @@ const TEXT: Color = [0.10, 0.10, 0.11];
 const MUTED: Color = [0.38, 0.39, 0.40];
 const BORDER: Color = [0.78, 0.79, 0.77];
 
+const HEADER_BRAND_X = 78;
+const HEADER_BRAND_WIDTH = 118;
+const HEADER_INFO_X = 210;
+const HEADER_INFO_WIDTH = 390;
+const HEADER_INFO_COLUMN_WIDTH = HEADER_INFO_WIDTH / 2;
+
 function ascii(value: string) {
   return value
     .replace(/[\u2018\u2019]/g, "'")
@@ -189,6 +195,24 @@ function boxedText(
   });
 }
 
+function brandName(
+  commands: string[],
+  workspaceName: string,
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+  size = 8.6,
+) {
+  boxedText(commands, workspaceName.toUpperCase(), x, top, width, height, {
+    size,
+    bold: true,
+    color: FOREST,
+    padding: 2,
+    maxLines: 3,
+  });
+}
+
 function listInCell(
   commands: string[],
   items: string[],
@@ -273,7 +297,14 @@ function firstPage(input: DiagnosisPdfInput) {
   const diagnosis = input.diagnosis;
 
   commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
-  textAtTop(commands, input.workspaceName.toUpperCase(), 82, 28, 10.5, true, FOREST);
+  brandName(
+    commands,
+    input.workspaceName,
+    HEADER_BRAND_X,
+    22,
+    HEADER_BRAND_WIDTH,
+    54,
+  );
   textAtTop(
     commands,
     "STUDENT DIAGNOSIS",
@@ -284,24 +315,50 @@ function firstPage(input: DiagnosisPdfInput) {
     FOREST,
   );
 
-  rectTop(commands, 190, 23, 410, 55, [1, 1, 1], TEXT);
-  textAtTop(commands, `NAME: ${input.studentName}`, 202, 32, 9.2, true);
-  textAtTop(commands, `CLASS: ${input.className}`, 410, 32, 9.2, true);
-  textAtTop(
+  rectTop(
     commands,
-    `SESSION: ${input.academicSession || "Not specified"}`,
-    202,
-    54,
-    9.2,
-    true,
+    HEADER_INFO_X,
+    23,
+    HEADER_INFO_WIDTH,
+    55,
+    [1, 1, 1],
+    TEXT,
   );
-  textAtTop(
+  boxedText(
     commands,
-    `TERM: ${input.term || "Not specified"}`,
-    410,
-    54,
-    9.2,
-    true,
+    input.studentName,
+    HEADER_INFO_X + 8,
+    27,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "NAME: " },
+  );
+  boxedText(
+    commands,
+    input.className,
+    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
+    27,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "CLASS: " },
+  );
+  boxedText(
+    commands,
+    input.academicSession || "Not specified",
+    HEADER_INFO_X + 8,
+    49,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "SESSION: " },
+  );
+  boxedText(
+    commands,
+    input.term || "Not specified",
+    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
+    49,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "TERM: " },
   );
 
   rectTop(commands, MARGIN_X, 88, CONTENT_WIDTH, 58, CREAM, BORDER);
@@ -378,11 +435,11 @@ function firstPage(input: DiagnosisPdfInput) {
 
 class FlowPage {
   readonly commands: string[] = [];
-  private y = 516;
+  private y = PAGE_HEIGHT - 102;
 
   constructor(private readonly input: DiagnosisPdfInput) {
     this.commands.push("q 36 0 0 36 30 523 cm /Im1 Do Q");
-    textAtTop(this.commands, input.workspaceName.toUpperCase(), 78, 31, 10, true, FOREST);
+    brandName(this.commands, input.workspaceName, 74, 25, 170, 48, 8.4);
     textAtTop(
       this.commands,
       "GROWTH & REVIEW NOTES",
@@ -393,7 +450,9 @@ class FlowPage {
       FOREST,
     );
     this.commands.push(rgb(FOREST));
-    this.commands.push(`28 ${PAGE_HEIGHT - 76} ${CONTENT_WIDTH} 1.2 re f`);
+    this.commands.push(
+      `${MARGIN_X.toFixed(1)} ${(PAGE_HEIGHT - 82).toFixed(1)} ${CONTENT_WIDTH.toFixed(1)} 1.2 re f`,
+    );
   }
 
   private ensure(height: number) {
