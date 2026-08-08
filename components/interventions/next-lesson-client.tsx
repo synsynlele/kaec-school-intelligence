@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -34,10 +34,6 @@ type StarterState = {
   subjects: Subject[];
 };
 
-function untypedClient() {
-  return getBrowserSupabaseClient() as unknown as SupabaseClient;
-}
-
 function anonymise(value: string, studentName: string) {
   if (!studentName.trim()) return value;
   const escaped = studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -49,7 +45,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function loadStarterState(): Promise<StarterState | null> {
-  const supabase = untypedClient();
+  const supabase = getBrowserSupabaseClient();
   const {
     data: { user },
     error: userError,
@@ -206,7 +202,7 @@ export function NextLessonClient() {
     setGeneratedLessonId(null);
 
     try {
-      const supabase = untypedClient();
+      const supabase = getBrowserSupabaseClient();
       const {
         data: { session },
         error: sessionError,
