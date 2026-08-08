@@ -6,7 +6,6 @@ import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
 export const runtime = "nodejs";
 
 type SavedWorkType = "lesson" | "assessment";
-type SavedWorkAction = "archive" | "restore" | "delete";
 
 type LifecycleBody = {
   artifactType?: unknown;
