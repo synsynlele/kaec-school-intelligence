@@ -11,6 +11,7 @@ const [
   spec,
   migration,
   actorIndexMigration,
+  retentionMigration,
   derivation,
   database,
   interventionClient,
@@ -25,6 +26,7 @@ const [
   text("docs/STAGE_5_ACTION_INTERVENTION_HANDOFF.md"),
   text("supabase/migrations/021_stage5_intervention_handoff.sql"),
   text("supabase/migrations/022_stage5_handoff_actor_indexes.sql"),
+  text("supabase/migrations/023_stage5_confirmed_handoff_retention.sql"),
   text("lib/intervention/plan.ts"),
   text("lib/supabase/database.ts"),
   text("components/interventions/intervention-client.tsx"),
@@ -87,6 +89,11 @@ assert(
   actorIndexMigration.includes("intervention_handoffs_created_by_idx") &&
     actorIndexMigration.includes("intervention_handoffs_confirmed_by_idx"),
   "Stage 5 actor foreign keys must remain covered by indexes.",
+);
+assert(
+  retentionMigration.includes("intervention_handoffs_delete_admin_draft_only") &&
+    retentionMigration.includes("status = 'draft'"),
+  "Confirmed Stage 5 handoffs must remain durable audit history; only draft cleanup may be deleted.",
 );
 
 for (const required of [
@@ -198,5 +205,5 @@ assert(
 );
 
 console.log(
-  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, indexed provenance actors, product navigation, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
+  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, durable confirmed retention, indexed provenance actors, product navigation, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
 );
