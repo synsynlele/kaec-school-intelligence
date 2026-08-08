@@ -207,8 +207,12 @@ assert(
 );
 
 assert(
-  vercel.includes("ignoreCommand") && vercel.includes("[skip vercel"),
-  "Vercel deployment batching guard is missing.",
+  vercel.includes('"deploymentEnabled"') &&
+    vercel.includes('"*": false') &&
+    vercel.includes('"main": true') &&
+    vercel.includes('"*-preview": true') &&
+    !vercel.includes("ignoreCommand"),
+  "Vercel must use quota-safe branch gating while preserving deliberate preview and main deployments.",
 );
 assert(
   dashboard.includes('href="/diagnosis"'),
@@ -226,5 +230,5 @@ assert(
 );
 
 console.log(
-  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, reviewed KAEC parent-sheet matrix, human review/approval, deployment batching and gpt-5-mini policy are present.",
+  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, reviewed KAEC parent-sheet matrix, human review/approval, quota-safe Vercel branch gating and gpt-5-mini policy are present.",
 );
