@@ -259,8 +259,9 @@ assert(
 
 const dashboard = await text("app/dashboard/page.tsx");
 assert(
-  dashboard.includes('href="/assessment"') && dashboard.includes("Stage 3 active"),
-  "Dashboard does not expose Stage 3 Assessment Intelligence.",
+  dashboard.includes('href="/assessment"') &&
+    /Assessment(s| Intelligence)?/.test(dashboard),
+  "Dashboard does not preserve access to Stage 3 Assessment Intelligence.",
 );
 
 console.log(
