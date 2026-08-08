@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
+  AssessmentItemType,
+  KaecCriticalThinkingExperienceType,
+} from "@/lib/domain/assessment";
+import type {
   Database as GeneratedDatabase,
   Json,
 } from "@/lib/supabase/database.types";
@@ -9,6 +13,26 @@ type DiagnosisRow =
   GeneratedDatabase["public"]["Tables"]["diagnoses"]["Row"];
 type HqlsFidelityCheckRow =
   GeneratedDatabase["public"]["Tables"]["hqls_fidelity_checks"]["Row"];
+
+type AssessmentItemRow = Omit<
+  GeneratedDatabase["public"]["Tables"]["assessment_items"]["Row"],
+  "item_type" | "critical_thinking_type"
+> & {
+  item_type: AssessmentItemType;
+  critical_thinking_type: KaecCriticalThinkingExperienceType | null;
+};
+
+type FinalStageTables = Omit<
+  GeneratedDatabase["public"]["Tables"],
+  "assessment_items"
+> & {
+  assessment_items: Omit<
+    GeneratedDatabase["public"]["Tables"]["assessment_items"],
+    "Row"
+  > & {
+    Row: AssessmentItemRow;
+  };
+};
 
 type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
   create_hqls_lesson_draft: {
@@ -47,7 +71,8 @@ type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
-  public: Omit<GeneratedDatabase["public"], "Functions"> & {
+  public: Omit<GeneratedDatabase["public"], "Functions" | "Tables"> & {
+    Tables: FinalStageTables;
     Functions: FinalStage1Functions;
   };
 };
