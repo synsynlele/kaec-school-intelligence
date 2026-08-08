@@ -1,5 +1,5 @@
+import { WorldClassAssessmentClient } from "@/components/assessment/world-class-assessment-client";
 import { KaecBrand } from "@/components/branding/kaec-brand";
-import { AssessmentClient } from "@/components/assessment/assessment-client";
 
 export default function AssessmentPage() {
   return (
@@ -9,7 +9,7 @@ export default function AssessmentPage() {
           <KaecBrand compact />
         </div>
       </div>
-      <AssessmentClient />
+      <WorldClassAssessmentClient />
     </div>
   );
 }
