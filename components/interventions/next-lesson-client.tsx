@@ -165,6 +165,7 @@ export function NextLessonClient() {
     () => state?.subjects.find((item) => item.id === subjectId) ?? null,
     [state?.subjects, subjectId],
   );
+  const linkedLessonId = generatedLessonId ?? handoff?.next_lesson_id ?? null;
 
   function selectHandoff(nextId: string) {
     setHandoffId(nextId);
@@ -178,7 +179,7 @@ export function NextLessonClient() {
     event.preventDefault();
     if (!state || !handoff || !student || !schoolClass || !subject) return;
     if (handoff.next_lesson_id) {
-      setError("This intervention already has a linked next HQLS lesson. Open HQLS Lessons instead of generating another one.");
+      setError("This intervention already has a linked next HQLS lesson. Open the linked HQLS lesson instead of generating another one.");
       return;
     }
     if (!topic.trim()) {
@@ -282,7 +283,7 @@ export function NextLessonClient() {
           : current,
       );
       setNotice(
-        "Closed loop complete: the confirmed intervention was applied to the existing HQLS engine and the new lesson is now linked back to this intervention.",
+        "Closed loop complete. The HQLS lesson was generated, validated, saved and linked to this intervention. Use Open Generated HQLS Lesson below to continue with that lesson.",
       );
     } catch (caught) {
       setError(
@@ -393,7 +394,7 @@ export function NextLessonClient() {
 
             {handoff?.next_lesson_id ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                This intervention already has a next lesson linked. KSI will not create a duplicate closed-loop lesson from the same confirmed handoff.
+                This intervention already has a validated next HQLS lesson linked. KSI will not create a duplicate lesson from the same confirmed handoff.
               </div>
             ) : null}
 
@@ -407,12 +408,12 @@ export function NextLessonClient() {
               </button>
               <Link
                 href="/hqls"
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800"
+                className={`rounded-xl px-4 py-3 text-sm font-semibold ${linkedLessonId ? "bg-emerald-100 text-emerald-950" : "border border-zinc-300 bg-white text-zinc-800"}`}
               >
-                Open HQLS Lessons
+                {linkedLessonId ? "Open Generated HQLS Lesson" : "Open HQLS Lessons"}
               </Link>
               {generatedLessonId ? (
-                <span className="text-xs font-medium text-emerald-800">Lesson created and saved.</span>
+                <span className="text-xs font-medium text-emerald-800">Lesson created, validated and linked.</span>
               ) : null}
             </div>
           </form>
