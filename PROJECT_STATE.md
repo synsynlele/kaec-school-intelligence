@@ -17,7 +17,7 @@ Stages 1–4 are complete and merged. Stage 5 completes the governed KSI learnin
 - Stage 5 branch: `stage-5-action-intervention-intelligence`
 - Stage 5 PR: `#6 — Stage 5 — Action & Intervention Intelligence`
 - Stage 5 base: `00597234403edab6261fd08eaa2f3f12583a71e7`
-- Final verified Stage 5 head is the latest commit on PR #6 after this closeout note.
+- Stage 5 accepted head: `460374adba18f4fd9e99e8f321497db018707c4b`
 
 ## Product scope
 
@@ -124,4 +124,4 @@ Stage 5 is accepted and may be merged. The next stage must begin only from the r
 
 ## Audit-trail preservation
 
-The prior detailed project-state snapshot is preserved in Git history at the Stage 5 base/main lineage, including blob `133c65eb32a7ce3f8797d971775378dc310e4362`. This closeout intentionally advances the current-state document rather than erasing repository history; earlier acceptance details remain recoverable from Git and the merged stage PRs.
+The prior detailed project-state snapshot is preserved in Git history at the Stage 5 base/main lineage, including blob `133c65eb32a7ce3f8797d971775378dc310e4362`. This current-state document advances the active checkpoint; earlier acceptance details remain recoverable from Git and the merged stage PRs.
