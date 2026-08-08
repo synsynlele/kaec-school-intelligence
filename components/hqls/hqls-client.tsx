@@ -123,6 +123,12 @@ function joinLines(value: string[]) {
   return value.join("\n");
 }
 
+function requestedLessonId() {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("lesson")?.trim();
+  return value || null;
+}
+
 async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
   const supabase = getBrowserSupabaseClient();
   const {
@@ -283,6 +289,18 @@ export function HqlsClient() {
         const firstClass = next.classes[0];
         setClassLevel((current) => current || firstClass?.name || "");
         setAgeRange((current) => current || firstClass?.age_range || "");
+
+        const lessonId = requestedLessonId();
+        if (!lessonId) return;
+        if (!next.lessons.some((lesson) => lesson.id === lessonId)) {
+          setError("The linked HQLS lesson is not available in the active workspace.");
+          return;
+        }
+        void openLesson(lessonId).then((opened) => {
+          if (!cancelled && opened) {
+            setNotice("Opened the HQLS lesson linked from the previous workflow.");
+          }
+        });
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -337,7 +355,7 @@ export function HqlsClient() {
     return payload;
   }
 
-  async function openLesson(lessonId: string) {
+  async function openLesson(lessonId: string): Promise<boolean> {
     setError(null);
     setNotice(null);
     try {
@@ -390,12 +408,23 @@ export function HqlsClient() {
       } else {
         setValidation(null);
       }
+
+      router.replace(`/hqls?lesson=${encodeURIComponent(lessonId)}`, {
+        scroll: false,
+      });
+      window.setTimeout(() => {
+        document
+          .getElementById("hqls-selected-lesson")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+      return true;
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
           : "The saved HQLS lesson could not be opened.",
       );
+      return false;
     }
   }
 
@@ -804,7 +833,7 @@ export function HqlsClient() {
         </section>
 
         {selectedLesson && editorStages.length === 7 ? (
-          <section className="mt-8">
+          <section id="hqls-selected-lesson" className="mt-8 scroll-mt-6">
             <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200 bg-white p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
               <div className="max-w-3xl">
                 <div className="flex flex-wrap items-center gap-2">
