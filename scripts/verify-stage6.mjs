@@ -130,10 +130,14 @@ for (const required of [
   "Assessment evidence loaded:",
   "replaceAssessmentWorkflowUrl",
   "onAssessmentChange",
+  "function openDiagnosis(entry: DiagnosisEntry)",
+  "setError(null)",
+  "setNotice(null)",
+  "onClick={() => openDiagnosis(entry)}",
 ]) {
   assert(
     diagnosisClient.includes(required),
-    `Diagnosis assessment-evidence continuity is missing: ${required}`,
+    `Diagnosis assessment/recovery continuity is missing: ${required}`,
   );
 }
 
@@ -188,5 +192,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, release-facing workflow labels, quota-safe preview gating, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, clean saved-diagnosis record switching, exact intervention -> HQLS artifact navigation, release-facing workflow labels, quota-safe preview gating, and launch-readiness contract are present.",
 );
