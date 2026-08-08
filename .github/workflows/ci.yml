@@ -6,6 +6,7 @@ on:
       - main
       - stage-1-platform-foundation
       - stage-2-hqls-lesson-intelligence
+      - stage-3-assessment-intelligence
   pull_request:
     branches:
       - main
