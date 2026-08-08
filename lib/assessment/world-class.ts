@@ -6,6 +6,7 @@ import {
   type AssessmentRequest,
   type AssessmentValidation,
   type GeneratedAssessment,
+  type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
 
 export const ASSESSMENT_ENGINE_VERSION_V11 = "ASSESSMENT_ENGINE_v1.1";
@@ -83,6 +84,147 @@ function duplicatePromptKey(prompt: string) {
     .replace(/\s+/g, " ");
 }
 
+const COMMON_REASONING_SIGNALS = [
+  "justify",
+  "explain",
+  "give reason",
+  "reason for",
+  "compare",
+  "contrast",
+  "analyse",
+  "analyze",
+  "evaluate",
+  "infer",
+  "predict",
+  "conclude",
+  "defend",
+  "argue",
+  "support your",
+  "use evidence",
+  "decide",
+  "choose",
+  "recommend",
+  "propose",
+  "design",
+  "create",
+  "develop",
+  "construct",
+  "compose",
+  "formulate",
+  "rewrite",
+  "improve",
+  "solve",
+  "plan",
+  "prioritise",
+  "prioritize",
+  "rank",
+  "judge",
+  "assess",
+  "investigate",
+  "determine",
+  "what would you do",
+  "how would you",
+  "what should",
+  "best option",
+  "best course",
+  "most appropriate",
+  "trade off",
+  "tradeoff",
+  "consequence",
+  "alternative",
+];
+
+const TYPE_REASONING_SIGNALS: Record<
+  NonNullable<GeneratedAssessmentItem["criticalThinkingType"]>,
+  string[]
+> = {
+  reality_simulation: [
+    "scenario",
+    "situation",
+    "if you were",
+    "respond",
+    "what would",
+    "how would",
+    "decision",
+    "action",
+  ],
+  imperfect_choice: [
+    "choose",
+    "option",
+    "decision",
+    "best",
+    "least",
+    "trade off",
+    "compromise",
+    "which would",
+  ],
+  hidden_problem: [
+    "hidden problem",
+    "underlying problem",
+    "identify the problem",
+    "find the problem",
+    "spot the problem",
+    "issue",
+    "mistake",
+    "root cause",
+  ],
+  creation: [
+    "create",
+    "design",
+    "develop",
+    "construct",
+    "compose",
+    "produce",
+    "write",
+    "formulate",
+    "build",
+    "rewrite",
+  ],
+  crisis: [
+    "crisis",
+    "urgent",
+    "respond",
+    "decision",
+    "action plan",
+    "prioritise",
+    "prioritize",
+    "solve",
+    "recommend",
+    "what should",
+  ],
+  "": [],
+};
+
+function containsAny(text: string, signals: string[]) {
+  return signals.some((signal) => text.includes(normalized(signal)));
+}
+
+function criticalThinkingDemandIsVisible(item: GeneratedAssessmentItem) {
+  if (item.itemType !== "critical_thinking" || !item.criticalThinkingType) {
+    return false;
+  }
+
+  const prompt = normalized(item.prompt);
+  const teacherEvidence = normalized(
+    [...item.expectedEvidence, ...item.markingGuide, item.deliverable]
+      .filter(Boolean)
+      .join(" "),
+  );
+  const typeSignals = TYPE_REASONING_SIGNALS[item.criticalThinkingType] ?? [];
+
+  const learnerFacingReasoning =
+    containsAny(prompt, COMMON_REASONING_SIGNALS) ||
+    containsAny(prompt, typeSignals);
+  const teacherCanSeeReasoning =
+    item.expectedEvidence.length > 0 &&
+    item.markingGuide.length > 0 &&
+    (containsAny(teacherEvidence, COMMON_REASONING_SIGNALS) ||
+      containsAny(teacherEvidence, typeSignals) ||
+      teacherEvidence.length >= 45);
+
+  return item.prompt.trim().length >= 40 && learnerFacingReasoning && teacherCanSeeReasoning;
+}
+
 export function worldClassDifficultyTarget(
   difficulty: AssessmentOverallDifficulty,
 ) {
@@ -120,7 +262,7 @@ function topicsText(topics: AssessmentTopicSpec[]) {
 }
 
 export function buildWorldClassAssessmentSystemInstruction() {
-  return `${buildAssessmentSystemInstruction()}\n\nYou are also operating under KAEC Assessment Quality Standard v1.0. Design for validity, reliability, fairness, accessibility and manageability. Measure the intended learning rather than irrelevant literacy, cultural familiarity or trick-taking skill. Avoid ambiguous wording, duplicate questions, implausible distractors, stereotypes, unnecessary emotional barriers and hidden requirements. Match marks to the evidence demanded. Across the assessment, use an appropriate progression from knowledge/understanding into application, analysis/reasoning and, where suitable, evaluation/creation. Do not allow recall to dominate merely because objective items are requested. The assessment type, topic weights and overall difficulty are binding design constraints.`;
+  return `${buildAssessmentSystemInstruction()}\n\nYou are also operating under KAEC Assessment Quality Standard v1.0. Design for validity, reliability, fairness, accessibility and manageability. Measure the intended learning rather than irrelevant literacy, cultural familiarity or trick-taking skill. Avoid ambiguous wording, duplicate questions, implausible distractors, stereotypes, unnecessary emotional barriers and hidden requirements. Match marks to the evidence demanded. Across the assessment, use an appropriate progression from knowledge/understanding into application, analysis/reasoning and, where suitable, evaluation/creation. Do not allow recall to dominate merely because objective items are requested. The assessment type, topic weights and overall difficulty are binding design constraints. Every Critical Thinking prompt must make the learner-facing reasoning demand explicit in the prompt itself and the expected evidence/marking guide must show what reasoning a teacher should look for.`;
 }
 
 export function buildWorldClassAssessmentPrompt(
@@ -130,7 +272,7 @@ export function buildWorldClassAssessmentPrompt(
 ) {
   const base = buildAssessmentPrompt(request, sourceLessonContext, sourceLabels);
   const target = worldClassDifficultyTarget(request.overallDifficulty);
-  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must be EXACTLY one of the requested topic labels, preserving that label verbatim. Do not merge topic labels and do not use broader or narrower aliases. Every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.`;
+  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must be EXACTLY one of the requested topic labels, preserving that label verbatim. Do not merge topic labels and do not use broader or narrower aliases. Every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.\n20. For every Critical Thinking item, the STUDENT PROMPT itself must explicitly require an observable reasoning act such as explaining/justifying, comparing/evaluating, choosing/deciding, proposing/recommending, solving, identifying an underlying problem, or creating/designing. Do not hide the reasoning demand only in expectedEvidence or markingGuide. The expectedEvidence and markingGuide must also identify the reasoning evidence the teacher should credit.`;
 }
 
 export function buildWorldClassAssessmentRepairPrompt(
@@ -190,7 +332,18 @@ export function validateWorldClassAssessment(
   request: WorldClassAssessmentRequest,
 ): AssessmentValidation {
   const base = validateAssessment(assessment, request);
-  const violations = [...base.violations];
+  const violations = base.violations.filter((violation) => {
+    if (
+      violation.code !== "critical_thinking_recall_risk" ||
+      violation.itemPosition === undefined
+    ) {
+      return true;
+    }
+    const item = assessment.items.find(
+      (candidate) => candidate.position === violation.itemPosition,
+    );
+    return !item || !criticalThinkingDemandIsVisible(item);
+  });
   const evidence = [...base.evidence];
   const add = (code: string, message: string, itemPosition?: number) =>
     violations.push({ code, message, itemPosition });
@@ -203,6 +356,22 @@ export function validateWorldClassAssessment(
       add(
         "item_topic_not_canonical",
         `Item ${item.position} must use exactly one requested topic label. Received \"${item.topic}\".`,
+        item.position,
+      );
+    }
+
+    if (
+      item.itemType === "critical_thinking" &&
+      !criticalThinkingDemandIsVisible(item) &&
+      !violations.some(
+        (violation) =>
+          violation.code === "critical_thinking_recall_risk" &&
+          violation.itemPosition === item.position,
+      )
+    ) {
+      add(
+        "critical_thinking_recall_risk",
+        `Critical-thinking item ${item.position} must make the learner-facing reasoning demand explicit and provide observable reasoning evidence for marking.`,
         item.position,
       );
     }
@@ -317,7 +486,7 @@ export function validateWorldClassAssessment(
 
   if (!violations.length) {
     evidence.push(
-      "Multi-topic coverage, requested weighting, canonical topic labels, difficulty profile and duplicate-option checks passed KAEC Assessment Quality validation.",
+      "Multi-topic coverage, requested weighting, canonical topic labels, difficulty profile, critical-thinking evidence and duplicate-option checks passed KAEC Assessment Quality validation.",
     );
   }
 
