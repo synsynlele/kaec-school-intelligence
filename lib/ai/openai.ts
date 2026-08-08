@@ -31,11 +31,6 @@ export class OpenAIProviderError extends Error {
   }
 }
 
-export type OpenAIModelPolicy = {
-  primary: string;
-  repair: string;
-};
-
 export type GenerateOpenAIJsonInput = {
   systemInstruction: string;
   parts: OpenAIPart[];
@@ -43,14 +38,12 @@ export type GenerateOpenAIJsonInput = {
   schemaName?: string;
   temperature?: number;
   maxOutputTokens?: number;
-  model?: string;
 };
 
 export type GenerateOpenAIJsonResult<T> = {
   data: T;
   provider: "openai";
   model: string;
-  modelRole: "primary" | "repair" | "explicit";
   responseId?: string;
 };
 
@@ -152,30 +145,6 @@ function extractOutputText(payload: OpenAIResponse) {
   );
 }
 
-export function getOpenAIModelPolicy(): OpenAIModelPolicy {
-  const primary =
-    process.env.KSI_OPENAI_PRIMARY_MODEL?.trim() ||
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-4o-mini";
-  const repair =
-    process.env.KSI_OPENAI_REPAIR_MODEL?.trim() || "gpt-5-mini";
-  return { primary, repair };
-}
-
-function chooseOpenAIModel(input: GenerateOpenAIJsonInput) {
-  const explicit = input.model?.trim();
-  if (explicit) {
-    return { model: explicit, modelRole: "explicit" as const };
-  }
-
-  const policy = getOpenAIModelPolicy();
-  const isRepair = input.schemaName?.toLowerCase().includes("repair") ?? false;
-  return isRepair
-    ? { model: policy.repair, modelRole: "repair" as const }
-    : { model: policy.primary, modelRole: "primary" as const };
-}
-
 export async function generateOpenAIJson<T>(
   input: GenerateOpenAIJsonInput,
 ): Promise<GenerateOpenAIJsonResult<T>> {
@@ -187,19 +156,13 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // Quality-first cost policy: use a low-cost general generation model for
-  // the first attempt while all deterministic KAEC validators remain
-  // authoritative. Repair calls use the stronger fallback only when needed.
-  // KSI_OPENAI_PRIMARY_MODEL intentionally takes precedence over the legacy
-  // KSI_OPENAI_MODEL variable so Preview can benchmark a candidate without
-  // changing the currently configured Production model.
-  const { model, modelRole } = chooseOpenAIModel(input);
-
-  console.info("KSI OpenAI generation", {
-    schema: input.schemaName ?? "ksi_structured_response",
-    model,
-    modelRole,
-  });
+  // KSI uses GPT-5 mini for core educational generation. The existing
+  // environment override is retained so deployments can be changed deliberately
+  // without exposing model configuration to the browser.
+  const model =
+    process.env.KSI_OPENAI_MODEL?.trim() ||
+    process.env.KSI_AI_MODEL?.trim() ||
+    "gpt-5-mini";
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -269,7 +232,6 @@ export async function generateOpenAIJson<T>(
       data: JSON.parse(text) as T,
       provider: "openai",
       model,
-      modelRole,
       responseId: payload.id,
     };
   } catch {
