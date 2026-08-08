@@ -7,7 +7,22 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const [spec, engine, api, page, client, pdf, migration, dashboard, openai] = await Promise.all([
+const [
+  spec,
+  engine,
+  api,
+  page,
+  client,
+  pdf,
+  reviewMigration,
+  conciseMigration,
+  conciseFreshnessMigration,
+  conciseSyncMigration,
+  database,
+  diagnosisData,
+  dashboard,
+  openai,
+] = await Promise.all([
   text("docs/STAGE_4_STUDENT_DIAGNOSIS_INTELLIGENCE.md"),
   text("lib/diagnosis/engine.ts"),
   text("app/api/diagnosis/route.ts"),
@@ -15,6 +30,11 @@ const [spec, engine, api, page, client, pdf, migration, dashboard, openai] = awa
   text("components/diagnosis/diagnosis-client.tsx"),
   text("lib/pdf/diagnosis-pdf.ts"),
   text("supabase/migrations/014_stage4_diagnosis_review_freshness.sql"),
+  text("supabase/migrations/015_stage4_concise_diagnosis.sql"),
+  text("supabase/migrations/016_stage4_concise_diagnosis_review_freshness.sql"),
+  text("supabase/migrations/017_stage4_concise_diagnosis_sync.sql"),
+  text("lib/supabase/database.ts"),
+  text("lib/data/diagnoses.ts"),
   text("app/dashboard/page.tsx"),
   text("lib/ai/openai.ts"),
 ]);
@@ -42,6 +62,7 @@ for (const required of [
   "evidenceIds",
   "confidence",
   "uncertaintyNote",
+  "conciseDiagnosis",
 ]) {
   assert(engine.includes(required), `Diagnosis engine is missing: ${required}`);
 }
@@ -90,11 +111,33 @@ for (const required of [
   "new.status := 'draft'",
   "new.reviewed_by := null",
 ]) {
-  assert(migration.includes(required), `Diagnosis review-freshness migration is missing: ${required}`);
+  assert(reviewMigration.includes(required), `Diagnosis review-freshness migration is missing: ${required}`);
 }
+
+assert(
+  conciseMigration.includes("concise_diagnosis text not null default ''") &&
+    conciseMigration.includes("grant update") &&
+    conciseMigration.includes("concise_diagnosis"),
+  "Stage 4 must persist concise diagnosis as first-class reviewed data.",
+);
+assert(
+  conciseFreshnessMigration.includes("new.concise_diagnosis is distinct from old.concise_diagnosis") &&
+    conciseFreshnessMigration.includes("Final diagnoses are immutable"),
+  "Concise diagnosis must participate in review invalidation and final immutability.",
+);
+assert(
+  conciseSyncMigration.includes("sync_diagnosis_concise_summary") &&
+    conciseSyncMigration.includes("new.concise_diagnosis"),
+  "Stage 4 concise-diagnosis compatibility bridge is missing.",
+);
+assert(
+  database.includes("concise_diagnosis: string") &&
+    diagnosisData.includes("concise_diagnosis: input.conciseDiagnosis"),
+  "Typed Stage 4 persistence must expose the first-class concise diagnosis field.",
+);
 
 assert(dashboard.includes('href="/diagnosis"'), "Dashboard must expose Diagnosis Intelligence.");
 assert(openai.includes('"gpt-5-mini"'), "KSI must retain gpt-5-mini as the core OpenAI default.");
 assert(!engine.toLowerCase().includes("diagnose adhd"), "Diagnosis engine must not instruct clinical diagnosis.");
 
-console.log("Stage 4 structure verification passed: evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, human review/approval, parent report and gpt-5-mini policy are present.");
+console.log("Stage 4 structure verification passed: evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class concise diagnosis, human review/approval, parent report and gpt-5-mini policy are present.");
