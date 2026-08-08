@@ -141,9 +141,17 @@ Stage 6 is not complete until the exact accepted head passes:
 
 ## Deployment discipline
 
-Use `[skip vercel]` for intermediate implementation commits.
+KSI must not use Vercel's Ignored Build Step as a deployment-quota control. A canceled deployment can still consume the provider's deployment quota.
 
-Create deliberate Preview deployments only at meaningful acceptance checkpoints.
+Use branch-level Git deployment gating instead:
+
+- ordinary working branches: deployment disabled;
+- `main`: deployment enabled;
+- deliberate branches ending in `-preview`: deployment enabled.
+
+The repository `vercel.json` is the authoritative policy. Working implementation commits must therefore remain on non-preview branches. When an acceptance checkpoint is ready, create a dedicated `*-preview` branch from the exact verified head and deploy that branch once.
+
+This replaces the historical `[skip vercel]` batching mechanism for Stage 6 and future work.
 
 ## Explicit non-scope
 
