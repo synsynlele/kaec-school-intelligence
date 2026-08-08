@@ -202,10 +202,14 @@ assert(
   "The authoritative existing HQLS generation route must remain available for Stage 5 reuse.",
 );
 assert(
-  vercel.includes("ignoreCommand") && vercel.includes("[skip vercel"),
-  "Stage 5 must retain Vercel deployment batching discipline.",
+  vercel.includes('"deploymentEnabled"') &&
+    vercel.includes('"*": false') &&
+    vercel.includes('"main": true') &&
+    vercel.includes('"*-preview": true') &&
+    !vercel.includes("ignoreCommand"),
+  "KSI must use quota-safe Vercel branch gating: working branches disabled, main and deliberate *-preview branches enabled.",
 );
 
 console.log(
-  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, durable confirmed retention, indexed provenance actors, product navigation, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
+  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, durable confirmed retention, indexed provenance actors, product navigation, no fourth AI engine, confirmed intervention -> existing HQLS closed-loop generation, and quota-safe Vercel branch gating are present.",
 );
