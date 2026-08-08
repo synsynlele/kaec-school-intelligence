@@ -13,12 +13,18 @@ type GeneratedDiagnosisTable =
   GeneratedDatabase["public"]["Tables"]["diagnoses"];
 type DiagnosisRow = GeneratedDiagnosisTable["Row"] & {
   concise_diagnosis: string;
+  academic_session: string;
+  term: string;
 };
 type DiagnosisInsert = GeneratedDiagnosisTable["Insert"] & {
   concise_diagnosis?: string;
+  academic_session?: string;
+  term?: string;
 };
 type DiagnosisUpdate = GeneratedDiagnosisTable["Update"] & {
   concise_diagnosis?: string;
+  academic_session?: string;
+  term?: string;
 };
 
 type HqlsFidelityCheckRow =
@@ -83,6 +89,14 @@ type FinalStageFunctions = Omit<
   };
   finalise_diagnosis: {
     Args: { target_diagnosis_id: string };
+    Returns: DiagnosisRow;
+  };
+  set_diagnosis_report_context: {
+    Args: {
+      target_diagnosis_id: string;
+      target_academic_session: string;
+      target_term: string;
+    };
     Returns: DiagnosisRow;
   };
   record_hqls_system_fidelity_check: {
