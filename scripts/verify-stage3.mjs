@@ -138,8 +138,99 @@ for (const required of [
 
 const page = await text("app/assessment/page.tsx");
 assert(
-  page.includes("KaecBrand") && page.includes("WorldClassAssessmentClient"),
-  "Stage 3 assessment page is missing official branding or the v1.1 assessment workspace.",
+  page.includes("KaecBrand") &&
+    page.includes("WorldClassAssessmentClient") &&
+    page.includes('href="/saved-work"'),
+  "Stage 3 assessment page is missing official branding, the v1.1 workspace or Saved Work navigation.",
+);
+
+const hqlsPage = await text("app/hqls/page.tsx");
+assert(
+  hqlsPage.includes('href="/saved-work"') &&
+    hqlsPage.includes("Manage Saved Work"),
+  "HQLS does not expose the shared Saved Work lifecycle manager.",
+);
+
+const lifecycleSpec = await text("docs/STAGE_3_SAVED_WORK_LIFECYCLE.md");
+for (const required of [
+  "Active → Archive → Restore or Permanent Delete",
+  "typed confirmation `DELETE`",
+  "Student Evidence or Diagnosis",
+  "creator or workspace owner/admin",
+  "/saved-work",
+]) {
+  assert(
+    lifecycleSpec.includes(required),
+    `Stage 3 saved-work lifecycle specification is missing ${required}.`,
+  );
+}
+
+const lifecycleMigration = await text(
+  "supabase/migrations/013_saved_work_lifecycle.sql",
+);
+for (const required of [
+  "list_archived_saved_work",
+  "manage_saved_artifact",
+  "status <> 'archived'",
+  "source_lesson_id",
+  "student_evidence",
+  "diagnoses",
+  "artifact_versions",
+  "artifact_resource_links",
+  "ai_runs",
+  "SECURITY DEFINER",
+]) {
+  assert(
+    lifecycleMigration.includes(required),
+    `Stage 3 saved-work migration is missing ${required}.`,
+  );
+}
+assert(
+  lifecycleMigration.includes("Archive this item before permanently deleting it."),
+  "Permanent deletion must remain a two-step archive-then-delete action.",
+);
+
+const savedWorkRoute = await text("app/api/saved-work/route.ts");
+for (const required of [
+  "list_archived_saved_work",
+  "manage_saved_artifact",
+  'body.confirmation !== "DELETE"',
+  "Bearer ",
+]) {
+  assert(
+    savedWorkRoute.includes(required),
+    `Saved Work API is missing ${required}.`,
+  );
+}
+assert(
+  !savedWorkRoute.includes("SUPABASE_SERVICE_ROLE_KEY"),
+  "Saved Work API must not use service-role credentials.",
+);
+
+const savedWorkClient = await text(
+  "components/saved-work/saved-work-client.tsx",
+);
+for (const required of [
+  "Archive",
+  "Restore",
+  "Permanent Delete",
+  'confirmation !== "DELETE"',
+  "dependencyCount",
+  "sm:flex-row",
+]) {
+  assert(
+    savedWorkClient.includes(required),
+    `Saved Work client is missing ${required}.`,
+  );
+}
+
+const savedWorkPage = await text("app/saved-work/page.tsx");
+assert(
+  savedWorkPage.includes("KaecBrand") &&
+    savedWorkPage.includes("SavedWorkClient") &&
+    savedWorkPage.includes('href="/hqls"') &&
+    savedWorkPage.includes('href="/assessment"'),
+  "Shared Saved Work page is missing branding or module navigation.",
 );
 
 const pdf = await text("lib/pdf/assessment-pdf.ts");
@@ -173,5 +264,5 @@ assert(
 );
 
 console.log(
-  "Stage 3 structural verification passed: Assessment Intelligence v1.1 protects multi-topic weighted blueprints, canonical topic labels, assessment type, overall difficulty, quality validation, OpenAI generation, responsive editing, Lesson-to-Assessment traceability and branded PDF export.",
+  "Stage 3 structural verification passed: Assessment Intelligence v1.1 protects multi-topic weighted blueprints, canonical topic labels, assessment type, overall difficulty, quality validation, OpenAI generation, responsive editing, Lesson-to-Assessment traceability, branded PDF export and guarded Archive/Restore/Permanent Delete lifecycle management.",
 );
