@@ -13,18 +13,24 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 2 active
+              Stage 3 active
             </p>
             <p className="mt-1 text-sm font-medium">
-              HQLS Lesson Intelligence is ready for live teaching workflows.
+              HQLS Lesson Intelligence now connects directly into Assessment Intelligence.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/hqls"
+              href="/assessment"
               className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
             >
-              Open HQLS Lesson Intelligence
+              Open Assessment Intelligence
+            </Link>
+            <Link
+              href="/hqls"
+              className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              HQLS Lessons
             </Link>
             <Link
               href="/hqls/exports"
