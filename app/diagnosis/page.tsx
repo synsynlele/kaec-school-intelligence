@@ -13,7 +13,7 @@ export default function DiagnosisPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 4 · Student Diagnosis Intelligence
+              Student Diagnosis Intelligence
             </p>
             <p className="mt-1 text-sm font-medium">
               First-hand school evidence becomes a clear parent diagnosis and shared action plan.
