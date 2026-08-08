@@ -480,7 +480,7 @@ function evidenceText(context: DiagnosisGenerationContext) {
 }
 
 export function buildDiagnosisSystemInstruction() {
-  return `You are the KAEC Student Diagnosis Intelligence engine. This is educational/student-development diagnosis only, never medical, psychiatric or psychological diagnosis. Preserve the reasoning hierarchy Observed Evidence -> Detected Pattern -> Possible Interpretation -> Recommended Action. Never invent evidence. Never label a learner's worth, personality or condition. Interpretations must remain tentative and evidence-linked. If a domain lacks adequate evidence, state Insufficient Evidence. Parent-facing language must be respectful, readable and growth-oriented. Actions must be specific, feasible and time-bounded. Return only the required structured schema.`;
+  return `You are the KAEC Student Diagnosis Intelligence engine. This is educational/student-development diagnosis only, never medical, psychiatric or psychological diagnosis. Preserve the reasoning hierarchy Observed Evidence -> Detected Pattern -> Possible Interpretation -> Recommended Action. Never invent evidence. Never label a learner's worth, personality or condition. Treat each teacher input as raw professional evidence that must be understood, translated and explained rather than echoed. Convert brief, informal or non-technical teacher wording into clear educational language that explains what the observation means for the learner's present performance, demonstrated capability, support need or next growth priority. Preserve the factual meaning and evidence ID, but do not quote, copy or merely repeat the teacher's wording. Interpretations must remain tentative and evidence-linked. If a domain lacks adequate evidence, state Insufficient Evidence. Parent-facing language must be respectful, precise, readable and growth-oriented. Actions must be specific, feasible and time-bounded. Return only the required structured schema.`;
 }
 
 export function buildDiagnosisPrompt(context: DiagnosisGenerationContext) {
@@ -494,18 +494,32 @@ Assessment: ${context.assessmentTitle || "Not used in this mode"}
 AUTHORISED OBSERVED EVIDENCE — use these exact IDs and do not invent any evidence:
 ${evidenceText(context)}
 
+Professional interpretation standard:
+Every teacher input is RAW EVIDENCE, not finished report language. The output must add professional educational value. For each teacher observation, identify what the factual observation shows about current academic/skill performance, demonstrated strength, behavioural functioning, support need, or practical growth direction. Explain that meaning in fresh professional language. Do not quote the teacher, copy the wording, or pad the same statement with phrases such as "the teacher observed". Preserve facts exactly; improve the explanation, not the facts. Never invent motives, hidden causes, diagnoses or unsupported traits.
+
+Example of the required transformation:
+Teacher input: "good in maths"
+Poor output: "The learner is good in maths."
+Professional output: "The learner demonstrates a comparatively secure grasp of mathematical tasks, providing a useful academic strength that can be leveraged while weaker subject areas are being developed."
+
+Teacher input: "loses temper easily"
+Poor output: "The learner loses his temper easily."
+Professional output: "The learner currently shows difficulty maintaining emotional regulation when frustrated or challenged, indicating a need for consistent self-management routines and guided practice in responding calmly."
+
 Rules:
-1. observedEvidence must restate every supplied evidence item faithfully using the exact ID/source/domain.
-2. Patterns must describe evidence-backed recurrence/relationship, cite evidence IDs and carry confidence.
-3. Possible interpretations are hypotheses only. Use may/might/could/possibly/suggests/appears and explain uncertainty.
-4. Do not diagnose ADHD, autism, dyslexia, depression, disorders, personality, intelligence or any clinical/psychological condition.
-5. Do not call the learner lazy, dull, weak, stubborn by nature, unintelligent or similar.
-6. Academic/skill/character strengths and challenges must cite supporting evidence. If a domain has no evidence, do not create a strength/challenge for it; state "Insufficient Evidence for <domain> ..." in evidenceLimitations.
-7. School and parent actions must cite evidence IDs and include a realistic timeframe such as "next 2 weeks", "three times weekly", or "before the next assessment".
-8. conciseDiagnosis should summarise what the evidence currently shows, not claim hidden causes.
-9. Builder Growth Direction should show the next capability/responsibility direction without ranking worth.
-10. Encouragement Note should be warm, specific and grounded in demonstrated potential/evidence.
-11. Include at least one Evidence Limitation even with strong evidence, because this diagnosis reflects a bounded evidence window.`;
+1. observedEvidence must include every supplied evidence item using the exact ID/source/domain, but its statement must professionally translate the observation into clear, factual educational language rather than repeat the original wording.
+2. Every teacher_observation must be meaningfully processed beyond observedEvidence into the analysis: connect it to at least one appropriate pattern, possible interpretation, strength/challenge, or recommended action using its evidence ID. No teacher input may be ignored or left as an unexplained quotation.
+3. Patterns must describe evidence-backed recurrence/relationship, cite evidence IDs and carry confidence. A single observation may support a finding, but do not manufacture recurrence when recurrence is not evidenced.
+4. Possible interpretations are hypotheses only. Use may/might/could/possibly/suggests/appears and explain uncertainty.
+5. Do not diagnose ADHD, autism, dyslexia, depression, disorders, personality, intelligence or any clinical/psychological condition.
+6. Do not call the learner lazy, dull, weak, stubborn by nature, unintelligent or similar. Convert judgemental teacher wording into observable, developmental language without preserving the label.
+7. Academic/skill/character strengths and challenges must do more than rename the teacher input: explain the educational significance of the evidence and cite supporting evidence IDs. If a domain has no evidence, do not create a strength/challenge for it; state "Insufficient Evidence for <domain> ..." in evidenceLimitations.
+8. School and parent actions must be derived from the professionally interpreted need, cite evidence IDs and include a realistic timeframe such as "next 2 weeks", "three times weekly", or "before the next assessment".
+9. conciseDiagnosis must synthesise the meaning across the evidence into a professional explanation of the learner's current growth picture. It must not become a list of teacher statements and must not claim hidden causes.
+10. Builder Growth Direction should show the next capability/responsibility direction without ranking worth.
+11. Encouragement Note should be warm, specific and grounded in demonstrated potential/evidence, while still adding insight rather than repeating strengths word-for-word.
+12. Include at least one Evidence Limitation even with strong evidence, because this diagnosis reflects a bounded evidence window.
+13. Prefer concise, natural professional prose over jargon. The parent should understand why each observation matters and what should happen next.`;
 }
 
 export function buildDiagnosisRepairPrompt(
@@ -515,7 +529,7 @@ export function buildDiagnosisRepairPrompt(
 ) {
   return `${buildDiagnosisPrompt(context)}
 
-The previous structured draft failed independent KAEC validation. Repair every issue below while preserving factual evidence exactly.
+The previous structured draft failed independent KAEC validation. Repair every issue below while preserving factual evidence exactly and applying the professional interpretation standard to every teacher input.
 
 VALIDATION ISSUES:
 ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\n")}
