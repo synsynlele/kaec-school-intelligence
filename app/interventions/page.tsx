@@ -21,6 +21,12 @@ export default function InterventionsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/interventions/next-lesson"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+            >
+              Build Next Lesson
+            </Link>
+            <Link
               href="/diagnosis"
               className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
             >
@@ -34,7 +40,7 @@ export default function InterventionsPage() {
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
             >
               Dashboard
             </Link>
