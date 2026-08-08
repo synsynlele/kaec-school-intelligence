@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
+  AssessmentItemType,
+  KaecCriticalThinkingExperienceType,
+} from "@/lib/domain/assessment";
+import type {
   Database as GeneratedDatabase,
   Json,
 } from "@/lib/supabase/database.types";
@@ -10,7 +14,37 @@ type DiagnosisRow =
 type HqlsFidelityCheckRow =
   GeneratedDatabase["public"]["Tables"]["hqls_fidelity_checks"]["Row"];
 
-type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
+type AssessmentItemRow = Omit<
+  GeneratedDatabase["public"]["Tables"]["assessment_items"]["Row"],
+  "item_type" | "critical_thinking_type"
+> & {
+  item_type: AssessmentItemType;
+  critical_thinking_type: KaecCriticalThinkingExperienceType | null;
+};
+
+type FinalStageTables = Omit<
+  GeneratedDatabase["public"]["Tables"],
+  "assessment_items"
+> & {
+  assessment_items: Omit<
+    GeneratedDatabase["public"]["Tables"]["assessment_items"],
+    "Row"
+  > & {
+    Row: AssessmentItemRow;
+  };
+};
+
+type ArchivedSavedWorkRow = {
+  artifact_type: string;
+  artifact_id: string;
+  title: string;
+  updated_at: string;
+  dependency_count: number;
+  can_manage: boolean;
+  can_permanently_delete: boolean;
+};
+
+type FinalStageFunctions = GeneratedDatabase["public"]["Functions"] & {
   create_hqls_lesson_draft: {
     Args: {
       target_workspace_id: string;
@@ -44,11 +78,24 @@ type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
     };
     Returns: HqlsFidelityCheckRow;
   };
+  list_archived_saved_work: {
+    Args: { target_workspace_id: string };
+    Returns: ArchivedSavedWorkRow[];
+  };
+  manage_saved_artifact: {
+    Args: {
+      target_artifact_type: string;
+      target_artifact_id: string;
+      target_action: string;
+    };
+    Returns: Json;
+  };
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
-  public: Omit<GeneratedDatabase["public"], "Functions"> & {
-    Functions: FinalStage1Functions;
+  public: Omit<GeneratedDatabase["public"], "Functions" | "Tables"> & {
+    Tables: FinalStageTables;
+    Functions: FinalStageFunctions;
   };
 };
 

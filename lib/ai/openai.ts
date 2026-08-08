@@ -136,7 +136,9 @@ function extractOutputText(payload: OpenAIResponse) {
   return (
     payload.output
       ?.flatMap((item) => item.content ?? [])
-      .filter((part) => part.type === "output_text" && typeof part.text === "string")
+      .filter(
+        (part) => part.type === "output_text" && typeof part.text === "string",
+      )
       .map((part) => part.text ?? "")
       .join("")
       .trim() ?? ""
@@ -154,9 +156,9 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // KSI defaults to GPT-5 mini for cost-sensitive production generation.
-  // Keep the environment override so specific deployments can benchmark or upgrade
-  // without changing application code.
+  // KSI uses GPT-5 mini for core educational generation. The existing
+  // environment override is retained so deployments can be changed deliberately
+  // without exposing model configuration to the browser.
   const model =
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
@@ -204,7 +206,9 @@ export async function generateOpenAIJson<T>(
   const payload = (await response.json()) as OpenAIResponse;
   if (payload.error?.message) {
     throw new OpenAIProviderError(
-      payload.error.code ? `OPENAI_${payload.error.code}` : "OPENAI_RESPONSE_ERROR",
+      payload.error.code
+        ? `OPENAI_${payload.error.code}`
+        : "OPENAI_RESPONSE_ERROR",
       payload.error.message,
     );
   }
