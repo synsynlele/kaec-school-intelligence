@@ -8,6 +8,9 @@ export type AssessmentPdfInput = {
   topic: string;
   objective: string;
   durationMinutes: number | null;
+  assessmentType?: string | null;
+  overallDifficulty?: string | null;
+  topicCoverage?: string[];
   assessment: GeneratedAssessment;
 };
 
@@ -55,7 +58,12 @@ function pdfEscape(value: string) {
     .replace(/\)/g, "\\)");
 }
 
-function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
+function wrapText(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  bold = false,
+) {
   const clean = ascii(text);
   if (!clean) return [];
   const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
@@ -79,6 +87,15 @@ function wrapText(text: string, maxWidth: number, fontSize: number, bold = false
 
 function rgb([r, g, b]: [number, number, number]) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
+}
+
+function titleCase(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
 class PdfComposer {
@@ -141,7 +158,9 @@ class PdfComposer {
   rule() {
     this.ensure(8);
     this.current.push("0.850 0.860 0.880 rg");
-    this.current.push(`${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`);
+    this.current.push(
+      `${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`,
+    );
     this.y -= 8;
   }
 
@@ -154,28 +173,54 @@ class PdfComposer {
     this.line("STUDENT ASSESSMENT", { bold: true, size: 17, color: NAVY });
     this.line(assessment.title, { bold: true, size: 13, gapAfter: 7 });
     this.line(`School / workspace: ${this.input.workspaceName}`, { size: 9.3 });
-    this.line(`Subject: ${this.input.subject}    Class: ${this.input.classLevel}`, {
-      size: 9.3,
-    });
     this.line(
-      `Topic: ${this.input.topic}    Total marks: ${assessment.blueprint.totalMarks}${
-        this.input.durationMinutes ? `    Duration: ${this.input.durationMinutes} minutes` : ""
+      `Subject: ${this.input.subject}    Class: ${this.input.classLevel}`,
+      { size: 9.3 },
+    );
+    if (this.input.assessmentType || this.input.overallDifficulty) {
+      this.line(
+        `Assessment type: ${titleCase(this.input.assessmentType || "Not specified")}    Overall difficulty: ${titleCase(this.input.overallDifficulty || "Not specified")}`,
+        { size: 9.3 },
+      );
+    }
+    this.line(
+      `Total marks: ${assessment.blueprint.totalMarks}${
+        this.input.durationMinutes
+          ? `    Duration: ${this.input.durationMinutes} minutes`
+          : ""
       }`,
       { size: 9.3 },
     );
-    this.line(`Objective: ${this.input.objective}`, { size: 9.3, gapAfter: 5 });
+    if (this.input.topicCoverage?.length) {
+      this.line("Topic coverage", {
+        bold: true,
+        size: 9.6,
+        color: BLUE,
+        gapBefore: 3,
+      });
+      this.input.topicCoverage.forEach((entry) => this.bullet(entry));
+    } else {
+      this.line(`Topic: ${this.input.topic}`, { size: 9.3 });
+      this.line(`Objective: ${this.input.objective}`, {
+        size: 9.3,
+        gapAfter: 5,
+      });
+    }
     this.rule();
     this.line("Instructions", { bold: true, size: 10.5, color: BLUE });
     this.line(assessment.studentInstructions, { size: 9.5, gapAfter: 6 });
     this.rule();
 
     for (const item of assessment.items) {
-      this.line(`${item.position}. ${item.prompt} (${item.marks} mark${item.marks === 1 ? "" : "s"})`, {
-        bold: true,
-        size: 10.2,
-        gapBefore: 5,
-        gapAfter: 3,
-      });
+      this.line(
+        `${item.position}. ${item.prompt} (${item.marks} mark${item.marks === 1 ? "" : "s"})`,
+        {
+          bold: true,
+          size: 10.2,
+          gapBefore: 5,
+          gapAfter: 3,
+        },
+      );
       if (item.itemType === "objective") {
         item.options.forEach((option, index) =>
           this.line(`${String.fromCharCode(65 + index)}. ${option}`, {
@@ -199,8 +244,14 @@ class PdfComposer {
       size: 17,
       color: NAVY,
     });
-    this.line(assessment.title, { bold: true, size: 12.5, gapAfter: 6 });
-    this.line("HQLS / KAEC assessment validation recorded", {
+    this.line(assessment.title, { bold: true, size: 12.5, gapAfter: 4 });
+    if (this.input.assessmentType || this.input.overallDifficulty) {
+      this.line(
+        `${titleCase(this.input.assessmentType || "Assessment")} | ${titleCase(this.input.overallDifficulty || "Difficulty not specified")}`,
+        { size: 9, color: MUTED, gapAfter: 4 },
+      );
+    }
+    this.line("KAEC assessment quality validation recorded", {
       bold: true,
       size: 9,
       color: GREEN,
@@ -209,11 +260,18 @@ class PdfComposer {
     this.rule();
 
     for (const item of assessment.items) {
-      this.line(`Item ${item.position} - ${item.itemType.replaceAll("_", " ")} - ${item.marks} marks`, {
-        bold: true,
-        size: 10.5,
-        color: NAVY,
-        gapBefore: 5,
+      this.line(
+        `Item ${item.position} - ${item.itemType.replaceAll("_", " ")} - ${item.marks} marks`,
+        {
+          bold: true,
+          size: 10.5,
+          color: NAVY,
+          gapBefore: 5,
+        },
+      );
+      this.line(`Topic: ${item.topic} | Difficulty: ${item.difficulty}`, {
+        size: 8.8,
+        color: MUTED,
       });
       this.line(`Expected evidence: ${item.expectedEvidence.join("; ")}`, {
         size: 9.2,
@@ -309,7 +367,11 @@ function serializePdf(objects: Buffer[]) {
   }
   const xrefOffset = offset;
   const maxObject = objects.length - 1;
-  const xref: string[] = ["xref", `0 ${maxObject + 1}`, "0000000000 65535 f "];
+  const xref: string[] = [
+    "xref",
+    `0 ${maxObject + 1}`,
+    "0000000000 65535 f ",
+  ];
   for (let index = 1; index <= maxObject; index += 1) {
     xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
   }
