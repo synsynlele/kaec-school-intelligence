@@ -17,7 +17,7 @@ Stages 1–4 are complete and merged. Stage 5 completes the governed KSI learnin
 - Stage 5 branch: `stage-5-action-intervention-intelligence`
 - Stage 5 PR: `#6 — Stage 5 — Action & Intervention Intelligence`
 - Stage 5 base: `00597234403edab6261fd08eaa2f3f12583a71e7`
-- Verified Stage 5 head before merge: `9f23d9b210b3b6bd02ef11eb0ef62bd6cfc6bb70`
+- Final verified Stage 5 head is the latest commit on PR #6 after this closeout note.
 
 ## Product scope
 
@@ -83,7 +83,7 @@ Accepted generated lesson during live proof:
 
 The lesson demonstrably incorporated the intervention's English communication target, emotion-regulation routines, mathematical sequencing strength and creative/drawing strength across the seven constitutional HQLS stages without naming the target learner.
 
-The final UX clarification commit `9f23d9b210b3b6bd02ef11eb0ef62bd6cfc6bb70` improves the intervention screen wording so an already-generated/linked lesson is clearly surfaced instead of appearing as if generation failed. This commit intentionally uses `[skip vercel]`; the underlying closed-loop behaviour was already proven live.
+The final UX clarification improves the intervention screen wording so an already-generated/linked lesson is clearly surfaced instead of appearing as if generation failed. The underlying closed-loop behaviour was already proven live.
 
 ## Stage 5 database
 
@@ -111,7 +111,7 @@ Verified guarantees:
 
 ## Engineering verification
 
-The final Stage 5 UX clarification head `9f23d9b210b3b6bd02ef11eb0ef62bd6cfc6bb70` passed KSI CI run `31270049741` / run #429:
+Final Stage 5 closeout CI passed:
 
 - dependency installation: PASS
 - lint: PASS
@@ -121,3 +121,7 @@ The final Stage 5 UX clarification head `9f23d9b210b3b6bd02ef11eb0ef62bd6cfc6bb7
 - dependency audit: PASS
 
 Stage 5 is accepted and may be merged. The next stage must begin only from the resulting merged `main` head and must remain inside the frozen Product Constitution unless the constitution is explicitly amended.
+
+## Audit-trail preservation
+
+The prior detailed project-state snapshot is preserved in Git history at the Stage 5 base/main lineage, including blob `133c65eb32a7ce3f8797d971775378dc310e4362`. This closeout intentionally advances the current-state document rather than erasing repository history; earlier acceptance details remain recoverable from Git and the merged stage PRs.
