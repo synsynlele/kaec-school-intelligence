@@ -34,7 +34,6 @@ const CREAM: Color = [0.965, 0.94, 0.84];
 const TEXT: Color = [0.10, 0.10, 0.11];
 const MUTED: Color = [0.38, 0.39, 0.40];
 const BORDER: Color = [0.78, 0.79, 0.77];
-const SOFT: Color = [0.975, 0.975, 0.968];
 
 function ascii(value: string) {
   return value
@@ -359,7 +358,7 @@ function firstPage(input: DiagnosisPdfInput) {
     commands,
     "SCHOOL APPROVAL: Digitally approved through KAEC School Intelligence",
     MARGIN_X,
-    565,
+    542,
     7.8,
     true,
     MUTED,
@@ -368,7 +367,7 @@ function firstPage(input: DiagnosisPdfInput) {
     commands,
     dateLabel(input.finalisedAt),
     PAGE_WIDTH - 118,
-    565,
+    542,
     7.8,
     false,
     MUTED,
