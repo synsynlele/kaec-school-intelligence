@@ -12,24 +12,28 @@ const [
   migration,
   actorIndexMigration,
   derivation,
+  database,
   interventionClient,
   interventionPage,
   nextLessonClient,
   nextLessonPage,
   hqlsApi,
   diagnosisPage,
+  dashboard,
   vercel,
 ] = await Promise.all([
   text("docs/STAGE_5_ACTION_INTERVENTION_HANDOFF.md"),
   text("supabase/migrations/021_stage5_intervention_handoff.sql"),
   text("supabase/migrations/022_stage5_handoff_actor_indexes.sql"),
   text("lib/intervention/plan.ts"),
+  text("lib/supabase/database.ts"),
   text("components/interventions/intervention-client.tsx"),
   text("app/interventions/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
   text("app/interventions/next-lesson/page.tsx"),
   text("app/api/hqls/route.ts"),
   text("app/diagnosis/page.tsx"),
+  text("app/dashboard/page.tsx"),
   text("vercel.json"),
 ]);
 
@@ -86,6 +90,17 @@ assert(
 );
 
 for (const required of [
+  "InterventionHandoffRow",
+  "InterventionHandoffInsert",
+  "InterventionHandoffUpdate",
+  "intervention_handoffs: InterventionHandoffTable",
+  "next_lesson_id",
+  "confirmed_by",
+]) {
+  assert(database.includes(required), `Typed Stage 5 database overlay is missing: ${required}`);
+}
+
+for (const required of [
   "deriveInterventionDraft",
   "builder_growth_direction",
   "school_academic_actions",
@@ -105,8 +120,9 @@ assert(
 );
 assert(
   !interventionClient.includes("generateOpenAI") &&
-    !interventionClient.includes("@/lib/ai/openai"),
-  "Intervention handoff workspace must not invoke a new AI engine.",
+    !interventionClient.includes("@/lib/ai/openai") &&
+    !interventionClient.includes("SupabaseClient"),
+  "Intervention handoff workspace must use the typed KSI client and must not invoke a new AI engine.",
 );
 
 for (const required of [
@@ -121,6 +137,7 @@ for (const required of [
   "Parent Intervention",
   "Success Indicator",
   "Next Learning Adjustment",
+  'href="/interventions/next-lesson"',
 ]) {
   assert(
     interventionClient.includes(required),
@@ -136,6 +153,10 @@ assert(
 assert(
   diagnosisPage.includes('href="/interventions"'),
   "Final diagnosis workflow must expose Stage 5 interventions.",
+);
+assert(
+  dashboard.includes("Stage 5 active") && dashboard.includes('href="/interventions"'),
+  "Dashboard must expose the Stage 5 closed learning loop.",
 );
 
 for (const required of [
@@ -155,8 +176,9 @@ for (const required of [
 }
 assert(
   !nextLessonClient.includes("generateOpenAI") &&
-    !nextLessonClient.includes("@/lib/ai/openai"),
-  "Stage 5 must reuse the existing HQLS API instead of introducing a new AI generation path.",
+    !nextLessonClient.includes("@/lib/ai/openai") &&
+    !nextLessonClient.includes("SupabaseClient"),
+  "Stage 5 must use the typed KSI client and reuse the existing HQLS API instead of introducing a new AI generation path.",
 );
 assert(
   nextLessonPage.includes("NextLessonClient") &&
@@ -174,5 +196,5 @@ assert(
 );
 
 console.log(
-  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, human confirmation, tenant-safe immutable handoff, indexed provenance actors, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
+  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, indexed provenance actors, product navigation, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
 );
