@@ -75,26 +75,29 @@ export function SavedWorkClient() {
     return payload;
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const payload = await authenticatedFetch("/api/saved-work");
-      setData(payload as unknown as SavedWorkPayload);
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Saved work could not be loaded.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const refreshData = useCallback(async () => {
+    const payload = await authenticatedFetch("/api/saved-work");
+    setData(payload as unknown as SavedWorkPayload);
   }, [authenticatedFetch]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void refreshData()
+      .catch((caught) => {
+        if (!active) return;
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Saved work could not be loaded.",
+        );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [refreshData]);
 
   const items = useMemo(() => {
     const source = view === "active" ? data?.active ?? [] : data?.archived ?? [];
@@ -115,9 +118,10 @@ export function SavedWorkClient() {
     let confirmation: string | undefined;
     if (action === "delete") {
       if (!item.canPermanentlyDelete) return;
-      confirmation = window.prompt(
-        `Permanent deletion cannot be undone. Type DELETE to permanently remove “${item.title}”.`,
-      ) ?? undefined;
+      confirmation =
+        window.prompt(
+          `Permanent deletion cannot be undone. Type DELETE to permanently remove “${item.title}”.`,
+        ) ?? undefined;
       if (confirmation !== "DELETE") return;
     }
 
@@ -143,7 +147,7 @@ export function SavedWorkClient() {
             ? `${item.title} was restored.`
             : `${item.title} was permanently deleted.`,
       );
-      await load();
+      await refreshData();
     } catch (caught) {
       setError(
         caught instanceof Error
