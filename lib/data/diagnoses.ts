@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
+import type { KsiSupabaseClient } from "@/lib/supabase/database";
 
 export type CreateDiagnosisInput = {
   workspaceId: string;
@@ -16,6 +15,7 @@ export type CreateDiagnosisInput = {
   academicChallenges?: unknown[];
   characterStrengths?: unknown[];
   characterChallenges?: unknown[];
+  conciseDiagnosis?: string;
   schoolAcademicActions?: unknown[];
   parentAcademicActions?: unknown[];
   schoolCharacterActions?: unknown[];
@@ -28,7 +28,7 @@ export type CreateDiagnosisInput = {
 };
 
 export async function createDiagnosisDraft(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   input: CreateDiagnosisInput,
 ) {
   const { data: diagnosis, error } = await supabase
@@ -47,6 +47,7 @@ export async function createDiagnosisDraft(
       academic_challenges: input.academicChallenges ?? [],
       character_strengths: input.characterStrengths ?? [],
       character_challenges: input.characterChallenges ?? [],
+      concise_diagnosis: input.conciseDiagnosis ?? "",
       school_academic_actions: input.schoolAcademicActions ?? [],
       parent_academic_actions: input.parentAcademicActions ?? [],
       school_character_actions: input.schoolCharacterActions ?? [],
@@ -81,7 +82,7 @@ export async function createDiagnosisDraft(
 }
 
 export async function reviewDiagnosis(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   diagnosisId: string,
 ) {
   const { data: diagnosis, error } = await supabase.rpc("review_diagnosis", {
@@ -104,7 +105,7 @@ export async function reviewDiagnosis(
 }
 
 export async function finaliseDiagnosis(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   diagnosisId: string,
 ) {
   const { data: diagnosis, error } = await supabase.rpc("finalise_diagnosis", {
