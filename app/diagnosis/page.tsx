@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
-import { DiagnosisClient } from "@/components/diagnosis/diagnosis-client";
+import { KaecDiagnosisClient } from "@/components/diagnosis/kaec-diagnosis-client";
 
 export default function DiagnosisPage() {
   return (
@@ -16,7 +16,7 @@ export default function DiagnosisPage() {
               Stage 4 · Student Diagnosis Intelligence
             </p>
             <p className="mt-1 text-sm font-medium">
-              Evidence first. Patterns and possible interpretations stay separate from facts.
+              First-hand school evidence becomes a clear parent diagnosis and shared action plan.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -41,7 +41,7 @@ export default function DiagnosisPage() {
           </div>
         </div>
       </div>
-      <DiagnosisClient />
+      <KaecDiagnosisClient />
     </>
   );
 }
