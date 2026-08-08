@@ -374,7 +374,7 @@ export function InterventionClient() {
         <section className="space-y-5">
           <div className="rounded-3xl border border-emerald-950/10 bg-white p-5 shadow-sm sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
-              Stage 5 · Governed improvement handoff
+              Governed improvement handoff
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">
               Action & Intervention
@@ -631,7 +631,7 @@ function InterventionEditor({
           <div className="mt-3 flex flex-wrap gap-2">
             {active.nextLessonId ? (
               <Link
-                href="/hqls"
+                href={`/hqls?lesson=${encodeURIComponent(active.nextLessonId)}`}
                 className="rounded-xl bg-emerald-950 px-4 py-2.5 text-xs font-semibold text-white"
               >
                 Open Linked HQLS Lesson
