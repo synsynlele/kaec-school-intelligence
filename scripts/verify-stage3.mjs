@@ -30,10 +30,8 @@ assert(
   "Stage 3 specification has drifted into Diagnosis scope.",
 );
 
-const engine = await text("lib/assessment/engine.ts");
+const legacyEngine = await text("lib/assessment/engine.ts");
 for (const required of [
-  "ASSESSMENT_ENGINE_v1.0",
-  "ASSESSMENT_PROMPT_v1.0",
   "validateAssessment",
   "objective_options_inadequate",
   "objective_answer_invalid",
@@ -46,10 +44,44 @@ for (const required of [
   "creation",
   "crisis",
 ]) {
-  assert(engine.includes(required), `Stage 3 assessment engine is missing ${required}.`);
+  assert(
+    legacyEngine.includes(required),
+    `Stage 3 base assessment engine is missing ${required}.`,
+  );
 }
 
-const route = await text("app/api/assessment/route.ts");
+const worldClass = await text("lib/assessment/world-class.ts");
+for (const required of [
+  "ASSESSMENT_ENGINE_v1.1",
+  "ASSESSMENT_PROMPT_v1.1",
+  "KAEC_ASSESSMENT_QUALITY_v1.0",
+  "assignment",
+  "quiz",
+  "test",
+  "exam",
+  "project",
+  "easy",
+  "medium",
+  "hard",
+  "AssessmentTopicSpec",
+  "requested_topic_missing",
+  "topic_weight_misaligned",
+  "overall_difficulty_misaligned",
+  "duplicate_item_prompt",
+  "objective_duplicate_options",
+  "objective_answer_not_unique",
+  "validity",
+  "reliability",
+  "fairness",
+  "accessibility",
+]) {
+  assert(
+    worldClass.includes(required),
+    `Stage 3 world-class assessment model is missing ${required}.`,
+  );
+}
+
+const route = await text("app/api/assessment-v11/route.ts");
 for (const required of [
   "generateOpenAIJson",
   "createAssessment",
@@ -59,33 +91,45 @@ for (const required of [
   'action: "generate"',
   'action: "save_edits"',
   '"gpt-5-mini"',
+  "ASSESSMENT_ENGINE_VERSION_V11",
+  "ASSESSMENT_PROMPT_VERSION_V11",
+  "assessmentKind",
+  "overallDifficulty",
+  "requestedTopics",
+  "qualitySummary",
   "ASSESSMENT_VALIDATION_FAILED",
 ]) {
-  assert(route.includes(required), `Stage 3 assessment route is missing ${required}.`);
+  assert(route.includes(required), `Stage 3 v1.1 route is missing ${required}.`);
 }
 assert(
   !route.includes("SUPABASE_SERVICE_ROLE_KEY") && !route.includes("Gemini"),
-  "Stage 3 route contains forbidden privileged or obsolete provider wiring.",
+  "Stage 3 v1.1 route contains forbidden privileged or obsolete provider wiring.",
 );
 
-const client = await text("components/assessment/assessment-client.tsx");
+const client = await text(
+  "components/assessment/world-class-assessment-client.tsx",
+);
 for (const required of [
-  "/api/assessment",
+  "/api/assessment-v11",
   "Source HQLS lesson",
-  "Mixed item distribution",
+  "Assessment type",
+  "Overall difficulty",
+  "Topics, objectives and weighting",
+  "+ Add topic",
+  "Question-format distribution",
   "Critical Thinking",
   "Project",
   "Save edits",
   "Download PDF",
   "sm:grid-cols-2",
 ]) {
-  assert(client.includes(required), `Stage 3 assessment UI is missing ${required}.`);
+  assert(client.includes(required), `Stage 3 v1.1 UI is missing ${required}.`);
 }
 
 const page = await text("app/assessment/page.tsx");
 assert(
-  page.includes("KaecBrand") && page.includes("AssessmentClient"),
-  "Stage 3 assessment page is missing official branding or the assessment workspace.",
+  page.includes("KaecBrand") && page.includes("WorldClassAssessmentClient"),
+  "Stage 3 assessment page is missing official branding or the v1.1 assessment workspace.",
 );
 
 const pdf = await text("lib/pdf/assessment-pdf.ts");
@@ -107,7 +151,8 @@ assert(
 
 const openai = await text("lib/ai/openai.ts");
 assert(
-  openai.includes('"gpt-5-mini"') && openai.includes("process.env.KSI_OPENAI_MODEL"),
+  openai.includes('"gpt-5-mini"') &&
+    openai.includes("process.env.KSI_OPENAI_MODEL"),
   "KSI cost-optimised OpenAI default/override contract is missing.",
 );
 
@@ -117,4 +162,6 @@ assert(
   "Dashboard does not expose Stage 3 Assessment Intelligence.",
 );
 
-console.log("Stage 3 structural verification passed: assessment constitution, OpenAI generation, independent validation, responsive workspace, Lesson-to-Assessment traceability and branded student/teacher PDF export are present.");
+console.log(
+  "Stage 3 structural verification passed: Assessment Intelligence v1.1 protects multi-topic weighted blueprints, assessment type, overall difficulty, quality validation, OpenAI generation, responsive editing, Lesson-to-Assessment traceability and branded PDF export.",
+);
