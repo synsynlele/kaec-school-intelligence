@@ -20,7 +20,7 @@ const [
   text("docs/PRODUCT_CONSTITUTION.md"),
   text("docs/STAGE_6_V1_INTEGRATION_LAUNCH_READINESS.md"),
   text("components/hqls/hqls-client.tsx"),
-  text("components/assessment/assessment-client.tsx"),
+  text("components/assessment/world-class-assessment-client.tsx"),
   text("components/diagnosis/kaec-diagnosis-client.tsx"),
   text("components/interventions/intervention-client.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
@@ -64,8 +64,9 @@ for (const required of [
   "sourceLessonId",
   "applySourceLesson",
   "Source HQLS lesson (optional)",
+  'fetch("/api/assessment-v11"',
 ]) {
-  assert(assessmentClient.includes(required), `Assessment source-lesson continuity is missing: ${required}`);
+  assert(assessmentClient.includes(required), `Live world-class Assessment source-lesson continuity is missing: ${required}`);
 }
 
 for (const required of [
@@ -93,10 +94,11 @@ assert(
 );
 
 assert(
-  packageJson.includes('"verify:structure"'),
-  "Permanent structural verification must remain enabled.",
+  packageJson.includes('"verify:structure"') &&
+    packageJson.includes("verify-stage6.mjs"),
+  "Permanent Stage 6 structural verification must remain enabled.",
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, exact intervention-to-HQLS artifact navigation, source lesson/assessment traceability, diagnosis evidence continuity, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, exact intervention-to-HQLS artifact navigation, live world-class source lesson/assessment traceability, diagnosis evidence continuity, and launch-readiness contract are present.",
 );
