@@ -9,8 +9,18 @@ import type {
   Json,
 } from "@/lib/supabase/database.types";
 
-type DiagnosisRow =
-  GeneratedDatabase["public"]["Tables"]["diagnoses"]["Row"];
+type GeneratedDiagnosisTable =
+  GeneratedDatabase["public"]["Tables"]["diagnoses"];
+type DiagnosisRow = GeneratedDiagnosisTable["Row"] & {
+  concise_diagnosis: string;
+};
+type DiagnosisInsert = GeneratedDiagnosisTable["Insert"] & {
+  concise_diagnosis?: string;
+};
+type DiagnosisUpdate = GeneratedDiagnosisTable["Update"] & {
+  concise_diagnosis?: string;
+};
+
 type HqlsFidelityCheckRow =
   GeneratedDatabase["public"]["Tables"]["hqls_fidelity_checks"]["Row"];
 
@@ -24,13 +34,18 @@ type AssessmentItemRow = Omit<
 
 type FinalStageTables = Omit<
   GeneratedDatabase["public"]["Tables"],
-  "assessment_items"
+  "assessment_items" | "diagnoses"
 > & {
   assessment_items: Omit<
     GeneratedDatabase["public"]["Tables"]["assessment_items"],
     "Row"
   > & {
     Row: AssessmentItemRow;
+  };
+  diagnoses: Omit<GeneratedDiagnosisTable, "Row" | "Insert" | "Update"> & {
+    Row: DiagnosisRow;
+    Insert: DiagnosisInsert;
+    Update: DiagnosisUpdate;
   };
 };
 
@@ -44,7 +59,10 @@ type ArchivedSavedWorkRow = {
   can_permanently_delete: boolean;
 };
 
-type FinalStageFunctions = GeneratedDatabase["public"]["Functions"] & {
+type FinalStageFunctions = Omit<
+  GeneratedDatabase["public"]["Functions"],
+  "review_diagnosis" | "finalise_diagnosis"
+> & {
   create_hqls_lesson_draft: {
     Args: {
       target_workspace_id: string;
