@@ -13,7 +13,7 @@ export default function InterventionsPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 5 · Action & Intervention
+              Action & Intervention
             </p>
             <p className="mt-1 text-sm font-medium">
               Move an approved diagnosis into a practical intervention and the next learning cycle.
