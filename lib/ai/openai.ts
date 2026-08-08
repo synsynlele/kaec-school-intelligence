@@ -31,6 +31,11 @@ export class OpenAIProviderError extends Error {
   }
 }
 
+export type OpenAIModelPolicy = {
+  primary: string;
+  repair: string;
+};
+
 export type GenerateOpenAIJsonInput = {
   systemInstruction: string;
   parts: OpenAIPart[];
@@ -38,12 +43,14 @@ export type GenerateOpenAIJsonInput = {
   schemaName?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  model?: string;
 };
 
 export type GenerateOpenAIJsonResult<T> = {
   data: T;
   provider: "openai";
   model: string;
+  modelRole: "primary" | "repair" | "explicit";
   responseId?: string;
 };
 
@@ -136,11 +143,37 @@ function extractOutputText(payload: OpenAIResponse) {
   return (
     payload.output
       ?.flatMap((item) => item.content ?? [])
-      .filter((part) => part.type === "output_text" && typeof part.text === "string")
+      .filter(
+        (part) => part.type === "output_text" && typeof part.text === "string",
+      )
       .map((part) => part.text ?? "")
       .join("")
       .trim() ?? ""
   );
+}
+
+export function getOpenAIModelPolicy(): OpenAIModelPolicy {
+  const primary =
+    process.env.KSI_OPENAI_PRIMARY_MODEL?.trim() ||
+    process.env.KSI_OPENAI_MODEL?.trim() ||
+    process.env.KSI_AI_MODEL?.trim() ||
+    "gpt-5-nano";
+  const repair =
+    process.env.KSI_OPENAI_REPAIR_MODEL?.trim() || "gpt-5-mini";
+  return { primary, repair };
+}
+
+function chooseOpenAIModel(input: GenerateOpenAIJsonInput) {
+  const explicit = input.model?.trim();
+  if (explicit) {
+    return { model: explicit, modelRole: "explicit" as const };
+  }
+
+  const policy = getOpenAIModelPolicy();
+  const isRepair = input.schemaName?.toLowerCase().includes("repair") ?? false;
+  return isRepair
+    ? { model: policy.repair, modelRole: "repair" as const }
+    : { model: policy.primary, modelRole: "primary" as const };
 }
 
 export async function generateOpenAIJson<T>(
@@ -154,13 +187,19 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // KSI defaults to GPT-5 mini for cost-sensitive production generation.
-  // Keep the environment override so specific deployments can benchmark or upgrade
-  // without changing application code.
-  const model =
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5-mini";
+  // Cost policy: use the cheapest candidate for the first attempt, while all
+  // deterministic KAEC validators remain authoritative. Repair calls use the
+  // stronger fallback model so quality is recovered only when it is needed.
+  // KSI_OPENAI_PRIMARY_MODEL intentionally takes precedence over the legacy
+  // KSI_OPENAI_MODEL variable so Preview can benchmark nano without changing
+  // the currently configured Production model.
+  const { model, modelRole } = chooseOpenAIModel(input);
+
+  console.info("KSI OpenAI generation", {
+    schema: input.schemaName ?? "ksi_structured_response",
+    model,
+    modelRole,
+  });
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -204,7 +243,9 @@ export async function generateOpenAIJson<T>(
   const payload = (await response.json()) as OpenAIResponse;
   if (payload.error?.message) {
     throw new OpenAIProviderError(
-      payload.error.code ? `OPENAI_${payload.error.code}` : "OPENAI_RESPONSE_ERROR",
+      payload.error.code
+        ? `OPENAI_${payload.error.code}`
+        : "OPENAI_RESPONSE_ERROR",
       payload.error.message,
     );
   }
@@ -228,6 +269,7 @@ export async function generateOpenAIJson<T>(
       data: JSON.parse(text) as T,
       provider: "openai",
       model,
+      modelRole,
       responseId: payload.id,
     };
   } catch {
