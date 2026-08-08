@@ -163,8 +163,10 @@ assert(
   "Final diagnosis workflow must expose Stage 5 interventions.",
 );
 assert(
-  dashboard.includes("Stage 5 active") && dashboard.includes('href="/interventions"'),
-  "Dashboard must expose the Stage 5 closed learning loop.",
+  dashboard.includes("School Intelligence Workspace") &&
+    dashboard.includes('href="/interventions"') &&
+    dashboard.includes('href="/hqls"'),
+  "Dashboard must expose the complete closed learning loop without relying on development-stage labels.",
 );
 
 for (const required of [
@@ -191,8 +193,8 @@ assert(
 );
 assert(
   nextLessonPage.includes("NextLessonClient") &&
-    nextLessonPage.includes("Stage 5 · Closed Learning Loop"),
-  "Stage 5 next-lesson route is missing.",
+    nextLessonPage.includes("Closed Learning Loop"),
+  "Stage 5 next-lesson route must remain available without requiring a development-stage label in the product UI.",
 );
 assert(
   hqlsApi.includes('if (body.action === "generate")') &&
