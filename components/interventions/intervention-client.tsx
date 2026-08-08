@@ -1,6 +1,6 @@
 "use client";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
   type InterventionDraft,
 } from "@/lib/intervention/plan";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { Json } from "@/lib/supabase/database.types";
 
 type Workspace = { id: string; name: string };
 type Student = { id: string; display_name: string; class_id: string | null };
@@ -60,10 +61,6 @@ type EditorState = InterventionDraft & {
   confirmedAt: string | null;
   nextLessonId: string | null;
 };
-
-function untypedClient() {
-  return getBrowserSupabaseClient() as unknown as SupabaseClient;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -127,7 +124,7 @@ function dateLabel(value: string | null) {
 }
 
 async function loadWorkspace(): Promise<WorkspaceState | null> {
-  const supabase = untypedClient();
+  const supabase = getBrowserSupabaseClient();
   const {
     data: { user },
     error: userError,
@@ -255,7 +252,7 @@ export function InterventionClient() {
     setError(null);
     setNotice(null);
     try {
-      const supabase = untypedClient();
+      const supabase = getBrowserSupabaseClient();
       const {
         data: { user },
         error: userError,
@@ -274,8 +271,8 @@ export function InterventionClient() {
           status: "draft",
           priority_growth_target: draft.priorityGrowthTarget,
           evidence_basis: draft.evidenceBasis,
-          school_intervention: draft.schoolIntervention,
-          parent_intervention: draft.parentIntervention,
+          school_intervention: draft.schoolIntervention as unknown as Json,
+          parent_intervention: draft.parentIntervention as unknown as Json,
           timeframe: draft.timeframe,
           success_indicator: draft.successIndicator,
           review_date: draft.reviewDate,
@@ -308,14 +305,14 @@ export function InterventionClient() {
     setError(null);
     setNotice(null);
     try {
-      const supabase = untypedClient();
+      const supabase = getBrowserSupabaseClient();
       const { data, error: updateError } = await supabase
         .from("intervention_handoffs")
         .update({
           priority_growth_target: active.priorityGrowthTarget.trim(),
           evidence_basis: active.evidenceBasis.trim(),
-          school_intervention: active.schoolIntervention,
-          parent_intervention: active.parentIntervention,
+          school_intervention: active.schoolIntervention as unknown as Json,
+          parent_intervention: active.parentIntervention as unknown as Json,
           timeframe: active.timeframe.trim(),
           success_indicator: active.successIndicator.trim(),
           review_date: active.reviewDate || null,
@@ -625,13 +622,29 @@ function InterventionEditor({
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-semibold text-emerald-950">Ready for the next HQLS lesson</p>
-          <p className="mt-1 text-xs leading-5 text-emerald-900/80">
-            Confirmed {dateLabel(active.confirmedAt)}. The next implementation slice will attach this exact handoff to HQLS generation without exposing the learner inside the class lesson.
+          <p className="text-sm font-semibold text-emerald-950">
+            {active.nextLessonId ? "Next HQLS lesson linked" : "Ready for the next HQLS lesson"}
           </p>
-          {active.nextLessonId ? (
-            <p className="mt-2 text-xs font-semibold text-emerald-950">Next lesson linked.</p>
-          ) : null}
+          <p className="mt-1 text-xs leading-5 text-emerald-900/80">
+            Confirmed {dateLabel(active.confirmedAt)}. KSI will carry this locked handoff into the existing HQLS engine without exposing or singling out the learner inside the class lesson.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {active.nextLessonId ? (
+              <Link
+                href="/hqls"
+                className="rounded-xl bg-emerald-950 px-4 py-2.5 text-xs font-semibold text-white"
+              >
+                Open Linked HQLS Lesson
+              </Link>
+            ) : (
+              <Link
+                href="/interventions/next-lesson"
+                className="rounded-xl bg-emerald-950 px-4 py-2.5 text-xs font-semibold text-white"
+              >
+                Build Next HQLS Lesson
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </div>
