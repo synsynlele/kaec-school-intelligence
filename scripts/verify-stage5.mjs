@@ -10,6 +10,7 @@ const assert = (condition, message) => {
 const [
   spec,
   migration,
+  actorIndexMigration,
   derivation,
   interventionClient,
   interventionPage,
@@ -21,6 +22,7 @@ const [
 ] = await Promise.all([
   text("docs/STAGE_5_ACTION_INTERVENTION_HANDOFF.md"),
   text("supabase/migrations/021_stage5_intervention_handoff.sql"),
+  text("supabase/migrations/022_stage5_handoff_actor_indexes.sql"),
   text("lib/intervention/plan.ts"),
   text("components/interventions/intervention-client.tsx"),
   text("app/interventions/page.tsx"),
@@ -35,7 +37,7 @@ for (const required of [
   "not a fourth intelligence engine",
   "Final Diagnosis → Intervention Handoff → Human Confirmation → Next HQLS Lesson",
   "Final Diagnosis → Confirmed Intervention → Next HQLS Lesson",
-  "existing `/api/hqls` generation path",
+  "`/api/hqls` generation path",
   "do not name the target learner",
   "Confirmed intervention content is immutable",
   "[skip vercel]",
@@ -76,6 +78,11 @@ assert(
   migration.includes("new.confirmed_by := (select auth.uid())") &&
     migration.includes("new.confirmed_at := now()"),
   "Stage 5 confirmation must record the human actor and timestamp.",
+);
+assert(
+  actorIndexMigration.includes("intervention_handoffs_created_by_idx") &&
+    actorIndexMigration.includes("intervention_handoffs_confirmed_by_idx"),
+  "Stage 5 actor foreign keys must remain covered by indexes.",
 );
 
 for (const required of [
@@ -167,5 +174,5 @@ assert(
 );
 
 console.log(
-  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, human confirmation, tenant-safe immutable handoff, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
+  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, human confirmation, tenant-safe immutable handoff, indexed provenance actors, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
 );
