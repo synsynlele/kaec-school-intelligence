@@ -142,7 +142,7 @@ for (const required of [
   'fetch("/api/hqls"',
   'action: "generate"',
   "Confirmed intervention baseline",
-  "do not name, label or single out any learner",
+  "Do not name, label or single out any learner",
   "inclusive class-level differentiation",
   'from("intervention_handoffs")',
   "next_lesson_id: lessonId",
