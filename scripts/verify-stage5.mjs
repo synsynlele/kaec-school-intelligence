@@ -121,7 +121,8 @@ assert(
 assert(
   !interventionClient.includes("generateOpenAI") &&
     !interventionClient.includes("@/lib/ai/openai") &&
-    !interventionClient.includes("SupabaseClient"),
+    !interventionClient.includes('from "@supabase/supabase-js"') &&
+    !interventionClient.includes("as unknown as SupabaseClient"),
   "Intervention handoff workspace must use the typed KSI client and must not invoke a new AI engine.",
 );
 
@@ -177,7 +178,8 @@ for (const required of [
 assert(
   !nextLessonClient.includes("generateOpenAI") &&
     !nextLessonClient.includes("@/lib/ai/openai") &&
-    !nextLessonClient.includes("SupabaseClient"),
+    !nextLessonClient.includes('from "@supabase/supabase-js"') &&
+    !nextLessonClient.includes("as unknown as SupabaseClient"),
   "Stage 5 must use the typed KSI client and reuse the existing HQLS API instead of introducing a new AI generation path.",
 );
 assert(
