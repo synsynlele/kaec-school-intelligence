@@ -13,7 +13,10 @@ const [
   hqlsClient,
   assessmentClient,
   diagnosisClient,
+  diagnosisPage,
   interventionClient,
+  interventionPage,
+  nextLessonPage,
   nextLessonClient,
   packageJson,
 ] = await Promise.all([
@@ -22,7 +25,10 @@ const [
   text("components/hqls/hqls-client.tsx"),
   text("components/assessment/world-class-assessment-client.tsx"),
   text("components/diagnosis/kaec-diagnosis-client.tsx"),
+  text("app/diagnosis/page.tsx"),
   text("components/interventions/intervention-client.tsx"),
+  text("app/interventions/page.tsx"),
+  text("app/interventions/next-lesson/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
   text("package.json"),
 ]);
@@ -136,11 +142,23 @@ for (const required of [
 }
 
 assert(
+  diagnosisPage.includes("Student Diagnosis Intelligence") &&
+    !diagnosisPage.includes("Stage 4"),
+  "Diagnosis release UI must not expose internal development-stage labels.",
+);
+assert(
+  !interventionPage.includes("Stage 5") &&
+    !nextLessonPage.includes("Stage 5") &&
+    !interventionClient.includes("Stage 5 ·"),
+  "Intervention release UI must not expose internal development-stage labels.",
+);
+
+assert(
   packageJson.includes('"verify:structure"') &&
     packageJson.includes("verify-stage6.mjs"),
   "Permanent Stage 6 structural verification must remain enabled.",
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, release-facing workflow labels, and launch-readiness contract are present.",
 );
