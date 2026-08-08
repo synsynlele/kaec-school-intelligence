@@ -297,11 +297,6 @@ export function KaecDiagnosisClient() {
     return () => window.clearTimeout(timer);
   }, [refresh]);
 
-  const selectedStudent = useMemo(
-    () => data?.students.find((student) => student.id === studentId) ?? null,
-    [data, studentId],
-  );
-
   const selectedAssessment = useMemo(
     () => data?.assessments.find((assessment) => assessment.id === assessmentId) ?? null,
     [assessmentId, data],
@@ -366,6 +361,12 @@ export function KaecDiagnosisClient() {
     setItemMarks({});
     setItemNotes({});
     replaceAssessmentWorkflowUrl(nextAssessmentId);
+  }
+
+  function openDiagnosis(entry: DiagnosisEntry) {
+    setActive(entry);
+    setError(null);
+    setNotice(null);
   }
 
   async function generate() {
@@ -874,7 +875,7 @@ export function KaecDiagnosisClient() {
                     <button
                       key={entry.row.id}
                       type="button"
-                      onClick={() => setActive(entry)}
+                      onClick={() => openDiagnosis(entry)}
                       className="rounded-xl border border-zinc-200 p-3 text-left transition hover:bg-stone-50"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
