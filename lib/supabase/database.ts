@@ -34,7 +34,17 @@ type FinalStageTables = Omit<
   };
 };
 
-type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
+type ArchivedSavedWorkRow = {
+  artifact_type: string;
+  artifact_id: string;
+  title: string;
+  updated_at: string;
+  dependency_count: number;
+  can_manage: boolean;
+  can_permanently_delete: boolean;
+};
+
+type FinalStageFunctions = GeneratedDatabase["public"]["Functions"] & {
   create_hqls_lesson_draft: {
     Args: {
       target_workspace_id: string;
@@ -68,12 +78,24 @@ type FinalStage1Functions = GeneratedDatabase["public"]["Functions"] & {
     };
     Returns: HqlsFidelityCheckRow;
   };
+  list_archived_saved_work: {
+    Args: { target_workspace_id: string };
+    Returns: ArchivedSavedWorkRow[];
+  };
+  manage_saved_artifact: {
+    Args: {
+      target_artifact_type: string;
+      target_artifact_id: string;
+      target_action: string;
+    };
+    Returns: Json;
+  };
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
   public: Omit<GeneratedDatabase["public"], "Functions" | "Tables"> & {
     Tables: FinalStageTables;
-    Functions: FinalStage1Functions;
+    Functions: FinalStageFunctions;
   };
 };
 
