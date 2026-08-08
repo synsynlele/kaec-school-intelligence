@@ -55,18 +55,40 @@ for (const required of [
   "The linked HQLS lesson is not available in the active workspace.",
   "router.replace(`/hqls?lesson=${encodeURIComponent(lessonId)}`",
   'id="hqls-selected-lesson"',
+  'selectedLesson.status === "validated"',
+  'href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}',
+  "Build Assessment",
 ]) {
-  assert(hqlsClient.includes(required), `Stage 6 exact HQLS artifact navigation is missing: ${required}`);
+  assert(
+    hqlsClient.includes(required),
+    `Stage 6 exact HQLS artifact navigation is missing: ${required}`,
+  );
 }
 
 for (const required of [
   "source_lesson_id",
   "sourceLessonId",
-  "applySourceLesson",
+  "applySourceLessonFromState",
   "Source HQLS lesson (optional)",
   'fetch("/api/assessment-v11"',
+  'requestedWorkflowId("lesson")',
+  'requestedWorkflowId("assessment")',
+  'next.lessons.some((lesson) => lesson.id === lessonId)',
+  'next.assessments.some((item) => item.id === assessmentId)',
+  "The linked HQLS lesson is not available as a validated assessment source in the active workspace.",
+  "The linked assessment is not available in the active workspace.",
+  "router.replace(`/assessment?lesson=${encodeURIComponent(lessonId)}`",
+  "`/assessment?assessment=${encodeURIComponent(assessmentId)}`",
+  'id="assessment-selected"',
+  'href={`/hqls?lesson=${encodeURIComponent(selectedAssessment.source_lesson_id)}`}',
+  'href={`/diagnosis?assessment=${encodeURIComponent(selectedAssessment.id)}`}',
+  "Open Source HQLS Lesson",
+  "Use in Diagnosis",
 ]) {
-  assert(assessmentClient.includes(required), `Live world-class Assessment source-lesson continuity is missing: ${required}`);
+  assert(
+    assessmentClient.includes(required),
+    `Live world-class Assessment workflow continuity is missing: ${required}`,
+  );
 }
 
 for (const required of [
@@ -75,8 +97,19 @@ for (const required of [
   'mode !== "quick_teacher"',
   "Assessment Evidence",
   "Select saved assessment",
+  "requestedAssessmentId",
+  '.get("assessment")',
+  "assessmentHandoffApplied",
+  'setMode("assessment_based")',
+  "The linked assessment is not available as diagnosis evidence in the active workspace.",
+  "Assessment evidence loaded:",
+  "replaceAssessmentWorkflowUrl",
+  "onAssessmentChange",
 ]) {
-  assert(diagnosisClient.includes(required), `Diagnosis assessment-evidence continuity is missing: ${required}`);
+  assert(
+    diagnosisClient.includes(required),
+    `Diagnosis assessment-evidence continuity is missing: ${required}`,
+  );
 }
 
 for (const required of [
@@ -84,14 +117,23 @@ for (const required of [
   'next_lesson_id: lessonId',
   "Do not generate another lesson",
 ]) {
-  assert(nextLessonClient.includes(required), `Intervention → exact HQLS handoff is missing: ${required}`);
+  assert(
+    nextLessonClient.includes(required),
+    `Intervention → exact HQLS handoff is missing: ${required}`,
+  );
 }
 
-assert(
-  interventionClient.includes("nextLessonId") &&
-    interventionClient.includes("Open Linked HQLS Lesson"),
-  "Confirmed interventions must continue to expose their linked next HQLS lesson.",
-);
+for (const required of [
+  "nextLessonId",
+  "Open Linked HQLS Lesson",
+  'href={`/hqls?lesson=${encodeURIComponent(active.nextLessonId)}`}',
+  "Governed improvement handoff",
+]) {
+  assert(
+    interventionClient.includes(required),
+    `Confirmed intervention history continuity is missing: ${required}`,
+  );
+}
 
 assert(
   packageJson.includes('"verify:structure"') &&
@@ -100,5 +142,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, exact intervention-to-HQLS artifact navigation, live world-class source lesson/assessment traceability, diagnosis evidence continuity, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, exact intervention -> HQLS artifact navigation, and launch-readiness contract are present.",
 );
