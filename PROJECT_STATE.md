@@ -17,7 +17,6 @@ Stages 1–4 are complete and merged. Stage 5 completes the governed KSI learnin
 - Stage 5 branch: `stage-5-action-intervention-intelligence`
 - Stage 5 PR: `#6 — Stage 5 — Action & Intervention Intelligence`
 - Stage 5 base: `00597234403edab6261fd08eaa2f3f12583a71e7`
-- Stage 5 accepted head: `460374adba18f4fd9e99e8f321497db018707c4b`
 
 ## Product scope
 
@@ -111,7 +110,7 @@ Verified guarantees:
 
 ## Engineering verification
 
-Final Stage 5 closeout CI passed:
+Final Stage 5 closeout CI passed on the accepted implementation and closeout documentation lineage:
 
 - dependency installation: PASS
 - lint: PASS
