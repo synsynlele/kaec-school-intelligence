@@ -1,26 +1,52 @@
 # KAEC School Intelligence — Stage 4: Student Diagnosis Intelligence
 
-Status: **IN PROGRESS — constitutional implementation contract**
+Status: **IN PROGRESS — KAEC parent-diagnosis acceptance contract**
 
 Base: Stage 3 merge commit `7ed108f8f493c1df3ebad2318cbfb2bd25234dc8`.
 
 ## Goal
 
-Turn real student evidence into an educational diagnosis that clearly separates what was observed from what KSI infers and what the school/parent should do next.
+Turn real student evidence into a diagnosis that gives parents clear first-hand information about their ward academically, practically and in character, while keeping KSI's evidence/uncertainty safeguards behind the school review process.
 
 The Stage 4 loop is:
 
-**Student + Evidence → Diagnosis Draft → Teacher Review/Edit → Approval → Parent Report**
+**Student + First-hand Evidence → Diagnosis Draft → Teacher Review/Edit → Approval → KAEC Parent Diagnosis Sheet**
 
 Stage 4 does not build a medical, psychiatric, psychological, personality or character-labelling system.
 
+## Parent-first product standard
+
+The proven KAEC diagnosis sheet is the parent-facing reference structure. KSI must preserve its practical clarity rather than replacing it with a generic AI report.
+
+The parent report must lead with:
+
+1. **DIAGNOSIS** — a concise evidence-grounded summary.
+2. **ACADEMICS / SKILLS**
+   - Strengths
+   - Challenges
+3. **CHARACTER (Discipline)**
+   - Strengths
+   - Challenges
+4. **ACTION PLAN (Academics / Skills)**
+   - School
+   - Parents
+5. **ACTION PLAN (Character)**
+   - School
+   - Parents
+6. Academic Session and Term.
+7. School review/approval status.
+
+Builder Growth Direction, Encouragement Note and evidence limitations may follow as supporting growth notes. Internal model/provider information, raw evidence IDs and private confidence mechanics never belong on the primary parent sheet.
+
 ## Constitutional reasoning hierarchy
 
-Every generated diagnosis must preserve:
+Internally, every generated diagnosis must preserve:
 
 **Observed Evidence → Detected Pattern → Possible Interpretation → Recommended Action**
 
 If the evidence does not support a conclusion, KSI must state **Insufficient Evidence**.
+
+This hierarchy exists to protect the quality of the parent-facing conclusions. It must not make the parent report difficult to understand.
 
 ### Evidence
 
@@ -28,7 +54,9 @@ Observed evidence is factual and attributable. It may come from:
 
 - assessment score;
 - assessment-item performance;
-- teacher observation;
+- first-hand teacher observation;
+- teacher-indicated strength evidence;
+- teacher-indicated challenge evidence;
 - learner reflection already recorded as evidence.
 
 Generated patterns and interpretations are never themselves evidence.
@@ -62,7 +90,19 @@ Every recommended action must be specific, feasible and linked to an evidence-ba
 Required:
 
 - one active student;
-- at least two factual teacher observations.
+- Academic Session;
+- Term;
+- at least two first-hand teacher observations/indicators.
+
+The teacher intake deliberately mirrors KAEC's existing diagnosis practice:
+
+- Academic / Skills Observations;
+- Character / Discipline Observations;
+- Academic / Skills Strength Indicators;
+- Academic / Skills Challenge Indicators;
+- Character Strength Indicators;
+- Character Challenge Indicators;
+- optional Additional Factual Notes with an explicit domain.
 
 Assessment evidence is optional.
 
@@ -71,30 +111,36 @@ Assessment evidence is optional.
 Required:
 
 - one active student;
+- Academic Session;
+- Term;
 - one saved assessment;
 - assessment score and/or item-level evidence.
 
-Teacher observations are optional.
+Teacher observations are optional but may strengthen the diagnosis.
 
 ### 3. Combined Diagnosis
 
 Required:
 
 - one active student;
+- Academic Session;
+- Term;
 - one saved assessment with score/item evidence;
-- at least one factual teacher observation.
+- at least one factual teacher observation/indicator.
 
 ## Evidence capture
 
 Stage 4 records new evidence into `student_evidence` before diagnosis generation.
 
-Supported capture in the first Stage 4 UI:
+Supported capture:
 
 - overall assessment score (`score`);
 - item-level awarded marks (`item_result`);
-- teacher observations (`observation`).
+- teacher observations and indicators (`observation`).
 
 Item evidence preserves assessment item/topic/objective/maximum-mark context so Diagnosis can reason from actual learning evidence rather than only a percentage.
+
+Teacher-indicated strengths/challenges are evidence signals, not automatically accepted conclusions. KSI still validates them against the complete supplied evidence before producing the parent sheet.
 
 ## Diagnosis structured output
 
@@ -104,23 +150,13 @@ Prompt version: `DIAGNOSIS_PROMPT_v1.0`
 Required generated fields:
 
 - `observedEvidence[]`
-  - evidence ID
-  - source
-  - domain (`academic`, `skill`, `character`)
-  - factual statement
 - `detectedPatterns[]`
-  - statement
-  - evidence IDs
-  - confidence
 - `possibleInterpretations[]`
-  - statement
-  - evidence IDs
-  - confidence
-  - uncertainty note
 - Academics / Skills strengths
 - Academics / Skills challenges
 - Character (Discipline) strengths
 - Character (Discipline) challenges
+- concise Diagnosis
 - School actions — Academics / Skills
 - Parent actions — Academics / Skills
 - School actions — Character
@@ -150,16 +186,17 @@ One repair attempt is allowed. Nothing is saved unless the repaired output passe
 
 ## Human review and approval
 
-Existing database lifecycle remains authoritative:
+Database lifecycle remains authoritative:
 
 `draft → reviewed → final → archived`
 
 - Generated diagnosis starts as `draft`.
-- Draft content may be edited by an authorised workspace member.
+- Draft parent-facing content may be edited by an authorised workspace member.
 - `review_diagnosis(...)` records the authenticated human reviewer.
 - Final approval requires workspace owner/admin through `finalise_diagnosis(...)`.
 - Reviewer/finaliser identity is derived from `auth.uid()`; the browser cannot forge it.
-- Final diagnosis content cannot be silently edited by an ordinary member.
+- Final diagnosis content cannot be silently edited.
+- Changing Academic Session or Term after review also invalidates the review.
 
 Required parent-report flow:
 
@@ -169,21 +206,41 @@ Stage 4 does not automatically send reports to parents.
 
 ## Parent-facing report
 
-The branded KAEC-NG parent report preserves:
+The official KAEC-NG parent PDF uses a **landscape diagnosis-sheet matrix** as Page 1:
 
-- student details;
-- Academics / Skills strengths and challenges;
-- Character (Discipline) strengths and challenges;
+- official KAEC-NG logo and branding;
+- Name;
+- Class;
+- Academic Session;
+- Term;
 - concise Diagnosis;
-- Action Plan — Academics / Skills: School and Parents;
-- Action Plan — Character: School and Parents;
+- four Academics/Skills + Character strength/challenge cells;
+- four School/Parents action-plan cells;
+- digital school approval indicator.
+
+A supporting Growth & Review Notes page may contain:
+
 - Builder Growth Direction;
 - Encouragement Note;
-- prepared/reviewed/approved information and dates.
+- Evidence Limitations;
+- assessment/report basis;
+- review and approval dates;
+- educational-report scope note.
 
 The parent report must not expose internal prompt text, provider/model details, raw database IDs, private internal confidence mechanics or speculative notes that were not approved for parent communication.
 
-PDF download is permitted only for `final` diagnoses. Preview is permitted after human review.
+PDF download is permitted only for `final` diagnoses.
+
+## Report context persistence
+
+`diagnoses.academic_session` and `diagnoses.term` are first-class reviewed fields.
+
+`set_diagnosis_report_context(...)`:
+
+- requires authenticated active workspace membership;
+- requires non-empty Academic Session and Term;
+- cannot modify a Final diagnosis;
+- participates in review freshness so a change to report period returns Reviewed content to Draft.
 
 ## Traceability and provenance
 
@@ -195,6 +252,7 @@ Diagnosis persistence includes:
 
 - student ID;
 - optional assessment ID;
+- Academic Session and Term;
 - diagnosis mode;
 - structured observed evidence and evidence IDs;
 - AI engine/prompt version;
@@ -213,18 +271,26 @@ Diagnosis persistence includes:
 
 `/diagnosis` must be usable on desktop and phone.
 
-The workspace should provide:
+The workspace must provide:
 
 - mode selection;
 - student selection;
+- Academic Session and Term;
+- KAEC first-hand teacher input sheet;
 - assessment selection when required;
 - simple overall-score capture;
 - optional item-level mark capture;
-- factual teacher-observation entry;
-- generated structured diagnosis review/edit;
+- internal evidence/pattern/interpretation review;
+- editable KAEC parent diagnosis sheet;
 - saved diagnosis history;
 - Review / Approve state controls;
-- Parent Report preview/download.
+- final Parent Report preview/download.
+
+## Deployment quota discipline
+
+During active development, intermediate commits may use the commit marker **`[skip vercel]`**. `vercel.json` is configured so those commits still reach GitHub/CI but skip a Vercel build.
+
+A deliberate final checkpoint commit without `[skip vercel]` triggers the Preview build. This keeps development verification rigorous while avoiding unnecessary Hobby-plan deployment consumption.
 
 ## Out of scope
 
@@ -241,37 +307,48 @@ Stage 4 does not add:
 ## Acceptance gates
 
 ### Quick Teacher
-- two or more factual observations persist as evidence;
-- generated draft separates evidence/pattern/interpretation/action;
-- unsupported certainty is absent;
+
+- Academic Session and Term persist;
+- two or more first-hand observations/indicators persist as evidence;
+- generated draft separates evidence/pattern/interpretation/action internally;
+- parent sheet clearly separates Academics/Skills and Character strengths/challenges;
+- parent sheet clearly separates School and Parents actions;
 - save/reopen/edit passes.
 
 ### Assessment-Based
+
 - selected assessment and student are same-workspace;
 - score/item evidence persists with assessment provenance;
-- generated diagnosis cites the actual evidence IDs;
+- generated diagnosis cites actual evidence IDs;
 - item/topic patterns are traceable to assessment evidence.
 
 ### Combined
-- both teacher observation and assessment evidence are represented;
+
+- teacher input and assessment evidence are both represented;
 - conclusions do not exceed evidence.
 
 ### Review/approval
+
 - ordinary member can mark a draft Reviewed;
 - reviewer identity is authentic;
 - ordinary member cannot Finalise;
 - owner/admin can Finalise only after review;
-- final content is protected from ordinary-member mutation.
+- changing reviewed report content/session/term returns it to Draft;
+- final content is immutable.
 
 ### Parent report
-- reviewed preview matches reviewed content;
+
+- final Preview matches final content;
+- Page 1 visually follows the KAEC diagnosis-sheet matrix;
 - final PDF matches final content;
 - official KAEC-NG branding is used;
+- Session and Term are visible;
 - respectful readable wording;
 - no internal model/prompt metadata;
 - download blocked before Final.
 
 ### Platform regression
+
 - HQLS and Assessment remain operational;
 - cross-workspace isolation passes;
 - strict Structured Outputs remain server-side;
