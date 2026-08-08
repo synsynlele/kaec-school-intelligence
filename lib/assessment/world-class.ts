@@ -74,15 +74,13 @@ function normalized(value: string) {
 function topicMatches(itemTopic: string, requestedTopic: string) {
   const item = normalized(itemTopic);
   const requested = normalized(requestedTopic);
-  return Boolean(
-    item &&
-      requested &&
-      (item === requested || item.includes(requested) || requested.includes(item)),
-  );
+  return Boolean(item && requested && item === requested);
 }
 
 function duplicatePromptKey(prompt: string) {
-  return normalized(prompt).replace(/\b(the|a|an|and|or|of|to|in|on|for)\b/g, " ").replace(/\s+/g, " ");
+  return normalized(prompt)
+    .replace(/\b(the|a|an|and|or|of|to|in|on|for)\b/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 export function worldClassDifficultyTarget(
@@ -132,7 +130,7 @@ export function buildWorldClassAssessmentPrompt(
 ) {
   const base = buildAssessmentPrompt(request, sourceLessonContext, sourceLabels);
   const target = worldClassDifficultyTarget(request.overallDifficulty);
-  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must clearly map to one of the requested topics; every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.`;
+  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must be EXACTLY one of the requested topic labels, preserving that label verbatim. Do not merge topic labels and do not use broader or narrower aliases. Every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.`;
 }
 
 export function buildWorldClassAssessmentRepairPrompt(
@@ -196,6 +194,19 @@ export function validateWorldClassAssessment(
   const evidence = [...base.evidence];
   const add = (code: string, message: string, itemPosition?: number) =>
     violations.push({ code, message, itemPosition });
+
+  const requestedTopicKeys = new Set(
+    request.topics.map((entry) => normalized(entry.topic)),
+  );
+  for (const item of assessment.items) {
+    if (!requestedTopicKeys.has(normalized(item.topic))) {
+      add(
+        "item_topic_not_canonical",
+        `Item ${item.position} must use exactly one requested topic label. Received \"${item.topic}\".`,
+        item.position,
+      );
+    }
+  }
 
   const coverage = topicCoverage(assessment, request);
   for (const entry of coverage) {
@@ -306,7 +317,7 @@ export function validateWorldClassAssessment(
 
   if (!violations.length) {
     evidence.push(
-      "Multi-topic coverage, requested weighting, difficulty profile and duplicate-option checks passed KAEC Assessment Quality validation.",
+      "Multi-topic coverage, requested weighting, canonical topic labels, difficulty profile and duplicate-option checks passed KAEC Assessment Quality validation.",
     );
   }
 
