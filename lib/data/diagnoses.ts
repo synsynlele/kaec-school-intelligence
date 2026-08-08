@@ -1,7 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
+import type { KsiSupabaseClient } from "@/lib/supabase/database";
+import type { Json } from "@/lib/supabase/database.types";
 
 export type CreateDiagnosisInput = {
   workspaceId: string;
@@ -16,6 +16,7 @@ export type CreateDiagnosisInput = {
   academicChallenges?: unknown[];
   characterStrengths?: unknown[];
   characterChallenges?: unknown[];
+  conciseDiagnosis?: string;
   schoolAcademicActions?: unknown[];
   parentAcademicActions?: unknown[];
   schoolCharacterActions?: unknown[];
@@ -27,8 +28,12 @@ export type CreateDiagnosisInput = {
   promptVersion?: string | null;
 };
 
+function toJson(value: unknown): Json {
+  return value as Json;
+}
+
 export async function createDiagnosisDraft(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   input: CreateDiagnosisInput,
 ) {
   const { data: diagnosis, error } = await supabase
@@ -40,20 +45,21 @@ export async function createDiagnosisDraft(
       assessment_id: input.assessmentId ?? null,
       diagnosis_mode: input.mode,
       status: "draft",
-      observed_evidence: input.observedEvidence ?? [],
-      detected_patterns: input.detectedPatterns ?? [],
-      possible_interpretations: input.possibleInterpretations ?? [],
-      academic_strengths: input.academicStrengths ?? [],
-      academic_challenges: input.academicChallenges ?? [],
-      character_strengths: input.characterStrengths ?? [],
-      character_challenges: input.characterChallenges ?? [],
-      school_academic_actions: input.schoolAcademicActions ?? [],
-      parent_academic_actions: input.parentAcademicActions ?? [],
-      school_character_actions: input.schoolCharacterActions ?? [],
-      parent_character_actions: input.parentCharacterActions ?? [],
+      observed_evidence: toJson(input.observedEvidence ?? []),
+      detected_patterns: toJson(input.detectedPatterns ?? []),
+      possible_interpretations: toJson(input.possibleInterpretations ?? []),
+      academic_strengths: toJson(input.academicStrengths ?? []),
+      academic_challenges: toJson(input.academicChallenges ?? []),
+      character_strengths: toJson(input.characterStrengths ?? []),
+      character_challenges: toJson(input.characterChallenges ?? []),
+      concise_diagnosis: input.conciseDiagnosis ?? "",
+      school_academic_actions: toJson(input.schoolAcademicActions ?? []),
+      parent_academic_actions: toJson(input.parentAcademicActions ?? []),
+      school_character_actions: toJson(input.schoolCharacterActions ?? []),
+      parent_character_actions: toJson(input.parentCharacterActions ?? []),
       builder_growth_direction: input.builderGrowthDirection ?? null,
       encouragement_note: input.encouragementNote ?? null,
-      evidence_limitations: input.evidenceLimitations ?? [],
+      evidence_limitations: toJson(input.evidenceLimitations ?? []),
       engine_version: input.engineVersion ?? null,
       prompt_version: input.promptVersion ?? null,
     })
@@ -81,7 +87,7 @@ export async function createDiagnosisDraft(
 }
 
 export async function reviewDiagnosis(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   diagnosisId: string,
 ) {
   const { data: diagnosis, error } = await supabase.rpc("review_diagnosis", {
@@ -104,7 +110,7 @@ export async function reviewDiagnosis(
 }
 
 export async function finaliseDiagnosis(
-  supabase: SupabaseClient,
+  supabase: KsiSupabaseClient,
   diagnosisId: string,
 ) {
   const { data: diagnosis, error } = await supabase.rpc("finalise_diagnosis", {

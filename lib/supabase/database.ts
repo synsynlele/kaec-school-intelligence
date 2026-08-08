@@ -9,8 +9,24 @@ import type {
   Json,
 } from "@/lib/supabase/database.types";
 
-type DiagnosisRow =
-  GeneratedDatabase["public"]["Tables"]["diagnoses"]["Row"];
+type GeneratedDiagnosisTable =
+  GeneratedDatabase["public"]["Tables"]["diagnoses"];
+type DiagnosisRow = GeneratedDiagnosisTable["Row"] & {
+  concise_diagnosis: string;
+  academic_session: string;
+  term: string;
+};
+type DiagnosisInsert = GeneratedDiagnosisTable["Insert"] & {
+  concise_diagnosis?: string;
+  academic_session?: string;
+  term?: string;
+};
+type DiagnosisUpdate = GeneratedDiagnosisTable["Update"] & {
+  concise_diagnosis?: string;
+  academic_session?: string;
+  term?: string;
+};
+
 type HqlsFidelityCheckRow =
   GeneratedDatabase["public"]["Tables"]["hqls_fidelity_checks"]["Row"];
 
@@ -24,13 +40,18 @@ type AssessmentItemRow = Omit<
 
 type FinalStageTables = Omit<
   GeneratedDatabase["public"]["Tables"],
-  "assessment_items"
+  "assessment_items" | "diagnoses"
 > & {
   assessment_items: Omit<
     GeneratedDatabase["public"]["Tables"]["assessment_items"],
     "Row"
   > & {
     Row: AssessmentItemRow;
+  };
+  diagnoses: Omit<GeneratedDiagnosisTable, "Row" | "Insert" | "Update"> & {
+    Row: DiagnosisRow;
+    Insert: DiagnosisInsert;
+    Update: DiagnosisUpdate;
   };
 };
 
@@ -44,7 +65,10 @@ type ArchivedSavedWorkRow = {
   can_permanently_delete: boolean;
 };
 
-type FinalStageFunctions = GeneratedDatabase["public"]["Functions"] & {
+type FinalStageFunctions = Omit<
+  GeneratedDatabase["public"]["Functions"],
+  "review_diagnosis" | "finalise_diagnosis"
+> & {
   create_hqls_lesson_draft: {
     Args: {
       target_workspace_id: string;
@@ -65,6 +89,14 @@ type FinalStageFunctions = GeneratedDatabase["public"]["Functions"] & {
   };
   finalise_diagnosis: {
     Args: { target_diagnosis_id: string };
+    Returns: DiagnosisRow;
+  };
+  set_diagnosis_report_context: {
+    Args: {
+      target_diagnosis_id: string;
+      target_academic_session: string;
+      target_term: string;
+    };
     Returns: DiagnosisRow;
   };
   record_hqls_system_fidelity_check: {

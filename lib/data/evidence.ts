@@ -18,6 +18,14 @@ export type StudentEvidenceInput = {
   recordedAt?: string;
 };
 
+export function recordStudentEvidence(
+  supabase: SupabaseClient,
+  input: StudentEvidenceInput,
+): Promise<unknown[]>;
+export function recordStudentEvidence(
+  supabase: SupabaseClient,
+  input: StudentEvidenceInput[],
+): Promise<unknown[]>;
 export async function recordStudentEvidence(
   supabase: SupabaseClient,
   input: StudentEvidenceInput | StudentEvidenceInput[],
