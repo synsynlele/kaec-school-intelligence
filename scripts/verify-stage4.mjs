@@ -138,6 +138,9 @@ assert(
 
 assert(dashboard.includes('href="/diagnosis"'), "Dashboard must expose Diagnosis Intelligence.");
 assert(openai.includes('"gpt-5-mini"'), "KSI must retain gpt-5-mini as the core OpenAI default.");
-assert(!engine.toLowerCase().includes("diagnose adhd"), "Diagnosis engine must not instruct clinical diagnosis.");
+assert(
+  engine.includes("Do not diagnose ADHD, autism, dyslexia, depression, disorders, personality, intelligence or any clinical/psychological condition."),
+  "Diagnosis engine must explicitly prohibit clinical and psychological diagnosis.",
+);
 
 console.log("Stage 4 structure verification passed: evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class concise diagnosis, human review/approval, parent report and gpt-5-mini policy are present.");
