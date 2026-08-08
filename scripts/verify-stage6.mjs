@@ -11,6 +11,12 @@ const [
   constitution,
   spec,
   securityRegression,
+  homePage,
+  signInPage,
+  dashboardPage,
+  dashboardClient,
+  setupClient,
+  resourceClient,
   hqlsClient,
   assessmentClient,
   diagnosisClient,
@@ -19,12 +25,19 @@ const [
   interventionPage,
   nextLessonPage,
   nextLessonClient,
+  savedWorkClient,
   packageJson,
   vercel,
 ] = await Promise.all([
   text("docs/PRODUCT_CONSTITUTION.md"),
   text("docs/STAGE_6_V1_INTEGRATION_LAUNCH_READINESS.md"),
   text("docs/STAGE_6_SECURITY_REGRESSION.md"),
+  text("app/page.tsx"),
+  text("app/sign-in/page.tsx"),
+  text("app/dashboard/page.tsx"),
+  text("components/dashboard/dashboard-client.tsx"),
+  text("components/workspace/academic-setup-client.tsx"),
+  text("components/resources/resource-library-client.tsx"),
   text("components/hqls/hqls-client.tsx"),
   text("components/assessment/world-class-assessment-client.tsx"),
   text("components/diagnosis/kaec-diagnosis-client.tsx"),
@@ -33,6 +46,7 @@ const [
   text("app/interventions/page.tsx"),
   text("app/interventions/next-lesson/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
+  text("components/saved-work/saved-work-client.tsx"),
   text("package.json"),
   text("vercel.json"),
 ]);
@@ -176,6 +190,68 @@ assert(
   "Intervention release UI must not expose internal development-stage labels.",
 );
 
+for (const required of [
+  "Connected school intelligence",
+  "One workspace. One connected learning loop.",
+  "Ready for lesson planning and validation",
+  "Ready for aligned assessment design",
+  "Ready for evidence-based diagnosis",
+]) {
+  assert(
+    dashboardClient.includes(required),
+    `Dashboard release copy is missing: ${required}`,
+  );
+}
+
+assert(
+  setupClient.includes("Academic Setup") &&
+    setupClient.includes(
+      "Define the school context used across HQLS lessons, assessments and diagnoses.",
+    ),
+  "Academic Setup must describe the current connected product rather than a future stage.",
+);
+assert(
+  resourceClient.includes("governed source context for HQLS lessons and assessments") &&
+    resourceClient.includes(
+      "HQLS and assessment generation can preserve provenance back to these files.",
+    ),
+  "Resource Library must describe the active intelligence engines rather than future functionality.",
+);
+
+const releaseCopySurfaces = [
+  homePage,
+  signInPage,
+  dashboardPage,
+  dashboardClient,
+  setupClient,
+  resourceClient,
+  assessmentClient,
+  diagnosisPage,
+  diagnosisClient,
+  interventionPage,
+  interventionClient,
+  nextLessonPage,
+  nextLessonClient,
+  savedWorkClient,
+];
+const staleReleasePhrases = [
+  "Engine build follows Stage 1",
+  "Stage 1 foundation",
+  "Stage 1 Academic Setup",
+  "future KSI engines",
+  "Future HQLS and assessment generation",
+  "future HQLS lessons, assessments and diagnoses",
+  "before the final AI engines are connected",
+  "Stage 4 · Student Diagnosis Intelligence",
+  "Stage 5 ·",
+];
+for (const phrase of staleReleasePhrases) {
+  assert(
+    releaseCopySurfaces.every((surface) => !surface.includes(phrase)),
+    `Release-facing UI still contains obsolete development copy: ${phrase}`,
+  );
+}
+
 assert(
   vercel.includes('"deploymentEnabled"') &&
     vercel.includes('"*": false') &&
@@ -192,5 +268,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, clean saved-diagnosis record switching, exact intervention -> HQLS artifact navigation, release-facing workflow labels, quota-safe preview gating, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, clean saved-diagnosis record switching, exact intervention -> HQLS artifact navigation, clean release-facing product copy, quota-safe preview gating, and launch-readiness contract are present.",
 );
