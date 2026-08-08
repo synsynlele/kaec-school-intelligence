@@ -11,7 +11,7 @@ const openai = await text("lib/ai/openai.ts");
 for (const required of [
   "KSI_OPENAI_PRIMARY_MODEL",
   "KSI_OPENAI_REPAIR_MODEL",
-  '"gpt-5-nano"',
+  '"gpt-4o-mini"',
   '"gpt-5-mini"',
   'modelRole: "primary"',
   'modelRole: "repair"',
@@ -27,11 +27,15 @@ assert(
   !openai.includes('||\n    "gpt-5.6-terra"'),
   "AI cost policy must not silently fall back to the former Terra default.",
 );
+assert(
+  !openai.includes('||\n    "gpt-5-nano"'),
+  "KSI must not silently default to gpt-5-nano for core teaching generation.",
+);
 
 const env = await text(".env.example");
 assert(
-  env.includes("KSI_OPENAI_PRIMARY_MODEL=gpt-5-nano"),
-  "Environment example must document gpt-5-nano as the primary benchmark model.",
+  env.includes("KSI_OPENAI_PRIMARY_MODEL=gpt-4o-mini"),
+  "Environment example must document gpt-4o-mini as the primary benchmark model.",
 );
 assert(
   env.includes("KSI_OPENAI_REPAIR_MODEL=gpt-5-mini"),
@@ -39,5 +43,5 @@ assert(
 );
 
 console.log(
-  "AI cost-policy verification passed: KSI uses nano-first structured generation with mini repair fallback while retaining legacy environment compatibility.",
+  "AI cost-policy verification passed: KSI uses gpt-4o-mini for quality-first low-cost generation with gpt-5-mini repair fallback while retaining legacy environment compatibility.",
 );
