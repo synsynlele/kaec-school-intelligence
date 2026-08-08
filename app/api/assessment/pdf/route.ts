@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { parseGeneratedAssessment, type GeneratedAssessmentItem } from "@/lib/assessment/engine";
+import {
+  parseGeneratedAssessment,
+  type GeneratedAssessmentItem,
+} from "@/lib/assessment/engine";
 import { getSupabasePublicEnv } from "@/lib/env";
 import {
   createAssessmentPdf,
@@ -24,6 +27,25 @@ function strings(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function requestedTopicCoverage(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const row = record(entry);
+      if (typeof row.topic !== "string" || !row.topic.trim()) return null;
+      const objectives = strings(row.objectives);
+      const weight =
+        typeof row.weight === "number" && Number.isFinite(row.weight)
+          ? `${row.weight}%`
+          : "weight not specified";
+      const objectiveText = objectives.length
+        ? ` - Objectives: ${objectives.join("; ")}`
+        : "";
+      return `${row.topic} - ${weight}${objectiveText}`;
+    })
+    .filter((entry): entry is string => Boolean(entry));
 }
 
 async function getAuthenticatedClient(request: Request) {
@@ -106,7 +128,8 @@ function itemFromRow(row: AssessmentItemRow): GeneratedAssessmentItem {
           : "",
     expectedEvidence: strings(content.expectedEvidence),
     markingGuide: strings(marking.criteria),
-    deliverable: typeof content.deliverable === "string" ? content.deliverable : "",
+    deliverable:
+      typeof content.deliverable === "string" ? content.deliverable : "",
     constraints: strings(content.constraints),
   };
 }
@@ -134,28 +157,31 @@ export async function GET(request: Request) {
       items: rows.items.map(itemFromRow),
     });
 
-    const [{ data: workspace, error: workspaceError }, subjectResult, classResult] =
-      await Promise.all([
-        supabase
-          .from("workspaces")
-          .select("name")
-          .eq("id", rows.assessment.workspace_id)
-          .single(),
-        rows.assessment.subject_id
-          ? supabase
-              .from("subjects")
-              .select("name")
-              .eq("id", rows.assessment.subject_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-        rows.assessment.class_id
-          ? supabase
-              .from("classes")
-              .select("name")
-              .eq("id", rows.assessment.class_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-      ]);
+    const [
+      { data: workspace, error: workspaceError },
+      subjectResult,
+      classResult,
+    ] = await Promise.all([
+      supabase
+        .from("workspaces")
+        .select("name")
+        .eq("id", rows.assessment.workspace_id)
+        .single(),
+      rows.assessment.subject_id
+        ? supabase
+            .from("subjects")
+            .select("name")
+            .eq("id", rows.assessment.subject_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      rows.assessment.class_id
+        ? supabase
+            .from("classes")
+            .select("name")
+            .eq("id", rows.assessment.class_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
     if (workspaceError || !workspace) {
       throw new Error("The assessment workspace is unavailable.");
     }
@@ -178,6 +204,15 @@ export async function GET(request: Request) {
         typeof blueprint.durationMinutes === "number"
           ? blueprint.durationMinutes
           : null,
+      assessmentType:
+        typeof blueprint.assessmentKind === "string"
+          ? blueprint.assessmentKind
+          : null,
+      overallDifficulty:
+        typeof blueprint.overallDifficulty === "string"
+          ? blueprint.overallDifficulty
+          : null,
+      topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
       assessment: generated,
     });
     const filename = safeAssessmentPdfFilename(rows.assessment.title);
