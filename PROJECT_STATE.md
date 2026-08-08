@@ -110,7 +110,7 @@ Verified guarantees:
 
 ## Engineering verification
 
-Final Stage 5 closeout CI passed on the accepted implementation and closeout documentation lineage:
+Final Stage 5 closeout verification passed:
 
 - dependency installation: PASS
 - lint: PASS
