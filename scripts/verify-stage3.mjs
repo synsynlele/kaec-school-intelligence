@@ -65,6 +65,7 @@ for (const required of [
   "hard",
   "AssessmentTopicSpec",
   "requested_topic_missing",
+  "item_topic_not_canonical",
   "topic_weight_misaligned",
   "overall_difficulty_misaligned",
   "duplicate_item_prompt",
@@ -80,6 +81,15 @@ for (const required of [
     `Stage 3 world-class assessment model is missing ${required}.`,
   );
 }
+assert(
+  !worldClass.includes("item.includes(requested)") &&
+    !worldClass.includes("requested.includes(item)"),
+  "Stage 3 topic weighting must use exact canonical topic labels, not substring matching.",
+);
+assert(
+  worldClass.includes("item === requested"),
+  "Stage 3 topic weighting is missing exact normalized topic matching.",
+);
 
 const route = await text("app/api/assessment-v11/route.ts");
 for (const required of [
@@ -163,5 +173,5 @@ assert(
 );
 
 console.log(
-  "Stage 3 structural verification passed: Assessment Intelligence v1.1 protects multi-topic weighted blueprints, assessment type, overall difficulty, quality validation, OpenAI generation, responsive editing, Lesson-to-Assessment traceability and branded PDF export.",
+  "Stage 3 structural verification passed: Assessment Intelligence v1.1 protects multi-topic weighted blueprints, canonical topic labels, assessment type, overall difficulty, quality validation, OpenAI generation, responsive editing, Lesson-to-Assessment traceability and branded PDF export.",
 );
