@@ -38,6 +38,59 @@ type AssessmentItemRow = Omit<
   critical_thinking_type: KaecCriticalThinkingExperienceType | null;
 };
 
+type InterventionHandoffRow = {
+  id: string;
+  workspace_id: string;
+  diagnosis_id: string;
+  student_id: string;
+  created_by: string;
+  status: string;
+  priority_growth_target: string;
+  evidence_basis: string;
+  school_intervention: Json;
+  parent_intervention: Json;
+  timeframe: string;
+  success_indicator: string;
+  review_date: string | null;
+  next_learning_adjustment: string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  next_lesson_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type InterventionHandoffInsert = {
+  id?: string;
+  workspace_id: string;
+  diagnosis_id: string;
+  student_id: string;
+  created_by: string;
+  status?: string;
+  priority_growth_target?: string;
+  evidence_basis?: string;
+  school_intervention?: Json;
+  parent_intervention?: Json;
+  timeframe?: string;
+  success_indicator?: string;
+  review_date?: string | null;
+  next_learning_adjustment?: string;
+  confirmed_by?: string | null;
+  confirmed_at?: string | null;
+  next_lesson_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type InterventionHandoffUpdate = Partial<InterventionHandoffInsert>;
+
+type InterventionHandoffTable = {
+  Row: InterventionHandoffRow;
+  Insert: InterventionHandoffInsert;
+  Update: InterventionHandoffUpdate;
+  Relationships: [];
+};
+
 type FinalStageTables = Omit<
   GeneratedDatabase["public"]["Tables"],
   "assessment_items" | "diagnoses"
@@ -53,6 +106,7 @@ type FinalStageTables = Omit<
     Insert: DiagnosisInsert;
     Update: DiagnosisUpdate;
   };
+  intervention_handoffs: InterventionHandoffTable;
 };
 
 type ArchivedSavedWorkRow = {

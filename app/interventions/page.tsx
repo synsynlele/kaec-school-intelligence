@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
-import { KaecDiagnosisClient } from "@/components/diagnosis/kaec-diagnosis-client";
+import { InterventionClient } from "@/components/interventions/intervention-client";
 
-export default function DiagnosisPage() {
+export default function InterventionsPage() {
   return (
     <>
       <div className="sticky top-0 z-50 border-b border-emerald-900/10 bg-emerald-950 text-white shadow-sm">
@@ -13,24 +13,24 @@ export default function DiagnosisPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 4 · Student Diagnosis Intelligence
+              Stage 5 · Action & Intervention
             </p>
             <p className="mt-1 text-sm font-medium">
-              First-hand school evidence becomes a clear parent diagnosis and shared action plan.
+              Move an approved diagnosis into a practical intervention and the next learning cycle.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/interventions"
+              href="/interventions/next-lesson"
               className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
             >
-              Interventions
+              Build Next Lesson
             </Link>
             <Link
-              href="/assessment"
+              href="/diagnosis"
               className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
             >
-              Assessments
+              Diagnosis
             </Link>
             <Link
               href="/hqls"
@@ -47,7 +47,7 @@ export default function DiagnosisPage() {
           </div>
         </div>
       </div>
-      <KaecDiagnosisClient />
+      <InterventionClient />
     </>
   );
 }

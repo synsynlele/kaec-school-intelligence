@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
-import { KaecDiagnosisClient } from "@/components/diagnosis/kaec-diagnosis-client";
+import { NextLessonClient } from "@/components/interventions/next-lesson-client";
 
-export default function DiagnosisPage() {
+export default function NextInterventionLessonPage() {
   return (
     <>
       <div className="sticky top-0 z-50 border-b border-emerald-900/10 bg-emerald-950 text-white shadow-sm">
@@ -13,10 +13,10 @@ export default function DiagnosisPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 4 · Student Diagnosis Intelligence
+              Stage 5 · Closed Learning Loop
             </p>
             <p className="mt-1 text-sm font-medium">
-              First-hand school evidence becomes a clear parent diagnosis and shared action plan.
+              Carry a confirmed intervention into the existing HQLS engine and create the next evidence opportunity.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -27,16 +27,16 @@ export default function DiagnosisPage() {
               Interventions
             </Link>
             <Link
-              href="/assessment"
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
-            >
-              Assessments
-            </Link>
-            <Link
               href="/hqls"
               className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
             >
               HQLS Lessons
+            </Link>
+            <Link
+              href="/diagnosis"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              Diagnosis
             </Link>
             <Link
               href="/dashboard"
@@ -47,7 +47,7 @@ export default function DiagnosisPage() {
           </div>
         </div>
       </div>
-      <KaecDiagnosisClient />
+      <NextLessonClient />
     </>
   );
 }

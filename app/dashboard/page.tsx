@@ -13,18 +13,24 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              Stage 4 active
+              Stage 5 active
             </p>
             <p className="mt-1 text-sm font-medium">
-              Teach with HQLS, assess what happened, then turn student evidence into actionable diagnosis.
+              Teach with HQLS, assess what happened, diagnose the evidence, then carry the agreed intervention into the next lesson.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/diagnosis"
+              href="/interventions"
               className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
             >
-              Open Diagnosis Intelligence
+              Interventions
+            </Link>
+            <Link
+              href="/diagnosis"
+              className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              Diagnosis
             </Link>
             <Link
               href="/assessment"
