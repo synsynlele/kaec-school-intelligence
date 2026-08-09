@@ -17,6 +17,20 @@ function json(body: unknown, status = 200) {
   return Response.json(body, { status });
 }
 
+function caughtMessage(caught: unknown, fallback: string) {
+  if (caught instanceof Error && caught.message) return caught.message;
+  if (
+    caught &&
+    typeof caught === "object" &&
+    "message" in caught &&
+    typeof caught.message === "string" &&
+    caught.message.trim()
+  ) {
+    return caught.message;
+  }
+  return fallback;
+}
+
 export async function POST(request: Request) {
   try {
     const authorization = request.headers.get("authorization") || "";
@@ -88,13 +102,10 @@ export async function POST(request: Request) {
           409,
         );
       }
-      const { data, error } = await supabase
-        .from("diagnoses")
-        .update({ status: "archived" })
-        .eq("id", diagnosisId)
-        .eq("workspace_id", workspaceId)
-        .select("id,status,updated_at")
-        .single();
+
+      const { data, error } = await supabase.rpc("archive_diagnosis", {
+        target_diagnosis_id: diagnosisId,
+      });
       if (error) throw error;
       return json({ diagnosis: data });
     }
@@ -121,7 +132,7 @@ export async function POST(request: Request) {
     return json({ deleted: true, diagnosisId });
   } catch (caught) {
     return json(
-      { error: caught instanceof Error ? caught.message : "The diagnosis management action could not be completed." },
+      { error: caughtMessage(caught, "The diagnosis management action could not be completed.") },
       400,
     );
   }
