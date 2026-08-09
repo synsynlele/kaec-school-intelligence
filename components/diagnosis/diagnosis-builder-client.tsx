@@ -130,15 +130,18 @@ export function DiagnosisBuilderClient() {
 
   useEffect(() => {
     let active = true;
-    void load()
-      .catch((caught) => {
-        if (active) setError(caught instanceof Error ? caught.message : "Diagnosis workspace could not be loaded.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const timer = window.setTimeout(() => {
+      void load()
+        .catch((caught) => {
+          if (active) setError(caught instanceof Error ? caught.message : "Diagnosis workspace could not be loaded.");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 0);
     return () => {
       active = false;
+      window.clearTimeout(timer);
     };
   }, [load]);
 
