@@ -33,8 +33,13 @@ export default function AuthCallbackPage() {
 
     const providerError = returnedAuthError();
     if (providerError) {
-      setError(providerError);
-      return;
+      const providerErrorTimer = window.setTimeout(() => {
+        if (active) setError(providerError);
+      }, 0);
+      return () => {
+        active = false;
+        window.clearTimeout(providerErrorTimer);
+      };
     }
 
     function enterWorkspace(session: Session | null) {
