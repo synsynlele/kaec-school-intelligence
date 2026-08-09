@@ -88,3 +88,52 @@ textarea:read-only {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+
+/*
+ * Saved Work combines long artifact titles, workspace names, status chips and
+ * management actions. Flex/grid children otherwise keep intrinsic widths that
+ * can enlarge the mobile canvas. Keep the containment local to Saved Work and
+ * let the actual controls shrink/wrap instead of hiding overflow at page level.
+ */
+.ksi-saved-work-shell,
+.ksi-saved-work-shell main,
+.ksi-saved-work-shell section,
+.ksi-saved-work-shell article,
+.ksi-saved-work-shell nav,
+.ksi-saved-work-shell div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ksi-saved-work-shell button,
+.ksi-saved-work-shell a,
+.ksi-saved-work-shell span,
+.ksi-saved-work-shell p,
+.ksi-saved-work-shell h1,
+.ksi-saved-work-shell h2 {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .ksi-saved-work-shell main .inline-flex {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ksi-saved-work-shell main .inline-flex > button {
+    width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .ksi-saved-work-shell article > div > div:last-child {
+    width: 100%;
+  }
+
+  .ksi-saved-work-shell article > div > div:last-child > button {
+    flex: 1 1 9rem;
+  }
+}
