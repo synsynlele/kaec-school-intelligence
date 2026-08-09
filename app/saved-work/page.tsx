@@ -5,7 +5,7 @@ import { SavedWorkClient } from "@/components/saved-work/saved-work-client";
 
 export default function SavedWorkPage() {
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="ksi-saved-work-shell min-h-screen bg-stone-50">
       <div className="border-b border-emerald-900/10 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 md:flex-row md:items-center md:justify-between">
           <KaecBrand compact />
