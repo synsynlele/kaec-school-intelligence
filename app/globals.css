@@ -52,3 +52,39 @@ textarea:read-only {
   -webkit-text-fill-color: #18181b;
   opacity: 1;
 }
+
+/*
+ * Assessment blueprints can contain long lesson titles and native select
+ * options. Native controls keep an intrinsic minimum width unless we explicitly
+ * let them shrink, which can push the whole builder beyond a phone viewport.
+ * Keep this fix scoped to Assessment so other KSI workspaces retain their
+ * existing sizing behaviour.
+ */
+.ksi-assessment-shell,
+.ksi-assessment-shell main,
+.ksi-assessment-shell form,
+.ksi-assessment-shell section,
+.ksi-assessment-shell aside,
+.ksi-assessment-shell label,
+.ksi-assessment-shell div {
+  min-width: 0;
+}
+
+.ksi-assessment-shell input,
+.ksi-assessment-shell textarea,
+.ksi-assessment-shell select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ksi-assessment-shell button,
+.ksi-assessment-shell a,
+.ksi-assessment-shell span,
+.ksi-assessment-shell p,
+.ksi-assessment-shell h1,
+.ksi-assessment-shell h2,
+.ksi-assessment-shell h3 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
