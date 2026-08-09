@@ -1,13 +1,13 @@
 # Stage 6 — Full-Loop Security Regression
 
-Date: 8 August 2026
+Date: 9 August 2026
 
-Status: **PASS — READ-ONLY LIVE DATABASE SECURITY AUDIT**
+Status: **PASS — LIVE DATABASE SECURITY AUDIT**
 
-Project: KAEC School Intelligence
+Project: KAEC School Intelligence  
 Supabase project: `zaoxfjbiizargeclnzmo`
 
-This audit was performed without reading student record contents and without mutating production data.
+The original Version 1 isolation audit was performed without reading student record contents and without mutating production data. On 9 August 2026, migration `024_stage6_archive_result_lifecycle.sql` was then applied to add the approved archive/delete lifecycle. A follow-up schema and role audit again read no student record contents and made no production-record mutations.
 
 ## Scope
 
@@ -25,11 +25,13 @@ The Version 1 learning loop was re-audited across:
 - `artifact_resource_links`
 - `generation_feedback`
 
+The 9 August follow-up specifically re-verified the changed `diagnoses` and `intervention_handoffs` boundaries after the guarded archive lifecycle migration.
+
 ## 1. Row Level Security
 
 **PASS.**
 
-RLS is enabled on every table in scope.
+RLS is enabled on every table in scope, including both lifecycle-modified tables.
 
 All exposed policies in scope are assigned to `authenticated`; there are **zero anon RLS policies** on the audited tables.
 
@@ -52,7 +54,9 @@ A live read-only test executed under PostgreSQL role `anon` returned **0 visible
 - `artifact_resource_links`
 - `generation_feedback`
 
-`intervention_handoffs` is stricter: the `anon` role has no direct `SELECT` privilege, so PostgreSQL rejected access before RLS evaluation.
+After the lifecycle migration, `diagnoses` was explicitly re-tested as `anon` and still returned **0 visible rows**.
+
+`intervention_handoffs` remains stricter: the `anon` role has no direct `SELECT`, `INSERT`, `UPDATE` or `DELETE` privilege, so PostgreSQL rejects access before RLS evaluation.
 
 Several older Supabase tables still carry default table-level grants for `anon`. The live anonymous-role test proves that their RLS boundary returns zero rows. Do not weaken RLS merely because a default grant exists.
 
@@ -87,31 +91,60 @@ Creation policies preserve authenticated actor provenance where applicable:
 - intervention handoffs require `created_by = auth.uid()`;
 - human fidelity checks require `checked_by = auth.uid()` and `check_origin = 'human'`.
 
-## 5. Destructive actions and stronger authority
+## 5. Guarded archive and destructive actions
 
 **PASS.**
 
-Destructive operations are not open merely because a user belongs to the workspace.
+Destructive operations are not open merely because a user belongs to the workspace. Stage 6 now distinguishes reversible archival from permanent deletion for diagnoses and interventions.
 
-Examples:
+### Diagnoses
 
-- lesson and assessment delete: creator or workspace owner/admin;
-- evidence delete: recorder or workspace owner/admin;
-- diagnosis delete: workspace owner/admin;
-- Saved Work resource-link delete: creator or owner/admin;
-- intervention handoff delete: owner/admin **and draft status only**.
+- `draft`, `reviewed`, `final`, and `archived` are valid states.
+- Moving a diagnosis into `archived` requires workspace owner/admin authority.
+- An archived diagnosis is immutable.
+- A diagnosis cannot be archived while a linked intervention remains active; the intervention must be archived first.
+- Permanent diagnosis deletion requires owner/admin authority, `status = 'archived'`, and **no remaining intervention dependency**.
+- This prevents the diagnosis foreign-key cascade from silently erasing intervention provenance.
 
-Confirmed intervention history therefore remains durable.
+### Intervention handoffs
 
-## 6. Diagnosis final-state protection
+- `draft`, `confirmed`, and `archived` are valid states.
+- Moving an intervention into `archived` requires workspace owner/admin authority.
+- Archived interventions are immutable.
+- A confirmed intervention may move only to `confirmed` or `archived`; its confirmed content and actor/timestamp provenance remain unchanged.
+- Permanent intervention deletion is limited to owner/admin and either a draft mistake or an archived plan with **no linked next HQLS lesson**.
+- If an intervention already produced a linked next lesson, it remains durable Archive history and permanent deletion is blocked.
+
+These rules preserve the approved chain:
+
+**Evidence → Diagnosis → Intervention → Next HQLS Lesson**
+
+while still allowing schools to remove completed or departed-student work from active operational views.
+
+## 6. Diagnosis final/archive protection
 
 **PASS.**
 
-Diagnosis update policy requires workspace membership and only permits ordinary member updates while the diagnosis is not final. Updating a final diagnosis requires owner/admin authority.
+Diagnosis update policy requires workspace membership. Ordinary members can work on draft/reviewed records, while transitions to final or archived require owner/admin authority.
 
-This complements the diagnosis lifecycle triggers and human review/approval controls already verified in Stage 4.
+The new `diagnoses_archive_integrity` trigger prevents archived records from returning to an active state and prevents hiding a diagnosis while its intervention is still active.
 
-## 7. Saved Work SECURITY DEFINER functions
+Approved parent PDFs remain available for both `final` and `archived` diagnoses, provided human review and final approval timestamps are present.
+
+## 7. Intervention integrity after archive extension
+
+**PASS.**
+
+The existing intervention integrity trigger remains active and now recognises archival without weakening confirmed-plan provenance:
+
+- new handoffs still require a final diagnosis;
+- workspace/student provenance is immutable;
+- confirmed intervention content is immutable;
+- the one governed next-lesson link cannot be changed after it is set;
+- linked lessons must remain in the same workspace;
+- archived handoffs cannot be modified or restored.
+
+## 8. Saved Work SECURITY DEFINER functions
 
 **PASS / ACCEPTED BY DESIGN.**
 
@@ -131,7 +164,7 @@ These functions remain intentional controlled APIs. Previous Stage 6 review veri
 
 Do not remove these permissions merely to silence the generic advisor warning.
 
-## 8. Remaining Auth configuration warning
+## 9. Remaining Auth configuration warning
 
 **OPEN — CONFIGURATION, NOT DATA ISOLATION.**
 
@@ -141,6 +174,8 @@ This must be enabled if the project plan supports it, or explicitly accepted wit
 
 ## Conclusion
 
-The live read-only database audit found **no anonymous data exposure and no missing workspace boundary in the Version 1 learning loop**.
+The live database audits found **no anonymous data exposure and no missing workspace boundary in the Version 1 learning loop**.
 
-The remaining Stage 6 release work is application-level Preview regression, mobile/refresh/re-login validation, the known low-risk diagnosis notice-state check, and the leaked-password-protection launch decision.
+The final archive/delete lifecycle is intentionally asymmetric: Archive is the normal completion path; permanent delete exists only when provenance dependencies make it safe. Linked interventions and their generated next lessons remain traceable rather than being silently destroyed.
+
+Remaining Stage 6 release work is the final Preview acceptance of the separated result pages and archive lifecycle, followed by the leaked-password-protection launch decision and explicit founder approval before merge.
