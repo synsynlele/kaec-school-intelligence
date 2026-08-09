@@ -12,7 +12,9 @@ const [
   engine,
   api,
   page,
-  client,
+  builder,
+  resultPage,
+  resultClient,
   pdf,
   pdfRoute,
   reviewMigration,
@@ -30,7 +32,9 @@ const [
   text("lib/diagnosis/engine.ts"),
   text("app/api/diagnosis/route.ts"),
   text("app/diagnosis/page.tsx"),
-  text("components/diagnosis/kaec-diagnosis-client.tsx"),
+  text("components/diagnosis/diagnosis-builder-client.tsx"),
+  text("app/diagnosis/result/page.tsx"),
+  text("components/diagnosis/diagnosis-result-client.tsx"),
   text("lib/pdf/diagnosis-pdf.ts"),
   text("app/api/diagnosis/pdf/route.ts"),
   text("supabase/migrations/014_stage4_diagnosis_review_freshness.sql"),
@@ -93,12 +97,11 @@ for (const required of [
 }
 
 assert(
-  page.includes("KaecDiagnosisClient"),
-  "Diagnosis page must render the strengthened KAEC diagnosis workspace.",
+  page.includes("DiagnosisBuilderClient") && resultPage.includes("DiagnosisResultClient"),
+  "Diagnosis must preserve the strengthened KAEC workspace across focused creation and dedicated result pages.",
 );
 
 for (const required of [
-  "KAEC first-hand diagnosis sheet",
   "Academic / Skills Observations",
   "Character / Discipline Observations",
   "Academic / Skills Strength Indicators",
@@ -109,20 +112,30 @@ for (const required of [
   "Select term",
   "set_diagnosis_report_context",
   "Assessment-Based Diagnosis",
-  "Combined Diagnosis",
+  "Combined Evidence Diagnosis",
   "Add item-level evidence",
+  "Teacher evidence sheet",
+  'router.push(`/diagnosis/result?diagnosis=',
+]) {
+  assert(builder.includes(required), `KAEC diagnosis builder is missing: ${required}`);
+}
+
+for (const required of [
   "Internal evidence review",
-  "Parent-facing KAEC sheet",
-  "ACADEMICS / SKILLS",
-  "CHARACTER (Discipline)",
-  "ACTION PLAN (Academics / Skills)",
-  "ACTION PLAN (Character)",
+  "Parent-facing diagnosis",
+  "Academic / Skill Strengths",
+  "Academic / Skill Challenges",
+  "Character Strengths",
+  "Character Challenges",
+  "School Academic Actions",
+  "Parent Academic Actions",
+  "School Character Actions",
+  "Parent Character Actions",
   "Mark Reviewed",
   "Approve Final Report",
-  "Parent Report Preview",
   "Download Parent PDF",
 ]) {
-  assert(client.includes(required), `KAEC diagnosis client is missing: ${required}`);
+  assert(resultClient.includes(required), `KAEC diagnosis result is missing: ${required}`);
 }
 
 for (const required of [
@@ -230,5 +243,5 @@ assert(
 );
 
 console.log(
-  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, reviewed KAEC parent-sheet matrix, human review/approval, quota-safe Vercel branch gating and gpt-5-mini policy are present.",
+  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, dedicated reviewed result view, human review/approval, landscape parent PDF, quota-safe Vercel branch gating and gpt-5-mini policy are present.",
 );
