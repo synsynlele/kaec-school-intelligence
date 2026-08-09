@@ -52,3 +52,169 @@ textarea:read-only {
   -webkit-text-fill-color: #18181b;
   opacity: 1;
 }
+
+/*
+ * Assessment blueprints can contain long lesson titles and native select
+ * options. Native controls keep an intrinsic minimum width unless we explicitly
+ * let them shrink, which can push the whole builder beyond a phone viewport.
+ * Keep this fix scoped to Assessment so other KSI workspaces retain their
+ * existing sizing behaviour.
+ */
+.ksi-assessment-shell,
+.ksi-assessment-shell main,
+.ksi-assessment-shell form,
+.ksi-assessment-shell section,
+.ksi-assessment-shell aside,
+.ksi-assessment-shell label,
+.ksi-assessment-shell div {
+  min-width: 0;
+}
+
+.ksi-assessment-shell input,
+.ksi-assessment-shell textarea,
+.ksi-assessment-shell select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ksi-assessment-shell button,
+.ksi-assessment-shell a,
+.ksi-assessment-shell span,
+.ksi-assessment-shell p,
+.ksi-assessment-shell h1,
+.ksi-assessment-shell h2,
+.ksi-assessment-shell h3 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Saved Work combines long artifact titles, workspace names, status chips and
+ * management actions. Flex/grid children otherwise keep intrinsic widths that
+ * can enlarge the mobile canvas. Keep the containment local to Saved Work and
+ * let the actual controls shrink/wrap instead of hiding overflow at page level.
+ */
+.ksi-saved-work-shell,
+.ksi-saved-work-shell main,
+.ksi-saved-work-shell section,
+.ksi-saved-work-shell article,
+.ksi-saved-work-shell nav,
+.ksi-saved-work-shell div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ksi-saved-work-shell button,
+.ksi-saved-work-shell a,
+.ksi-saved-work-shell span,
+.ksi-saved-work-shell p,
+.ksi-saved-work-shell h1,
+.ksi-saved-work-shell h2 {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Product-wide mobile containment contract.
+ * This does not hide horizontal overflow. Instead it removes intrinsic minimum
+ * widths and constrains media/controls so every KSI workspace can genuinely
+ * reflow inside a phone viewport, including generated AI text with long tokens.
+ */
+@media (max-width: 767px) {
+  .ksi-app-shell,
+  .ksi-app-shell main,
+  .ksi-app-shell header,
+  .ksi-app-shell footer,
+  .ksi-app-shell nav,
+  .ksi-app-shell section,
+  .ksi-app-shell article,
+  .ksi-app-shell aside,
+  .ksi-app-shell form,
+  .ksi-app-shell fieldset,
+  .ksi-app-shell label,
+  .ksi-app-shell div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ksi-app-shell fieldset {
+    min-inline-size: 0;
+  }
+
+  .ksi-app-shell img,
+  .ksi-app-shell svg,
+  .ksi-app-shell video,
+  .ksi-app-shell canvas,
+  .ksi-app-shell iframe {
+    max-width: 100%;
+  }
+
+  .ksi-app-shell input:not([type="checkbox"]):not([type="radio"]),
+  .ksi-app-shell textarea,
+  .ksi-app-shell select,
+  .ksi-app-shell button,
+  .ksi-app-shell a {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ksi-app-shell h1,
+  .ksi-app-shell h2,
+  .ksi-app-shell h3,
+  .ksi-app-shell h4,
+  .ksi-app-shell p,
+  .ksi-app-shell li,
+  .ksi-app-shell dt,
+  .ksi-app-shell dd,
+  .ksi-app-shell label,
+  .ksi-app-shell span,
+  .ksi-app-shell a,
+  .ksi-app-shell button,
+  .ksi-app-shell code,
+  .ksi-app-shell pre {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .ksi-app-shell pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+  }
+
+  .ksi-app-shell table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+  }
+
+  .ksi-app-shell th,
+  .ksi-app-shell td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 639px) {
+  .ksi-saved-work-shell main .inline-flex {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ksi-saved-work-shell main .inline-flex > button {
+    width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .ksi-saved-work-shell article > div > div:last-child {
+    width: 100%;
+  }
+
+  .ksi-saved-work-shell article > div > div:last-child > button {
+    flex: 1 1 9rem;
+  }
+}

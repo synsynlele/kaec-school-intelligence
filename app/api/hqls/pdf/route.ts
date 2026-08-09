@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabasePublicEnv } from "@/lib/env";
 import { parseHqlsStageContent } from "@/lib/hqls/engine";
 import { createHqlsLessonPdf, safePdfFilename } from "@/lib/pdf/hqls-lesson-pdf";
+import { patchPdfCommands, pdfSafeValue } from "@/lib/pdf/layout-safety";
 import type { Database } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -105,21 +106,26 @@ export async function POST(request: Request) {
     const stages = stageResult.data.map((stage, index) =>
       parseHqlsStageContent(stage.content, index + 1),
     );
-    const pdf = createHqlsLessonPdf({
-      workspaceName: workspaceResult.data.name,
-      title: lesson.title,
-      subject: subjectResult.data?.name ?? "General",
-      classLevel: classResult.data?.name ?? "Not linked",
-      ageRange: lesson.age_range,
-      durationMinutes: lesson.duration_minutes,
-      topic: lesson.topic,
-      objective: lesson.objective,
-      fidelityScore: Number(fidelityResult.data.score ?? 0),
-      sources: sourceLabels(lesson.source_context),
-      stages,
-    });
+    const pdf = createHqlsLessonPdf(
+      pdfSafeValue({
+        workspaceName: workspaceResult.data.name,
+        title: lesson.title,
+        subject: subjectResult.data?.name ?? "General",
+        classLevel: classResult.data?.name ?? "Not linked",
+        ageRange: lesson.age_range,
+        durationMinutes: lesson.duration_minutes,
+        topic: lesson.topic,
+        objective: lesson.objective,
+        fidelityScore: Number(fidelityResult.data.score ?? 0),
+        sources: sourceLabels(lesson.source_context),
+        stages,
+      }),
+    );
+    const protectedPdf = patchPdfCommands(pdf, [
+      ["54 752 487 1.4 re f", "97 752 444 1.4 re f"],
+    ]);
 
-    return new Response(pdf, {
+    return new Response(protectedPdf, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
