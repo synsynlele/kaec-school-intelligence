@@ -39,7 +39,7 @@ export function pdfSafeValue<T>(value: T): T {
  * offsets and stream lengths remain valid. The helper refuses unsafe patches.
  */
 export function patchPdfCommands(
-  pdf: Buffer,
+  pdf: Uint8Array,
   patches: ReadonlyArray<readonly [search: string, replacement: string]>,
 ) {
   const output = Buffer.from(pdf);
