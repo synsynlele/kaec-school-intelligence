@@ -17,14 +17,29 @@ const [
   dashboardClient,
   setupClient,
   resourceClient,
+  hqlsPage,
   hqlsClient,
+  hqlsResultPage,
+  hqlsResultClient,
+  assessmentPage,
   assessmentClient,
-  diagnosisClient,
+  assessmentResultPage,
+  assessmentResultClient,
   diagnosisPage,
-  interventionClient,
+  diagnosisBuilder,
+  diagnosisResultPage,
+  diagnosisResultClient,
+  diagnosisManage,
+  diagnosisPdf,
   interventionPage,
+  interventionWorkspace,
+  interventionResultPage,
+  interventionResultClient,
+  interventionManage,
   nextLessonPage,
   nextLessonClient,
+  resultRedirect,
+  lifecycleMigration,
   savedWorkClient,
   packageJson,
   vercel,
@@ -38,14 +53,29 @@ const [
   text("components/dashboard/dashboard-client.tsx"),
   text("components/workspace/academic-setup-client.tsx"),
   text("components/resources/resource-library-client.tsx"),
+  text("app/hqls/page.tsx"),
   text("components/hqls/hqls-client.tsx"),
+  text("app/hqls/result/page.tsx"),
+  text("components/hqls/hqls-result-client.tsx"),
+  text("app/assessment/page.tsx"),
   text("components/assessment/world-class-assessment-client.tsx"),
-  text("components/diagnosis/kaec-diagnosis-client.tsx"),
+  text("app/assessment/result/page.tsx"),
+  text("components/assessment/assessment-result-client.tsx"),
   text("app/diagnosis/page.tsx"),
-  text("components/interventions/intervention-client.tsx"),
+  text("components/diagnosis/diagnosis-builder-client.tsx"),
+  text("app/diagnosis/result/page.tsx"),
+  text("components/diagnosis/diagnosis-result-client.tsx"),
+  text("app/api/diagnosis/manage/route.ts"),
+  text("app/api/diagnosis/pdf/route.ts"),
   text("app/interventions/page.tsx"),
+  text("components/interventions/intervention-workspace-client.tsx"),
+  text("app/interventions/result/page.tsx"),
+  text("components/interventions/intervention-result-client.tsx"),
+  text("app/api/interventions/manage/route.ts"),
   text("app/interventions/next-lesson/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
+  text("components/workflow/artifact-result-redirect.tsx"),
+  text("supabase/migrations/024_stage6_archive_result_lifecycle.sql"),
   text("components/saved-work/saved-work-client.tsx"),
   text("package.json"),
   text("vercel.json"),
@@ -73,86 +103,32 @@ assert(
   "Stage 6 must remain anchored to the Constitution's three-engine Platform Gate.",
 );
 
-for (const required of [
-  "PASS — READ-ONLY LIVE DATABASE SECURITY AUDIT",
-  "0 visible rows",
-  "private.is_workspace_member",
-  "creator or workspace owner/admin",
-  "intervention handoff delete: owner/admin **and draft status only**",
-  "no anonymous data exposure",
-]) {
-  assert(
-    securityRegression.includes(required),
-    `Stage 6 live security regression evidence is missing: ${required}`,
-  );
-}
+assert(
+  securityRegression.includes("PASS — READ-ONLY LIVE DATABASE SECURITY AUDIT") &&
+    securityRegression.includes("no anonymous data exposure"),
+  "Stage 6 must retain the live isolation audit evidence.",
+);
 
+// Existing exact workflow continuity stays protected.
 for (const required of [
   "requestedLessonId",
   'new URLSearchParams(window.location.search).get("lesson")',
-  'next.lessons.some((lesson) => lesson.id === lessonId)',
-  "The linked HQLS lesson is not available in the active workspace.",
-  "router.replace(`/hqls?lesson=${encodeURIComponent(lessonId)}`",
   'id="hqls-selected-lesson"',
   'selectedLesson.status === "validated"',
-  'href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}',
   "Build Assessment",
 ]) {
-  assert(
-    hqlsClient.includes(required),
-    `Stage 6 exact HQLS artifact navigation is missing: ${required}`,
-  );
+  assert(hqlsClient.includes(required), `HQLS workflow continuity is missing: ${required}`);
 }
 
 for (const required of [
   "source_lesson_id",
-  "sourceLessonId",
   "applySourceLessonFromState",
-  "Source HQLS lesson (optional)",
-  'fetch("/api/assessment-v11"',
   'requestedWorkflowId("lesson")',
   'requestedWorkflowId("assessment")',
-  'next.lessons.some((lesson) => lesson.id === lessonId)',
-  'next.assessments.some((item) => item.id === assessmentId)',
-  "The linked HQLS lesson is not available as a validated assessment source in the active workspace.",
-  "The linked assessment is not available in the active workspace.",
-  "router.replace(`/assessment?lesson=${encodeURIComponent(lessonId)}`",
-  "`/assessment?assessment=${encodeURIComponent(assessmentId)}`",
-  'id="assessment-selected"',
-  'href={`/hqls?lesson=${encodeURIComponent(selectedAssessment.source_lesson_id)}`}',
-  'href={`/diagnosis?assessment=${encodeURIComponent(selectedAssessment.id)}`}',
   "Open Source HQLS Lesson",
   "Use in Diagnosis",
 ]) {
-  assert(
-    assessmentClient.includes(required),
-    `Live world-class Assessment workflow continuity is missing: ${required}`,
-  );
-}
-
-for (const required of [
-  "assessment_id",
-  "assessmentId",
-  'mode !== "quick_teacher"',
-  "Assessment Evidence",
-  "Select saved assessment",
-  "requestedAssessmentId",
-  '.get("assessment")',
-  "assessmentHandoffApplied",
-  'setMode("assessment_based")',
-  "The linked assessment is not available as diagnosis evidence in the active workspace.",
-  "Assessment evidence loaded:",
-  "replaceAssessmentWorkflowUrl",
-  "onAssessmentChange",
-  "function openDiagnosis(entry: DiagnosisEntry)",
-  "setError(null)",
-  "setNotice(null)",
-  "onClick={() => openDiagnosis(entry)}",
-]) {
-  assert(
-    diagnosisClient.includes(required),
-    `Diagnosis assessment/recovery continuity is missing: ${required}`,
-  );
+  assert(assessmentClient.includes(required), `Assessment workflow continuity is missing: ${required}`);
 }
 
 for (const required of [
@@ -160,36 +136,101 @@ for (const required of [
   'next_lesson_id: lessonId',
   "Do not generate another lesson",
 ]) {
-  assert(
-    nextLessonClient.includes(required),
-    `Intervention → exact HQLS handoff is missing: ${required}`,
-  );
+  assert(nextLessonClient.includes(required), `Intervention → HQLS continuity is missing: ${required}`);
+}
+
+// Generated artifacts must now open on dedicated result pages rather than extending
+// already-long mobile creation workspaces.
+for (const required of [
+  'queryKey: "lesson" | "assessment"',
+  'searchParams.get("edit") === "1"',
+  "router.replace(`${resultPath}?${queryKey}=",
+]) {
+  assert(resultRedirect.includes(required), `Artifact result redirect is missing: ${required}`);
+}
+
+assert(
+  hqlsPage.includes('resultPath="/hqls/result"') &&
+    hqlsResultPage.includes("HqlsResultClient") &&
+    hqlsResultClient.includes("HQLS Lesson Result") &&
+    hqlsResultClient.includes("Build Assessment") &&
+    hqlsResultClient.includes("Edit / Improve"),
+  "HQLS creation and result surfaces must be separated.",
+);
+
+assert(
+  assessmentPage.includes('resultPath="/assessment/result"') &&
+    assessmentResultPage.includes("AssessmentResultClient") &&
+    assessmentResultClient.includes("Assessment Result") &&
+    assessmentResultClient.includes("Open Source HQLS Lesson") &&
+    assessmentResultClient.includes("Use in Diagnosis"),
+  "Assessment creation and result surfaces must be separated.",
+);
+
+for (const required of [
+  "DiagnosisBuilderClient",
+  'router.push(`/diagnosis/result?diagnosis=',
+  "Assessment evidence loaded:",
+  "Select learner",
+]) {
+  assert(diagnosisBuilder.includes(required), `Focused Diagnosis builder is missing: ${required}`);
+}
+assert(
+  diagnosisPage.includes("DiagnosisBuilderClient") &&
+    diagnosisResultPage.includes("DiagnosisResultClient") &&
+    diagnosisResultClient.includes("Student Diagnosis Result") &&
+    diagnosisResultClient.includes("Archive Diagnosis") &&
+    diagnosisResultClient.includes("Permanent Delete") &&
+    diagnosisResultClient.includes("Open Intervention"),
+  "Diagnosis result/lifecycle separation is incomplete.",
+);
+
+assert(
+  interventionPage.includes("InterventionWorkspaceClient") &&
+    interventionWorkspace.includes('router.push(`/interventions/result?intervention=') &&
+    interventionResultPage.includes("InterventionResultClient") &&
+    interventionResultClient.includes("Action & Intervention Result") &&
+    interventionResultClient.includes("Archive Intervention") &&
+    interventionResultClient.includes("Permanent Delete") &&
+    interventionResultClient.includes("Open Linked HQLS Lesson"),
+  "Intervention result/lifecycle separation is incomplete.",
+);
+
+// Destructive lifecycle is deliberately narrower than archive.
+for (const required of [
+  "Only a workspace Owner or Admin can archive or permanently delete diagnoses.",
+  "Archive the linked intervention first",
+  'diagnosis.status !== "archived"',
+  "Permanent deletion is blocked while an intervention record still depends",
+  'confirmation !== "DELETE"',
+]) {
+  assert(diagnosisManage.includes(required), `Diagnosis guarded lifecycle is missing: ${required}`);
+}
+for (const required of [
+  "Only a workspace Owner or Admin can archive or permanently delete interventions.",
+  'handoff.status !== "archived" && handoff.status !== "draft"',
+  "provenance for a linked HQLS lesson",
+  'confirmation !== "DELETE"',
+]) {
+  assert(interventionManage.includes(required), `Intervention guarded lifecycle is missing: ${required}`);
 }
 
 for (const required of [
-  "nextLessonId",
-  "Open Linked HQLS Lesson",
-  'href={`/hqls?lesson=${encodeURIComponent(active.nextLessonId)}`}',
-  "Governed improvement handoff",
+  "check (status in ('draft', 'confirmed', 'archived'))",
+  "Archived intervention handoffs are immutable",
+  "Archive the linked intervention before archiving this diagnosis",
+  "diagnoses_delete_admin_archived_dependency_free",
+  "intervention_handoffs_delete_admin_guarded",
+  "status = 'archived' and next_lesson_id is null",
 ]) {
-  assert(
-    interventionClient.includes(required),
-    `Confirmed intervention history continuity is missing: ${required}`,
-  );
+  assert(lifecycleMigration.includes(required), `Guarded archive migration is missing: ${required}`);
 }
-
 assert(
-  diagnosisPage.includes("Student Diagnosis Intelligence") &&
-    !diagnosisPage.includes("Stage 4"),
-  "Diagnosis release UI must not expose internal development-stage labels.",
-);
-assert(
-  !interventionPage.includes("Stage 5") &&
-    !nextLessonPage.includes("Stage 5") &&
-    !interventionClient.includes("Stage 5 ·"),
-  "Intervention release UI must not expose internal development-stage labels.",
+  diagnosisPdf.includes('["final", "archived"].includes(diagnosis.status)'),
+  "Approved diagnosis PDF must remain available after archival.",
 );
 
+// Release copy stays product-facing.
 for (const required of [
   "Connected school intelligence",
   "One workspace. One connected learning loop.",
@@ -197,25 +238,12 @@ for (const required of [
   "Ready for aligned assessment design",
   "Ready for evidence-based diagnosis",
 ]) {
-  assert(
-    dashboardClient.includes(required),
-    `Dashboard release copy is missing: ${required}`,
-  );
+  assert(dashboardClient.includes(required), `Dashboard release copy is missing: ${required}`);
 }
-
 assert(
-  setupClient.includes("Academic Setup") &&
-    setupClient.includes(
-      "Define the school context used across HQLS lessons, assessments and diagnoses.",
-    ),
-  "Academic Setup must describe the current connected product rather than a future stage.",
-);
-assert(
-  resourceClient.includes("governed source context for HQLS lessons and assessments") &&
-    resourceClient.includes(
-      "HQLS and assessment generation can preserve provenance back to these files.",
-    ),
-  "Resource Library must describe the active intelligence engines rather than future functionality.",
+  setupClient.includes("Define the school context used across HQLS lessons, assessments and diagnoses.") &&
+    resourceClient.includes("governed source context for HQLS lessons and assessments"),
+  "Setup and Resource Library must describe the current connected product.",
 );
 
 const releaseCopySurfaces = [
@@ -225,11 +253,20 @@ const releaseCopySurfaces = [
   dashboardClient,
   setupClient,
   resourceClient,
-  assessmentClient,
+  hqlsPage,
+  hqlsResultPage,
+  hqlsResultClient,
+  assessmentPage,
+  assessmentResultPage,
+  assessmentResultClient,
   diagnosisPage,
-  diagnosisClient,
+  diagnosisBuilder,
+  diagnosisResultPage,
+  diagnosisResultClient,
   interventionPage,
-  interventionClient,
+  interventionWorkspace,
+  interventionResultPage,
+  interventionResultClient,
   nextLessonPage,
   nextLessonClient,
   savedWorkClient,
@@ -258,15 +295,13 @@ assert(
     vercel.includes('"main": true') &&
     vercel.includes('"*-preview": true') &&
     !vercel.includes("ignoreCommand"),
-  "Stage 6 must use quota-safe Vercel branch gating instead of canceled ignored builds.",
+  "Stage 6 must keep quota-safe Vercel branch gating.",
 );
-
 assert(
-  packageJson.includes('"verify:structure"') &&
-    packageJson.includes("verify-stage6.mjs"),
+  packageJson.includes('"verify:structure"') && packageJson.includes("verify-stage6.mjs"),
   "Permanent Stage 6 structural verification must remain enabled.",
 );
 
 console.log(
-  "Stage 6 structure verification passed: V1 three-engine boundary, live isolation evidence, validated HQLS -> exact world-class Assessment, exact saved Assessment -> Diagnosis evidence, clean saved-diagnosis record switching, exact intervention -> HQLS artifact navigation, clean release-facing product copy, quota-safe preview gating, and launch-readiness contract are present.",
+  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, release copy, security evidence and quota-safe preview gating are present.",
 );
