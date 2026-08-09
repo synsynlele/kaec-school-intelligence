@@ -116,6 +116,87 @@ textarea:read-only {
   overflow-wrap: anywhere;
 }
 
+/*
+ * Product-wide mobile containment contract.
+ * This does not hide horizontal overflow. Instead it removes intrinsic minimum
+ * widths and constrains media/controls so every KSI workspace can genuinely
+ * reflow inside a phone viewport, including generated AI text with long tokens.
+ */
+@media (max-width: 767px) {
+  .ksi-app-shell,
+  .ksi-app-shell main,
+  .ksi-app-shell header,
+  .ksi-app-shell footer,
+  .ksi-app-shell nav,
+  .ksi-app-shell section,
+  .ksi-app-shell article,
+  .ksi-app-shell aside,
+  .ksi-app-shell form,
+  .ksi-app-shell fieldset,
+  .ksi-app-shell label,
+  .ksi-app-shell div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ksi-app-shell fieldset {
+    min-inline-size: 0;
+  }
+
+  .ksi-app-shell img,
+  .ksi-app-shell svg,
+  .ksi-app-shell video,
+  .ksi-app-shell canvas,
+  .ksi-app-shell iframe {
+    max-width: 100%;
+  }
+
+  .ksi-app-shell input:not([type="checkbox"]):not([type="radio"]),
+  .ksi-app-shell textarea,
+  .ksi-app-shell select,
+  .ksi-app-shell button,
+  .ksi-app-shell a {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ksi-app-shell h1,
+  .ksi-app-shell h2,
+  .ksi-app-shell h3,
+  .ksi-app-shell h4,
+  .ksi-app-shell p,
+  .ksi-app-shell li,
+  .ksi-app-shell dt,
+  .ksi-app-shell dd,
+  .ksi-app-shell label,
+  .ksi-app-shell span,
+  .ksi-app-shell a,
+  .ksi-app-shell button,
+  .ksi-app-shell code,
+  .ksi-app-shell pre {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .ksi-app-shell pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+  }
+
+  .ksi-app-shell table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+  }
+
+  .ksi-app-shell th,
+  .ksi-app-shell td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
 @media (max-width: 639px) {
   .ksi-saved-work-shell main .inline-flex {
     display: grid;
