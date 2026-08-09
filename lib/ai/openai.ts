@@ -31,6 +31,8 @@ export class OpenAIProviderError extends Error {
   }
 }
 
+export type OpenAIReasoningEffort = "minimal" | "low" | "medium" | "high";
+
 export type GenerateOpenAIJsonInput = {
   systemInstruction: string;
   parts: OpenAIPart[];
@@ -38,6 +40,7 @@ export type GenerateOpenAIJsonInput = {
   schemaName?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: OpenAIReasoningEffort;
 };
 
 export type GenerateOpenAIJsonResult<T> = {
@@ -45,6 +48,7 @@ export type GenerateOpenAIJsonResult<T> = {
   provider: "openai";
   model: string;
   responseId?: string;
+  durationMs: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -145,6 +149,32 @@ function extractOutputText(payload: OpenAIResponse) {
   );
 }
 
+function supportsReasoningEffort(model: string) {
+  return model.startsWith("gpt-5") || /^o\d/.test(model);
+}
+
+function defaultReasoningEffort(input: GenerateOpenAIJsonInput): OpenAIReasoningEffort {
+  if (input.reasoningEffort) return input.reasoningEffort;
+
+  // KSI's deterministic validators protect fidelity after generation. Use a
+  // lower-cost first pass for responsiveness, while repair schemas keep medium
+  // reasoning so failed fidelity checks still receive a stronger correction pass.
+  return input.schemaName?.includes("repair") ? "medium" : "low";
+}
+
+function configuredTimeoutMs() {
+  const configured = Number(process.env.KSI_AI_TIMEOUT_MS ?? "150000");
+  if (!Number.isFinite(configured)) return 150_000;
+  return Math.min(180_000, Math.max(30_000, Math.round(configured)));
+}
+
+function isTimeoutError(caught: unknown) {
+  return (
+    caught instanceof Error &&
+    (caught.name === "TimeoutError" || caught.name === "AbortError")
+  );
+}
+
 export async function generateOpenAIJson<T>(
   input: GenerateOpenAIJsonInput,
 ): Promise<GenerateOpenAIJsonResult<T>> {
@@ -163,37 +193,88 @@ export async function generateOpenAIJson<T>(
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
     "gpt-5-mini";
+  const reasoningEffort = defaultReasoningEffort(input);
+  const timeoutMs = configuredTimeoutMs();
+  const startedAt = Date.now();
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      input: [
-        {
-          role: "system",
-          content: [{ type: "input_text", text: input.systemInstruction }],
-        },
-        {
-          role: "user",
-          content: toOpenAIInputContent(input.parts),
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: input.schemaName ?? "ksi_hqls_response",
-          strict: true,
-          schema: strictifySchema(input.responseSchema),
-        },
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
       },
-      max_output_tokens: input.maxOutputTokens ?? 12000,
+      body: JSON.stringify({
+        model,
+        store: false,
+        input: [
+          {
+            role: "system",
+            content: [{ type: "input_text", text: input.systemInstruction }],
+          },
+          {
+            role: "user",
+            content: toOpenAIInputContent(input.parts),
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: input.schemaName ?? "ksi_hqls_response",
+            strict: true,
+            schema: strictifySchema(input.responseSchema),
+          },
+        },
+        ...(supportsReasoningEffort(model)
+          ? { reasoning: { effort: reasoningEffort } }
+          : {}),
+        max_output_tokens: input.maxOutputTokens ?? 12000,
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (caught) {
+    const durationMs = Date.now() - startedAt;
+    console.error(
+      "KSI_AI_TIMING",
+      JSON.stringify({
+        schema: input.schemaName ?? "ksi_hqls_response",
+        model,
+        reasoningEffort: supportsReasoningEffort(model)
+          ? reasoningEffort
+          : "not_applicable",
+        durationMs,
+        status: isTimeoutError(caught) ? "timeout" : "network_error",
+      }),
+    );
+
+    if (isTimeoutError(caught)) {
+      throw new OpenAIProviderError(
+        "OPENAI_TIMEOUT",
+        "AI generation took too long to complete. Nothing partial was saved; please retry.",
+      );
+    }
+
+    throw new OpenAIProviderError(
+      "OPENAI_NETWORK_ERROR",
+      "The AI provider could not be reached. Please retry in a moment.",
+    );
+  }
+
+  const durationMs = Date.now() - startedAt;
+  console.info(
+    "KSI_AI_TIMING",
+    JSON.stringify({
+      schema: input.schemaName ?? "ksi_hqls_response",
+      model,
+      reasoningEffort: supportsReasoningEffort(model)
+        ? reasoningEffort
+        : "not_applicable",
+      durationMs,
+      status: response.status,
+      ok: response.ok,
     }),
-  });
+  );
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -233,6 +314,7 @@ export async function generateOpenAIJson<T>(
       provider: "openai",
       model,
       responseId: payload.id,
+      durationMs,
     };
   } catch {
     throw new OpenAIProviderError(
