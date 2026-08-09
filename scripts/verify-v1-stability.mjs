@@ -7,11 +7,19 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const [openai, authForm, authCallback, assessmentPage, globals] = await Promise.all([
+const [
+  openai,
+  authForm,
+  authCallback,
+  assessmentPage,
+  savedWorkPage,
+  globals,
+] = await Promise.all([
   text("lib/ai/openai.ts"),
   text("components/auth/auth-form.tsx"),
   text("app/auth/callback/page.tsx"),
   text("app/assessment/page.tsx"),
+  text("app/saved-work/page.tsx"),
   text("app/globals.css"),
 ]);
 
@@ -59,6 +67,23 @@ for (const required of [
   );
 }
 
+assert(
+  savedWorkPage.includes("ksi-saved-work-shell"),
+  "Saved Work must retain its scoped mobile containment shell.",
+);
+
+for (const required of [
+  ".ksi-saved-work-shell article",
+  ".ksi-saved-work-shell main .inline-flex",
+  "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)",
+  ".ksi-saved-work-shell article > div > div:last-child > button",
+]) {
+  assert(
+    globals.includes(required),
+    `Saved Work mobile shrink protection is missing: ${required}`,
+  );
+}
+
 console.log(
-  "V1 stability verification passed: AI latency controls, auth callback completion and Assessment mobile containment are present.",
+  "V1 stability verification passed: AI latency controls, auth callback completion, Assessment containment and Saved Work mobile containment are present.",
 );
