@@ -27,7 +27,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="ksi-app-shell flex min-h-full min-w-0 max-w-full flex-col">
+        {children}
+      </body>
     </html>
   );
 }
