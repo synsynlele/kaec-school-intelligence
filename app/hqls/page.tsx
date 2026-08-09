@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { HqlsClient } from "@/components/hqls/hqls-client";
+import { ArtifactResultRedirect } from "@/components/workflow/artifact-result-redirect";
 
 export default function HqlsPage() {
   return (
     <>
+      <Suspense fallback={null}>
+        <ArtifactResultRedirect queryKey="lesson" resultPath="/hqls/result" />
+      </Suspense>
       <div className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 sm:px-8 md:flex-row md:items-center md:justify-between">
           <KaecBrand compact />
