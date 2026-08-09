@@ -6,6 +6,7 @@ import {
   createDiagnosisPdf,
   safeDiagnosisPdfFilename,
 } from "@/lib/pdf/diagnosis-pdf";
+import { pdfSafeValue } from "@/lib/pdf/layout-safety";
 import type { Database } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -154,18 +155,20 @@ export async function GET(request: Request) {
       );
     }
 
-    const bytes = createDiagnosisPdf({
-      workspaceName: workspaceResult.data.name,
-      studentName: studentResult.data.display_name,
-      className,
-      academicSession,
-      term: diagnosis.term,
-      diagnosisMode: diagnosis.diagnosis_mode,
-      assessmentTitle: assessmentResult.data?.title ?? "",
-      diagnosis: diagnosisFromRow(diagnosis),
-      reviewedAt: diagnosis.reviewed_at,
-      finalisedAt: diagnosis.finalised_at,
-    });
+    const bytes = createDiagnosisPdf(
+      pdfSafeValue({
+        workspaceName: workspaceResult.data.name,
+        studentName: studentResult.data.display_name,
+        className,
+        academicSession,
+        term: diagnosis.term,
+        diagnosisMode: diagnosis.diagnosis_mode,
+        assessmentTitle: assessmentResult.data?.title ?? "",
+        diagnosis: diagnosisFromRow(diagnosis),
+        reviewedAt: diagnosis.reviewed_at,
+        finalisedAt: diagnosis.finalised_at,
+      }),
+    );
 
     return new Response(bytes as BodyInit, {
       status: 200,
