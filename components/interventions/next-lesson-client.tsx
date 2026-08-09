@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -106,6 +107,7 @@ async function loadStarterState(): Promise<StarterState | null> {
 }
 
 export function NextLessonClient() {
+  const router = useRouter();
   const [state, setState] = useState<StarterState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -283,8 +285,9 @@ export function NextLessonClient() {
           : current,
       );
       setNotice(
-        "Closed loop complete. The HQLS lesson was generated, validated, saved and linked to this intervention. Use Open Generated HQLS Lesson below to continue with that lesson.",
+        "Closed loop complete. The HQLS lesson was generated, validated, saved and linked. Opening the exact lesson now…",
       );
+      router.push(`/hqls?lesson=${encodeURIComponent(lessonId)}`);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -407,7 +410,7 @@ export function NextLessonClient() {
                 {busy ? "Building with HQLS..." : "Generate Next HQLS Lesson"}
               </button>
               <Link
-                href="/hqls"
+                href={linkedLessonId ? `/hqls?lesson=${encodeURIComponent(linkedLessonId)}` : "/hqls"}
                 className={`rounded-xl px-4 py-3 text-sm font-semibold ${linkedLessonId ? "bg-emerald-100 text-emerald-950" : "border border-zinc-300 bg-white text-zinc-800"}`}
               >
                 {linkedLessonId ? "Open Generated HQLS Lesson" : "Open HQLS Lessons"}

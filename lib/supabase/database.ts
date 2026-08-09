@@ -153,6 +153,10 @@ type FinalStageFunctions = Omit<
     };
     Returns: DiagnosisRow;
   };
+  archive_diagnosis: {
+    Args: { target_diagnosis_id: string };
+    Returns: DiagnosisRow;
+  };
   record_hqls_system_fidelity_check: {
     Args: {
       target_lesson_id: string;

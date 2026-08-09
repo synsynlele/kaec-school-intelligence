@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "Diagnosis not found." }, { status: 404 });
     }
     if (
-      diagnosis.status !== "final" ||
+      !["final", "archived"].includes(diagnosis.status) ||
       !diagnosis.reviewed_at ||
       !diagnosis.finalised_at
     ) {

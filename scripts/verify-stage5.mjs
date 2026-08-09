@@ -14,8 +14,10 @@ const [
   retentionMigration,
   derivation,
   database,
-  interventionClient,
+  interventionWorkspace,
+  interventionResult,
   interventionPage,
+  interventionResultPage,
   nextLessonClient,
   nextLessonPage,
   hqlsApi,
@@ -29,8 +31,10 @@ const [
   text("supabase/migrations/023_stage5_confirmed_handoff_retention.sql"),
   text("lib/intervention/plan.ts"),
   text("lib/supabase/database.ts"),
-  text("components/interventions/intervention-client.tsx"),
+  text("components/interventions/intervention-workspace-client.tsx"),
+  text("components/interventions/intervention-result-client.tsx"),
   text("app/interventions/page.tsx"),
+  text("app/interventions/result/page.tsx"),
   text("components/interventions/next-lesson-client.tsx"),
   text("app/interventions/next-lesson/page.tsx"),
   text("app/api/hqls/route.ts"),
@@ -93,7 +97,7 @@ assert(
 assert(
   retentionMigration.includes("intervention_handoffs_delete_admin_draft_only") &&
     retentionMigration.includes("status = 'draft'"),
-  "Confirmed Stage 5 handoffs must remain durable audit history; only draft cleanup may be deleted.",
+  "The original Stage 5 retention migration must remain in history; Stage 6 may only supersede it with a stricter governed lifecycle.",
 );
 
 for (const required of [
@@ -125,19 +129,30 @@ assert(
   !derivation.includes("generateOpenAI") && !derivation.includes("@/lib/ai/openai"),
   "Stage 5 derivation must remain deterministic and must not become a fourth AI engine.",
 );
-assert(
-  !interventionClient.includes("generateOpenAI") &&
-    !interventionClient.includes("@/lib/ai/openai") &&
-    !interventionClient.includes('from "@supabase/supabase-js"') &&
-    !interventionClient.includes("as unknown as SupabaseClient"),
-  "Intervention handoff workspace must use the typed KSI client and must not invoke a new AI engine.",
-);
+
+for (const surface of [interventionWorkspace, interventionResult]) {
+  assert(
+    !surface.includes("generateOpenAI") &&
+      !surface.includes("@/lib/ai/openai") &&
+      !surface.includes('from "@supabase/supabase-js"') &&
+      !surface.includes("as unknown as SupabaseClient"),
+    "Intervention workspace/result must use the typed KSI client and must not invoke a new AI engine.",
+  );
+}
 
 for (const required of [
   'eq("status", "final")',
   "deriveInterventionDraft",
   'status: "draft"',
-  'status: "confirmed"',
+  'router.push(`/interventions/result?intervention=',
+]) {
+  assert(
+    interventionWorkspace.includes(required),
+    `Stage 5 intervention creation workspace is missing: ${required}`,
+  );
+}
+
+for (const required of [
   "Confirm Intervention",
   "Priority Growth Target",
   "Evidence Basis",
@@ -146,25 +161,29 @@ for (const required of [
   "Success Indicator",
   "Next Learning Adjustment",
   'href="/interventions/next-lesson"',
+  "Open Source Diagnosis",
 ]) {
   assert(
-    interventionClient.includes(required),
-    `Stage 5 intervention workspace is missing: ${required}`,
+    interventionResult.includes(required),
+    `Stage 5 intervention result is missing: ${required}`,
   );
 }
 
 assert(
-  interventionPage.includes("InterventionClient") &&
-    interventionPage.includes('href="/interventions/next-lesson"'),
-  "Stage 5 intervention page must expose the next-lesson handoff.",
+  interventionPage.includes("InterventionWorkspaceClient") &&
+    interventionPage.includes('href="/interventions/next-lesson"') &&
+    interventionResultPage.includes("InterventionResultClient"),
+  "Stage 5 intervention routes must expose both creation and human-confirmed result/next-lesson handoffs.",
 );
 assert(
   diagnosisPage.includes('href="/interventions"'),
   "Final diagnosis workflow must expose Stage 5 interventions.",
 );
 assert(
-  dashboard.includes("Stage 5 active") && dashboard.includes('href="/interventions"'),
-  "Dashboard must expose the Stage 5 closed learning loop.",
+  dashboard.includes("School Intelligence Workspace") &&
+    dashboard.includes('href="/interventions"') &&
+    dashboard.includes('href="/hqls"'),
+  "Dashboard must expose the complete closed learning loop without relying on development-stage labels.",
 );
 
 for (const required of [
@@ -191,8 +210,8 @@ assert(
 );
 assert(
   nextLessonPage.includes("NextLessonClient") &&
-    nextLessonPage.includes("Stage 5 · Closed Learning Loop"),
-  "Stage 5 next-lesson route is missing.",
+    nextLessonPage.includes("Closed Learning Loop"),
+  "Stage 5 next-lesson route must remain available without requiring a development-stage label in the product UI.",
 );
 assert(
   hqlsApi.includes('if (body.action === "generate")') &&
@@ -200,10 +219,14 @@ assert(
   "The authoritative existing HQLS generation route must remain available for Stage 5 reuse.",
 );
 assert(
-  vercel.includes("ignoreCommand") && vercel.includes("[skip vercel"),
-  "Stage 5 must retain Vercel deployment batching discipline.",
+  vercel.includes('"deploymentEnabled"') &&
+    vercel.includes('"*": false') &&
+    vercel.includes('"main": true') &&
+    vercel.includes('"*-preview": true') &&
+    !vercel.includes("ignoreCommand"),
+  "KSI must use quota-safe Vercel branch gating: working branches disabled, main and deliberate *-preview branches enabled.",
 );
 
 console.log(
-  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe immutable handoff, durable confirmed retention, indexed provenance actors, product navigation, no fourth AI engine, and confirmed intervention -> existing HQLS closed-loop generation are present.",
+  "Stage 5 structure verification passed: final-diagnosis gate, deterministic intervention derivation, typed human-confirmed tenant-safe handoff, preserved Stage 5 retention history, dedicated result view, product navigation, no fourth AI engine, confirmed intervention -> existing HQLS closed-loop generation, and quota-safe Vercel branch gating are present.",
 );

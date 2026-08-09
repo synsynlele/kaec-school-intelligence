@@ -548,13 +548,13 @@ export function AcademicSetupClient() {
               ← Dashboard
             </Link>
             <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
-              Stage 1 Academic Setup
+              Academic Setup
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">
               {context.workspace.name}
             </h1>
             <p className="mt-2 text-sm text-zinc-500">
-              Define the school context that future HQLS lessons, assessments and diagnoses will reuse.
+              Define the school context used across HQLS lessons, assessments and diagnoses.
             </p>
           </div>
           <span className="w-fit rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600">

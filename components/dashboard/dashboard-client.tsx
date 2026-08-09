@@ -392,32 +392,34 @@ export function DashboardClient() {
             eyebrow="01"
             title="HQLS Lesson Intelligence"
             description="Design seven-stage learning experiences that protect struggle, learner voice and reflection."
-            status="Engine build follows Stage 1"
+            status="Ready for lesson planning and validation"
           />
           <EngineCard
             eyebrow="02"
             title="Assessment Intelligence"
             description="Create assessments aligned to taught content, reasoning and meaningful evidence of learning."
-            status="Engine build follows Stage 1"
+            status="Ready for aligned assessment design"
           />
           <EngineCard
             eyebrow="03"
             title="Student Diagnosis Intelligence"
             description="Turn assessment evidence and structured observations into reviewed, actionable growth plans."
-            status="Engine build follows Stage 1"
+            status="Ready for evidence-based diagnosis"
           />
         </section>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold text-emerald-800">Stage 1 foundation</p>
+            <p className="text-sm font-semibold text-emerald-800">
+              Connected school intelligence
+            </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              The workspace is the security boundary.
+              One workspace. One connected learning loop.
             </h2>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
-              Lessons, assessments, student evidence, diagnoses and future school
-              resources remain attached to the active workspace. This foundation is
-              intentionally being proven before the final AI engines are connected.
+              Lessons, assessments, student evidence, diagnoses and interventions stay
+              attached to the active workspace so teachers can move from planning to
+              evidence, action and the next learning cycle without losing context.
             </p>
           </div>
         </section>
@@ -451,7 +453,7 @@ function EngineCard({
       <p className="text-sm font-semibold text-emerald-800">{eyebrow}</p>
       <h2 className="mt-5 text-xl font-semibold tracking-tight">{title}</h2>
       <p className="mt-3 text-sm leading-6 text-zinc-600">{description}</p>
-      <p className="mt-7 border-t border-zinc-100 pt-4 text-xs font-medium text-zinc-400">
+      <p className="mt-7 border-t border-zinc-100 pt-4 text-xs font-medium text-zinc-500">
         {status}
       </p>
     </article>

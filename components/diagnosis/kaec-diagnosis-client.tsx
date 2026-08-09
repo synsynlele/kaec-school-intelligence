@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   DiagnosisAction,
@@ -121,6 +121,22 @@ function clean(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function requestedAssessmentId() {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search)
+    .get("assessment")
+    ?.trim();
+  return value || null;
+}
+
+function replaceAssessmentWorkflowUrl(assessmentId: string) {
+  if (typeof window === "undefined") return;
+  const url = assessmentId
+    ? `/diagnosis?assessment=${encodeURIComponent(assessmentId)}`
+    : "/diagnosis";
+  window.history.replaceState(window.history.state, "", url);
+}
+
 function observation(
   domain: Observation["domain"],
   label: string,
@@ -184,6 +200,7 @@ export function KaecDiagnosisClient() {
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
 
   const [active, setActive] = useState<DiagnosisEntry | null>(null);
+  const assessmentHandoffApplied = useRef(false);
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -233,6 +250,30 @@ export function KaecDiagnosisClient() {
     setClassSessions(sessions);
     setData(payload);
 
+    if (!assessmentHandoffApplied.current) {
+      assessmentHandoffApplied.current = true;
+      const linkedAssessmentId = requestedAssessmentId();
+      if (linkedAssessmentId) {
+        const linkedAssessment = payload.assessments.find(
+          (assessment) =>
+            assessment.id === linkedAssessmentId && assessment.status !== "archived",
+        );
+        if (!linkedAssessment) {
+          setError(
+            "The linked assessment is not available as diagnosis evidence in the active workspace.",
+          );
+        } else {
+          setMode("assessment_based");
+          setAssessmentId(linkedAssessmentId);
+          setItemMarks({});
+          setItemNotes({});
+          setNotice(
+            `Assessment evidence loaded: ${linkedAssessment.title}. Select the learner and enter the observed results before generating the diagnosis.`,
+          );
+        }
+      }
+    }
+
     const nextStudentId = studentId || payload.students[0]?.id || "";
     if (!studentId && nextStudentId) setStudentId(nextStudentId);
     const student = payload.students.find((item) => item.id === nextStudentId);
@@ -255,11 +296,6 @@ export function KaecDiagnosisClient() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [refresh]);
-
-  const selectedStudent = useMemo(
-    () => data?.students.find((student) => student.id === studentId) ?? null,
-    [data, studentId],
-  );
 
   const selectedAssessment = useMemo(
     () => data?.assessments.find((assessment) => assessment.id === assessmentId) ?? null,
@@ -308,6 +344,29 @@ export function KaecDiagnosisClient() {
     if (student?.classId && classSessions[student.classId]) {
       setAcademicSession(classSessions[student.classId]);
     }
+  }
+
+  function onModeChange(nextMode: DiagnosisMode) {
+    setMode(nextMode);
+    if (nextMode === "quick_teacher") {
+      setAssessmentId("");
+      setItemMarks({});
+      setItemNotes({});
+      replaceAssessmentWorkflowUrl("");
+    }
+  }
+
+  function onAssessmentChange(nextAssessmentId: string) {
+    setAssessmentId(nextAssessmentId);
+    setItemMarks({});
+    setItemNotes({});
+    replaceAssessmentWorkflowUrl(nextAssessmentId);
+  }
+
+  function openDiagnosis(entry: DiagnosisEntry) {
+    setActive(entry);
+    setError(null);
+    setNotice(null);
   }
 
   async function generate() {
@@ -523,7 +582,7 @@ export function KaecDiagnosisClient() {
                 <select
                   value={mode}
                   onChange={(event) =>
-                    setMode(event.target.value as DiagnosisMode)
+                    onModeChange(event.target.value as DiagnosisMode)
                   }
                   className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3"
                 >
@@ -692,11 +751,7 @@ export function KaecDiagnosisClient() {
                 <Field label="Assessment Evidence">
                   <select
                     value={assessmentId}
-                    onChange={(event) => {
-                      setAssessmentId(event.target.value);
-                      setItemMarks({});
-                      setItemNotes({});
-                    }}
+                    onChange={(event) => onAssessmentChange(event.target.value)}
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3"
                   >
                     <option value="">Select saved assessment</option>
@@ -820,7 +875,7 @@ export function KaecDiagnosisClient() {
                     <button
                       key={entry.row.id}
                       type="button"
-                      onClick={() => setActive(entry)}
+                      onClick={() => openDiagnosis(entry)}
                       className="rounded-xl border border-zinc-200 p-3 text-left transition hover:bg-stone-50"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
