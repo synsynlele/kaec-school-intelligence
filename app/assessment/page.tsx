@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { WorldClassAssessmentClient } from "@/components/assessment/world-class-assessment-client";
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { ArtifactResultRedirect } from "@/components/workflow/artifact-result-redirect";
 
 export default function AssessmentPage() {
   return (
     <div className="min-h-screen bg-stone-50">
+      <Suspense fallback={null}>
+        <ArtifactResultRedirect queryKey="assessment" resultPath="/assessment/result" />
+      </Suspense>
       <div className="border-b border-emerald-900/10 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 md:flex-row md:items-center md:justify-between">
           <KaecBrand compact />
