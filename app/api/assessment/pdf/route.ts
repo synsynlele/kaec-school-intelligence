@@ -9,6 +9,7 @@ import {
   createAssessmentPdf,
   safeAssessmentPdfFilename,
 } from "@/lib/pdf/assessment-pdf";
+import { patchPdfCommands, pdfSafeValue } from "@/lib/pdf/layout-safety";
 import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -188,36 +189,41 @@ export async function GET(request: Request) {
     if (subjectResult.error) throw subjectResult.error;
     if (classResult.error) throw classResult.error;
 
-    const pdf = createAssessmentPdf({
-      workspaceName: workspace.name,
-      subject: subjectResult.data?.name ?? "Not linked",
-      classLevel: classResult.data?.name ?? "Not linked",
-      topic:
-        typeof blueprint.topic === "string"
-          ? blueprint.topic
-          : generated.items[0]?.topic ?? "",
-      objective:
-        typeof blueprint.objective === "string"
-          ? blueprint.objective
-          : generated.items[0]?.objective ?? "",
-      durationMinutes:
-        typeof blueprint.durationMinutes === "number"
-          ? blueprint.durationMinutes
-          : null,
-      assessmentType:
-        typeof blueprint.assessmentKind === "string"
-          ? blueprint.assessmentKind
-          : null,
-      overallDifficulty:
-        typeof blueprint.overallDifficulty === "string"
-          ? blueprint.overallDifficulty
-          : null,
-      topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
-      assessment: generated,
-    });
+    const pdf = createAssessmentPdf(
+      pdfSafeValue({
+        workspaceName: workspace.name,
+        subject: subjectResult.data?.name ?? "Not linked",
+        classLevel: classResult.data?.name ?? "Not linked",
+        topic:
+          typeof blueprint.topic === "string"
+            ? blueprint.topic
+            : generated.items[0]?.topic ?? "",
+        objective:
+          typeof blueprint.objective === "string"
+            ? blueprint.objective
+            : generated.items[0]?.objective ?? "",
+        durationMinutes:
+          typeof blueprint.durationMinutes === "number"
+            ? blueprint.durationMinutes
+            : null,
+        assessmentType:
+          typeof blueprint.assessmentKind === "string"
+            ? blueprint.assessmentKind
+            : null,
+        overallDifficulty:
+          typeof blueprint.overallDifficulty === "string"
+            ? blueprint.overallDifficulty
+            : null,
+        topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
+        assessment: generated,
+      }),
+    );
+    const protectedPdf = patchPdfCommands(pdf, [
+      ["54 746 487 1.3 re f", "89 746 452 1.3 re f"],
+    ]);
     const filename = safeAssessmentPdfFilename(rows.assessment.title);
 
-    return new Response(pdf, {
+    return new Response(protectedPdf, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
