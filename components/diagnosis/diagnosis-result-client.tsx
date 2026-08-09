@@ -112,15 +112,18 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
 
   useEffect(() => {
     let active = true;
-    void load()
-      .catch((caught) => {
-        if (active) setError(caught instanceof Error ? caught.message : "The diagnosis could not be opened.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const timer = window.setTimeout(() => {
+      void load()
+        .catch((caught) => {
+          if (active) setError(caught instanceof Error ? caught.message : "The diagnosis could not be opened.");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 0);
     return () => {
       active = false;
+      window.clearTimeout(timer);
     };
   }, [load]);
 
