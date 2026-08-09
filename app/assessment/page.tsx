@@ -7,7 +7,7 @@ import { ArtifactResultRedirect } from "@/components/workflow/artifact-result-re
 
 export default function AssessmentPage() {
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="ksi-assessment-shell min-h-screen min-w-0 max-w-full overflow-x-hidden bg-stone-50">
       <Suspense fallback={null}>
         <ArtifactResultRedirect queryKey="assessment" resultPath="/assessment/result" />
       </Suspense>
