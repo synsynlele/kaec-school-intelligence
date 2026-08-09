@@ -104,9 +104,11 @@ assert(
 );
 
 assert(
-  securityRegression.includes("PASS — READ-ONLY LIVE DATABASE SECURITY AUDIT") &&
-    securityRegression.includes("no anonymous data exposure"),
-  "Stage 6 must retain the live isolation audit evidence.",
+  securityRegression.includes("PASS — LIVE DATABASE SECURITY AUDIT") &&
+    securityRegression.includes("no anonymous data exposure") &&
+    securityRegression.includes("Guarded archive and destructive actions") &&
+    securityRegression.includes("0 visible rows"),
+  "Stage 6 must retain live isolation plus guarded lifecycle audit evidence.",
 );
 
 // Existing exact workflow continuity stays protected.
@@ -303,5 +305,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, release copy, security evidence and quota-safe preview gating are present.",
+  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, release copy, live security evidence and quota-safe preview gating are present.",
 );
