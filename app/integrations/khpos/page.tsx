@@ -115,7 +115,7 @@ export default function KhposIntegrationPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">KSI × KHP-OS</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">Approve institutional learning-signal sharing</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
-          KHP-OS is asking KSI to share a bounded 90-day school-level summary. KSI remains the learning engine; this connection does not move student records or give KHP-OS access to KSI's database.
+          KHP-OS is asking KSI to share a bounded 90-day school-level summary. KSI remains the learning engine; this connection does not move student records or give KHP-OS access to the KSI database.
         </p>
 
         <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
