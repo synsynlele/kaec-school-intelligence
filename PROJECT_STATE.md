@@ -1,126 +1,50 @@
 # KAEC School Intelligence — Project State
 
-Updated: 8 August 2026
+Updated: 14 August 2026
 
-## Current stage
+## Current checkpoint
 
-**Stage 5 — Action & Intervention Intelligence: LIVE ACCEPTANCE PASSED / READY FOR MERGE**
+**KHP-OS Stage 7 integration candidate — implementation assembled for validation**
 
-Stage 0 Product Constitution v1.1 remains approved and frozen.
-
-Stages 1–4 are complete and merged. Stage 5 completes the governed KSI learning loop without introducing a fourth intelligence engine.
-
-## Repository
-
-- GitHub: `synsynlele/kaec-school-intelligence`
-- Default branch: `main`
-- Stage 5 branch: `stage-5-action-intervention-intelligence`
-- Stage 5 PR: `#6 — Stage 5 — Action & Intervention Intelligence`
-- Stage 5 base: `00597234403edab6261fd08eaa2f3f12583a71e7`
-
-## Product scope
-
-Version 1 remains locked to three intelligence engines:
-
-1. HQLS Lesson Intelligence
-2. Assessment Intelligence
-3. Student Diagnosis Intelligence
-
-Stage 5 is the governed handoff layer connecting those engines through the constitutional loop:
+The KSI Product Constitution remains frozen. KSI remains the specialist learning-intelligence system with the governed loop:
 
 **HQLS Lesson → Assessment → Student Evidence → Diagnosis → Action / Intervention → Next HQLS Lesson**
 
-KSI is not a school ERP.
+The new KHP-OS integration does not add a fourth KSI intelligence engine and does not turn KSI into an ERP.
 
-## Stage 5 accepted behaviour
+## Stage 7 integration boundary
 
-A final diagnosis can now produce one practical intervention handoff containing:
+KSI can now be paired to one KHP-OS school organisation through a one-time Owner/Admin approval. After pairing, KSI exports only a bounded 90-day institutional aggregate:
 
-- Priority Growth Target
-- Evidence Basis
-- School Intervention
-- Parent Intervention
-- Overall Timeframe
-- Success Indicator
-- Review Date / Checkpoint
-- Next Learning Adjustment
+- lesson validation and HQLS fidelity;
+- assessment validation and lesson alignment;
+- diagnosis finalisation;
+- intervention-to-next-lesson continuity.
 
-The intervention begins as a draft and requires explicit human confirmation before it becomes authoritative. Confirmed intervention content is immutable and retained as durable audit history.
+KSI does not export learner identities, teacher rankings, raw lesson content, assessment content, diagnosis prose, intervention notes or parent data.
 
-A confirmed intervention can then feed the existing HQLS Lesson Intelligence engine. The teacher still selects the next lesson Subject, Topic, Objective and Duration. KSI supplies the intervention as private, class-safe differentiation context rather than exposing or singling out the learner.
+KSI uses the signed-in user's existing RLS permissions to compute the aggregate. No KSI service-role credential or cross-database connection is introduced.
 
-The generated HQLS lesson is linked back to the intervention handoff and duplicate next-lesson generation from the same confirmed intervention is blocked.
+## Synchronisation
 
-## Stage 5 live acceptance
+The connector token is stored in a Secure, HttpOnly, SameSite=Lax cookie. The dashboard performs a non-blocking refresh at most once per hour. KSI remains fully usable when KHP-OS is unavailable.
 
-Manual Vercel deployment:
+## Authority
 
-- deployment: `dpl_CmJXiydy6i44wNJZUhPw85kG1ndP`
-- branch: `stage-5-action-intervention-intelligence`
-- deployment commit: `acee75bda43c0c7a5ff77ca083735275b8c43165`
-- status: READY
+KSI learning signals are institutional context only. They cannot resolve KSHC priorities or set verified institutional improvement. KHP-OS Stage 6 reassessment remains the only authority for those states.
 
-Founder live acceptance proved:
+## Validation gate
 
-- final diagnosis appeared in Interventions: PASS
-- intervention draft creation: PASS
-- intervention review/edit/save: PASS
-- intervention confirmation and lock: PASS
-- confirmed handoff entered next-HQLS flow: PASS
-- `/api/hqls` intervention generation request: HTTP 200
-- new lesson created and validated: PASS
-- intervention linked to exact new lesson ID: PASS
-- duplicate generation prevention: PASS
-- generated lesson reflected the intervention: PASS
-- learner was not named or singled out inside the HQLS lesson: PASS
+This checkpoint must pass:
 
-Accepted generated lesson during live proof:
+- lint;
+- strict TypeScript;
+- existing KSI structural verification;
+- Stage 7 integration verification;
+- production build.
 
-- title: `Who, What, Whose? Practising Pronouns with Drawing and Numbered Steps`
-- lesson id: `4a29afd2-27e2-4c54-9002-228d35a9d0e8`
-- status: `validated`
-
-The lesson demonstrably incorporated the intervention's English communication target, emotion-regulation routines, mathematical sequencing strength and creative/drawing strength across the seven constitutional HQLS stages without naming the target learner.
-
-The final UX clarification improves the intervention screen wording so an already-generated/linked lesson is clearly surfaced instead of appearing as if generation failed. The underlying closed-loop behaviour was already proven live.
-
-## Stage 5 database
-
-Applied migrations:
-
-1. `021_stage5_intervention_handoff.sql`
-2. `022_stage5_handoff_actor_indexes.sql`
-3. `023_stage5_confirmed_handoff_retention.sql`
-
-Verified guarantees:
-
-- RLS enabled;
-- anon access revoked;
-- final-diagnosis-only provenance;
-- one intervention per diagnosis;
-- diagnosis/workspace/student provenance immutable;
-- authenticated confirmation actor/timestamp stamping;
-- required fields enforced before confirmation;
-- confirmed content immutable;
-- confirmed handoffs cannot be deleted by product users;
-- owner/admin may delete accidental drafts only;
-- next lesson must belong to the same workspace;
-- first linked lesson is immutable;
-- rollback proofs left no test rows.
-
-## Engineering verification
-
-Final Stage 5 closeout verification passed:
-
-- dependency installation: PASS
-- lint: PASS
-- strict TypeScript: PASS
-- Stage 2–5 constitutional structure verification: PASS
-- production build: PASS
-- dependency audit: PASS
-
-Stage 5 is accepted and may be merged. The next stage must begin only from the resulting merged `main` head and must remain inside the frozen Product Constitution unless the constitution is explicitly amended.
+The integration branch is intentionally not named `*-preview`, so KSI's Vercel branch gate should not create a preview during code-level validation.
 
 ## Audit-trail preservation
 
-The prior detailed project-state snapshot is preserved in Git history at the Stage 5 base/main lineage, including blob `133c65eb32a7ce3f8797d971775378dc310e4362`. This current-state document advances the active checkpoint; earlier acceptance details remain recoverable from Git and the merged stage PRs.
+Earlier Stage 5/6 acceptance detail remains preserved in Git history. This file records the current Stage 7 cross-product integration checkpoint without rewriting those historical records.
