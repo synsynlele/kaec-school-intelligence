@@ -21,8 +21,8 @@ function bearerToken(request: Request): string | null {
   return value.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
 }
 
-function secureCookie(value: string, maxAge = CONNECTOR_MAX_AGE) {
-  return { value, httpOnly: true, secure: true, sameSite: "lax" as const, path: "/", maxAge };
+function secureCookieOptions(maxAge = CONNECTOR_MAX_AGE) {
+  return { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/", maxAge };
 }
 
 function errorResponse(error: unknown) {
@@ -58,9 +58,9 @@ export async function POST(request: Request) {
         connected: true,
         returnTo: khposReturnUrl(paired.organisationId),
       });
-      response.cookies.set(CONNECTOR_COOKIE, secureCookie(paired.connectorToken));
-      response.cookies.set(WORKSPACE_COOKIE, secureCookie(paired.workspaceId));
-      response.cookies.set(LAST_SYNC_COOKIE, secureCookie(String(Date.now())));
+      response.cookies.set(CONNECTOR_COOKIE, paired.connectorToken, secureCookieOptions());
+      response.cookies.set(WORKSPACE_COOKIE, paired.workspaceId, secureCookieOptions());
+      response.cookies.set(LAST_SYNC_COOKIE, String(Date.now()), secureCookieOptions());
       return response;
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
       await syncWithKhpos(accessToken, workspaceId, connectorToken);
       const response = NextResponse.json({ ok: true, connected: true, synced: true });
-      response.cookies.set(LAST_SYNC_COOKIE, secureCookie(String(Date.now())));
+      response.cookies.set(LAST_SYNC_COOKIE, String(Date.now()), secureCookieOptions());
       return response;
     }
 
