@@ -60,7 +60,11 @@ export default function AuthCallbackPage() {
           ? "Sign-in complete. Opening your workspace…"
           : "Sign-in complete. Returning to the secure connection…",
       );
-      router.replace(destination);
+      if (destination === "/dashboard") {
+        router.replace("/dashboard");
+      } else {
+        router.replace(destination);
+      }
       router.refresh();
     }
 
