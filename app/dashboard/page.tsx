@@ -44,6 +44,12 @@ export default function DashboardPage() {
             >
               Interventions
             </Link>
+            <Link
+              href="/leadership"
+              className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              Leadership
+            </Link>
           </div>
         </div>
       </div>
@@ -51,6 +57,12 @@ export default function DashboardPage() {
       <DashboardClient />
 
       <nav className="fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2 sm:bottom-7 sm:right-7">
+        <Link
+          href="/admin/schools"
+          className="rounded-2xl border border-emerald-900/20 bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-950/10 transition hover:bg-emerald-900"
+        >
+          School Access
+        </Link>
         <Link
           href="/setup"
           className="rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-lg shadow-zinc-950/5 transition hover:border-zinc-400"
