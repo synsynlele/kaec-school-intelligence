@@ -7,6 +7,15 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Mode = "sign_in" | "sign_up";
 
+const AUTH_RETURN_KEY = "ksi:auth:returnTo";
+
+function postAuthPath() {
+  if (typeof window === "undefined") return "/dashboard";
+  const stored = window.sessionStorage.getItem(AUTH_RETURN_KEY)?.trim() ?? "";
+  if (!stored.startsWith("/") || stored.startsWith("//")) return "/dashboard";
+  return stored;
+}
+
 export function AuthForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("sign_in");
@@ -64,7 +73,7 @@ export function AuthForm() {
           throw signInError;
         }
 
-        router.replace("/dashboard");
+        router.replace(postAuthPath());
         router.refresh();
         return;
       }
@@ -88,7 +97,7 @@ export function AuthForm() {
       }
 
       if (data.session) {
-        router.replace("/dashboard");
+        router.replace(postAuthPath());
         router.refresh();
       } else {
         setMessage(
