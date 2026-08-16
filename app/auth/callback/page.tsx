@@ -8,6 +8,8 @@ import type { Session } from "@supabase/supabase-js";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
+const AUTH_RETURN_KEY = "ksi:auth:returnTo";
+
 function returnedAuthError() {
   if (typeof window === "undefined") return null;
   const search = new URLSearchParams(window.location.search);
@@ -19,6 +21,13 @@ function returnedAuthError() {
     hash.get("error") ||
     null
   );
+}
+
+function postAuthPath() {
+  if (typeof window === "undefined") return "/dashboard";
+  const stored = window.sessionStorage.getItem(AUTH_RETURN_KEY)?.trim() ?? "";
+  if (!stored.startsWith("/") || stored.startsWith("//")) return "/dashboard";
+  return stored;
 }
 
 export default function AuthCallbackPage() {
@@ -45,8 +54,17 @@ export default function AuthCallbackPage() {
     function enterWorkspace(session: Session | null) {
       if (!active || completed || !session?.user) return;
       completed = true;
-      setMessage("Sign-in complete. Opening your workspace…");
-      router.replace("/dashboard");
+      const destination = postAuthPath();
+      setMessage(
+        destination === "/dashboard"
+          ? "Sign-in complete. Opening your workspace…"
+          : "Sign-in complete. Returning to the secure connection…",
+      );
+      if (destination === "/dashboard") {
+        router.replace("/dashboard");
+      } else {
+        router.replace(destination);
+      }
       router.refresh();
     }
 
