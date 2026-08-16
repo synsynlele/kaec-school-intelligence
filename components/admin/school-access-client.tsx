@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
@@ -33,9 +33,12 @@ const STATUS_LABEL: Record<SchoolAccessStatus, string> = {
 
 const STATUS_HELP: Record<SchoolAccessStatus, string> = {
   active: "Normal KSI access is available to approved school members.",
-  paused: "Temporarily stops normal protected KSI access while preserving data.",
-  blocked: "Denies normal protected KSI access until KAEC reactivates the school.",
-  disabled: "Deactivates normal protected KSI access while retaining the school record.",
+  paused:
+    "Temporarily stops normal protected KSI access while preserving data.",
+  blocked:
+    "Denies normal protected KSI access until KAEC reactivates the school.",
+  disabled:
+    "Deactivates normal protected KSI access while retaining the school record.",
 };
 
 async function fetchAdminState(
@@ -76,6 +79,12 @@ async function fetchAdminState(
   };
 }
 
+async function refreshSchoolList(): Promise<SchoolWorkspace[]> {
+  const supabase: SupabaseClient = getBrowserSupabaseClient();
+  const state = await fetchAdminState(supabase);
+  return state?.schools ?? [];
+}
+
 export function SchoolAccessClient() {
   const router = useRouter();
   const [schools, setSchools] = useState<SchoolWorkspace[]>([]);
@@ -84,22 +93,19 @@ export function SchoolAccessClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const loadSchools = useCallback(async () => {
-    const supabase: SupabaseClient = getBrowserSupabaseClient();
-    const state = await fetchAdminState(supabase);
-
-    if (!state) {
-      router.replace("/sign-in");
-      return;
-    }
-
-    setSchools(state.schools);
-  }, [router]);
-
   useEffect(() => {
     let cancelled = false;
+    const supabase: SupabaseClient = getBrowserSupabaseClient();
 
-    void loadSchools()
+    void fetchAdminState(supabase)
+      .then((state) => {
+        if (cancelled) return;
+        if (!state) {
+          router.replace("/sign-in");
+          return;
+        }
+        setSchools(state.schools);
+      })
       .catch((caught) => {
         if (cancelled) return;
         setError(
@@ -115,7 +121,7 @@ export function SchoolAccessClient() {
     return () => {
       cancelled = true;
     };
-  }, [loadSchools]);
+  }, [router]);
 
   const summary = useMemo(
     () =>
@@ -163,8 +169,12 @@ export function SchoolAccessClient() {
 
       if (rpcError) throw rpcError;
 
-      await loadSchools();
-      setSuccess(`${school.name} is now ${STATUS_LABEL[nextStatus as SchoolAccessStatus].toLowerCase()}.`);
+      setSchools(await refreshSchoolList());
+      setSuccess(
+        `${school.name} is now ${STATUS_LABEL[
+          nextStatus as SchoolAccessStatus
+        ].toLowerCase()}.`,
+      );
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -221,7 +231,9 @@ export function SchoolAccessClient() {
       <section className="mt-8 space-y-5">
         {schools.length === 0 ? (
           <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <p className="font-semibold text-zinc-900">No school workspaces found.</p>
+            <p className="font-semibold text-zinc-900">
+              No school workspaces found.
+            </p>
           </div>
         ) : (
           schools.map((school) => (
