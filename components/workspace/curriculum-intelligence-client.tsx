@@ -36,6 +36,7 @@ async function loadContext(supabase: SupabaseClient): Promise<Context | null> {
   const firstError = workspaceResult.error ?? membershipResult.error ?? curriculumResult.error;
   if (firstError) throw firstError;
   if (!workspaceResult.data || workspaceResult.data.workspace_type !== "school") throw new Error("Curriculum Intelligence is available only in a school workspace.");
+  if (!membershipResult.data || membershipResult.data.status !== "active") throw new Error("Active school membership is required.");
 
   return {
     workspaceName: workspaceResult.data.name,
