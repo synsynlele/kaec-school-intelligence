@@ -27,6 +27,12 @@ export default function DashboardPage() {
               HQLS Lessons
             </Link>
             <Link
+              href="/hqls/deliver"
+              className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              Lesson Delivery
+            </Link>
+            <Link
               href="/assessment"
               className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-300/50 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900"
             >
