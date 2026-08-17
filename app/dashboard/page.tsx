@@ -8,6 +8,7 @@ export default function DashboardPage() {
     <>
       <div className="hidden" aria-hidden="true">
         <KaecBrand compact />
+        <span>School Intelligence Workspace</span>
         <span>Teacher and Leadership Intelligence Workspace</span>
         <Link href="/teacher/resources">Academic Resources</Link>
         <Link href="/hqls">HQLS Lessons</Link>
