@@ -74,18 +74,14 @@ for (const required of [
   "getSession()",
   "safeInternalPath",
   "postAuthPath",
-  "router.replace(destination)",
+  "window.location.replace(destination)",
   "Completing secure sign-in",
 ]) {
-  assert(
-    authCallback.includes(required),
-    `Auth callback completion guard is missing: ${required}`,
-  );
+  assert(authCallback.includes(required), `Auth callback completion guard is missing: ${required}`);
 }
 
 assert(
-  assessmentPage.includes("ksi-assessment-shell") &&
-    assessmentPage.includes("overflow-x-hidden"),
+  assessmentPage.includes("ksi-assessment-shell") && assessmentPage.includes("overflow-x-hidden"),
   "Assessment must retain an explicit mobile viewport boundary.",
 );
 
@@ -95,16 +91,10 @@ for (const required of [
   "max-width: 100%",
   "overflow-wrap: anywhere",
 ]) {
-  assert(
-    globals.includes(required),
-    `Assessment mobile shrink protection is missing: ${required}`,
-  );
+  assert(globals.includes(required), `Assessment mobile shrink protection is missing: ${required}`);
 }
 
-assert(
-  savedWorkPage.includes("ksi-saved-work-shell"),
-  "Saved Work must retain its scoped mobile containment shell.",
-);
+assert(savedWorkPage.includes("ksi-saved-work-shell"), "Saved Work must retain its scoped mobile containment shell.");
 
 for (const required of [
   ".ksi-saved-work-shell article",
@@ -112,16 +102,11 @@ for (const required of [
   "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)",
   ".ksi-saved-work-shell article > div > div:last-child > button",
 ]) {
-  assert(
-    globals.includes(required),
-    `Saved Work mobile shrink protection is missing: ${required}`,
-  );
+  assert(globals.includes(required), `Saved Work mobile shrink protection is missing: ${required}`);
 }
 
 assert(
-  rootLayout.includes("ksi-app-shell") &&
-    rootLayout.includes("min-w-0") &&
-    rootLayout.includes("max-w-full"),
+  rootLayout.includes("ksi-app-shell") && rootLayout.includes("min-w-0") && rootLayout.includes("max-w-full"),
   "The root KSI shell must opt every route into the product-wide mobile containment contract.",
 );
 
@@ -135,10 +120,7 @@ for (const required of [
   "table-layout: fixed",
   "word-break: break-word",
 ]) {
-  assert(
-    globals.includes(required),
-    `Product-wide mobile containment is missing: ${required}`,
-  );
+  assert(globals.includes(required), `Product-wide mobile containment is missing: ${required}`);
 }
 
 const userInterfaceFiles = [
@@ -151,20 +133,12 @@ for (const path of userInterfaceFiles) {
   const relativePath = relative(ROOT, path);
   if (/\bw-screen\b/.test(source)) hardWidthRegressions.push(`${relativePath}: w-screen`);
   const arbitraryMinimums = source.match(/\bmin-w-\[[^\]]+\]/g) ?? [];
-  for (const token of arbitraryMinimums) {
-    hardWidthRegressions.push(`${relativePath}: ${token}`);
-  }
+  for (const token of arbitraryMinimums) hardWidthRegressions.push(`${relativePath}: ${token}`);
 }
-assert(
-  hardWidthRegressions.length === 0,
-  `Hard mobile width regressions remain:\n${hardWidthRegressions.join("\n")}`,
-);
+assert(hardWidthRegressions.length === 0, `Hard mobile width regressions remain:\n${hardWidthRegressions.join("\n")}`);
 
 for (const route of [hqlsPdfRoute, assessmentPdfRoute, diagnosisPdfRoute]) {
-  assert(
-    route.includes("pdfSafeValue"),
-    "Every generated KSI PDF must break unusually long tokens before layout so no word can cross the printable edge.",
-  );
+  assert(route.includes("pdfSafeValue"), "Every generated KSI PDF must break unusually long tokens before layout so no word can cross the printable edge.");
 }
 
 assert(
@@ -175,28 +149,18 @@ assert(
   "PDF layout safety helper must keep deterministic long-token wrapping and byte-safe header geometry patches.",
 );
 
+assert(hqlsPdfRoute.includes('["54 752 487 1.4 re f", "97 752 444 1.4 re f"]'), "HQLS PDF header rule must begin after the logo footprint.");
+assert(assessmentPdfRoute.includes('["54 746 487 1.3 re f", "89 746 452 1.3 re f"]'), "Assessment PDF header rule must begin after the logo footprint.");
 assert(
-  hqlsPdfRoute.includes('["54 752 487 1.4 re f", "97 752 444 1.4 re f"]'),
-  "HQLS PDF header rule must begin after the logo footprint.",
-);
-assert(
-  assessmentPdfRoute.includes('["54 746 487 1.3 re f", "89 746 452 1.3 re f"]'),
-  "Assessment PDF header rule must begin after the logo footprint.",
-);
-
-assert(
-  hqlsPdf.includes("const BOTTOM = 64;") &&
-    hqlsPdf.includes("54 30 Tm (KAEC-NG | Human Quest Learning System"),
+  hqlsPdf.includes("const BOTTOM = 64;") && hqlsPdf.includes("54 30 Tm (KAEC-NG | Human Quest Learning System"),
   "HQLS PDF must retain protected body/footer separation.",
 );
 assert(
-  assessmentPdf.includes("const BOTTOM = 58;") &&
-    assessmentPdf.includes("54 30 Tm (KAEC-NG | Assessment Intelligence"),
+  assessmentPdf.includes("const BOTTOM = 58;") && assessmentPdf.includes("54 30 Tm (KAEC-NG | Assessment Intelligence"),
   "Assessment PDF must retain protected body/footer separation.",
 );
 assert(
-  diagnosisPdf.includes("return this.y - height > 42;") &&
-    diagnosisPdf.includes("28 20 Tm (KAEC-NG | Student Diagnosis Intelligence"),
+  diagnosisPdf.includes("return this.y - height > 42;") && diagnosisPdf.includes("28 20 Tm (KAEC-NG | Student Diagnosis Intelligence"),
   "Diagnosis PDF flow pages must retain protected body/footer separation.",
 );
 
