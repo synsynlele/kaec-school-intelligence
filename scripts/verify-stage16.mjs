@@ -22,6 +22,7 @@ const [
   repairApi,
   repairClient,
   schemePage,
+  databaseTypes,
   studentHome,
   studentJoin,
   studentLearning,
@@ -45,6 +46,7 @@ const [
   text("app/api/curriculum/scheme-repair/route.ts"),
   text("components/curriculum/scheme-source-repair-client.tsx"),
   text("app/setup/curriculum/schemes/page.tsx"),
+  text("lib/supabase/database.ts"),
   text("app/student/page.tsx"),
   text("app/student/join/page.tsx"),
   text("app/student/learning/page.tsx"),
@@ -65,10 +67,24 @@ for (const required of [
   assert(amendment.includes(required), `Stage 16 constitutional authority is missing: ${required}`);
 }
 
-assert(authForm.includes('type EntryRole = "owner" | "teacher"'), "KSI entry must be limited to Owner and Teacher/Staff paths.");
-assert(!authForm.includes('destination: "/student/join"'), "Student KSI must not remain an onboarding destination.");
-assert(signIn.includes("KSI for teaching & school leadership") && !signIn.includes("Student Access Code"), "Sign-in must present the simplified Teacher/Leadership product.");
-assert(callback.includes('path.startsWith("/student/")') && callback.includes('return "/dashboard"'), "Old Student auth return paths must be neutralised.");
+assert(
+  authForm.includes('type EntryRole = "owner" | "teacher"'),
+  "KSI entry must be limited to Owner and Teacher/Staff paths.",
+);
+assert(
+  !authForm.includes('destination: "/student/join"'),
+  "Student KSI must not remain an onboarding destination.",
+);
+assert(
+  signIn.includes("KSI for teaching & school leadership") &&
+    !signIn.includes("Student Access Code"),
+  "Sign-in must present the simplified Teacher/Leadership product.",
+);
+assert(
+  callback.includes('path.startsWith("/student/")') &&
+    callback.includes('return "/dashboard"'),
+  "Old Student auth return paths must be neutralised.",
+);
 
 for (const required of [
   "Teacher workspace",
@@ -84,7 +100,10 @@ for (const required of [
 ]) {
   assert(dashboard.includes(required), `Simplified dashboard is missing: ${required}`);
 }
-assert(!dashboard.includes('href: "/setup/student-access"'), "Student Access must not remain a dashboard destination.");
+assert(
+  !dashboard.includes('href: "/setup/student-access"'),
+  "Student Access must not remain a dashboard destination.",
+);
 
 for (const required of [
   'label: "Home"',
@@ -98,7 +117,10 @@ for (const required of [
   assert(navigation.includes(required), `Persistent KSI navigation is missing: ${required}`);
 }
 
-assert(academicPage.includes("AcademicResourcesClient"), "Teacher Academic Resources route is not mounted.");
+assert(
+  academicPage.includes("AcademicResourcesClient"),
+  "Teacher Academic Resources route is not mounted.",
+);
 for (const required of [
   "Scheme of Work",
   "School Resources",
@@ -112,47 +134,129 @@ for (const required of [
 ]) {
   assert(academicResources.includes(required), `Teacher Academic Resources is missing: ${required}`);
 }
-assert(academicResources.includes("get_academic_resource_catalog"), "Teacher Academic Resources must use the governed read RPC.");
-assert(hqlsPage.includes("SchemePrefillBridge") && hqlsPage.includes('href="/teacher/resources"'), "HQLS must link back to Academic Resources and mount scheme prefill.");
-assert(prefill.includes('params.get("from") !== "scheme"') && prefill.includes("objective"), "Scheme-to-HQLS handoff must carry teaching context.");
+assert(
+  academicResources.includes("get_academic_resource_catalog"),
+  "Teacher Academic Resources must use the governed read RPC.",
+);
+assert(
+  hqlsPage.includes("SchemePrefillBridge") &&
+    hqlsPage.includes('href="/teacher/resources"'),
+  "HQLS must link back to Academic Resources and mount scheme prefill.",
+);
+assert(
+  prefill.includes('params.get("from") !== "scheme"') &&
+    prefill.includes("objective"),
+  "Scheme-to-HQLS handoff must carry teaching context.",
+);
 
 for (const required of [
   "get_academic_resource_catalog",
   "private.has_workspace_role",
   "owner','admin','leader','teacher",
   "review_status <> 'rejected'",
-  "replace_scheme_term_extraction",
+  "replace_scheme_class_extraction",
   "private.is_platform_access_admin()",
   "review_status <> 'pending' OR promoted_at IS NOT NULL",
   "This source is quarantined",
+  "class contains reviewed or promoted rows",
 ]) {
   assert(migration.includes(required), `Stage 16 database governance is missing: ${required}`);
 }
-assert(!migration.includes("promote_scheme_entry("), "Source repair must never call curriculum promotion.");
+assert(
+  !migration.includes("replace_scheme_term_extraction"),
+  "Stage 16 must use one transactional replacement per class rather than nine class/term repair passes.",
+);
+assert(
+  !migration.includes("promote_scheme_entry("),
+  "Source repair must never call curriculum promotion.",
+);
 
 for (const required of [
   "source-faithful Scheme of Work extraction utility",
   "Never invent a missing cell",
+  "covering ALL terms for that class",
   "Pending human review",
   "get_scheme_review_console",
-  "replace_scheme_term_extraction",
+  "replace_scheme_class_extraction",
   "stage12_review_required",
+  "Requested class:",
 ]) {
   assert(repairApi.includes(required), `Scheme repair API is missing: ${required}`);
 }
-assert(!repairApi.includes("promote_scheme_entry") && !repairApi.includes("review_scheme_entry"), "Scheme repair API must not review or promote extracted rows.");
-assert(repairClient.includes("Repair entire source") && repairClient.includes("Pending review") && repairClient.includes("QUARANTINED"), "Scheme repair console must expose progress while preserving quarantine/review boundaries.");
-assert(schemePage.includes("SchemeSourceRepairClient") && schemePage.includes("SchemeIngestionClient"), "Scheme governance page must combine source repair with the existing review console.");
+assert(
+  !repairApi.includes('form.get("term")') &&
+    !repairApi.includes("replace_scheme_term_extraction"),
+  "Scheme repair API must execute one AI extraction per class, not one per term.",
+);
+assert(
+  !repairApi.includes("promote_scheme_entry") &&
+    !repairApi.includes("review_scheme_entry"),
+  "Scheme repair API must not review or promote extracted rows.",
+);
 
-for (const retired of [studentHome, studentJoin, studentLearning, studentMastery, studentPlan, studentAsk]) {
-  assert(retired.includes("student-surface-retired"), "Every former Student KSI route must be retired at the page boundary.");
+for (const required of [
+  "Repair entire source",
+  "Pending review",
+  "QUARANTINED",
+  "once per class",
+  "document.class_scope",
+  "extraction passes",
+]) {
+  assert(repairClient.includes(required), `Scheme repair console is missing: ${required}`);
 }
-assert(studentAskApi.includes("status: 410") && !studentAskApi.includes("generateOpenAIJson"), "Retired Student Ask API must return 410 and perform no AI work.");
-assert(studentAccess.includes('redirect("/setup")'), "Student account-code setup must be retired from school administration.");
+assert(
+  !repairClient.includes("const TERMS") &&
+    !repairClient.includes('body.set("term"'),
+  "Scheme repair console must not multiply work into class/term slices.",
+);
+assert(
+  schemePage.includes("SchemeSourceRepairClient") &&
+    schemePage.includes("SchemeIngestionClient"),
+  "Scheme governance page must combine source repair with the existing review console.",
+);
+assert(
+  databaseTypes.includes("replace_scheme_class_extraction") &&
+    !databaseTypes.includes("replace_scheme_term_extraction"),
+  "Typed Supabase contract must match the class-level repair RPC.",
+);
 
-const browserSurface = [authForm, dashboard, navigation, academicResources, repairClient, prefill].join("\n");
-assert(!browserSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !browserSurface.includes("service_role"), "Stage 16 browser code must not expose service-role credentials.");
+for (const retired of [
+  studentHome,
+  studentJoin,
+  studentLearning,
+  studentMastery,
+  studentPlan,
+  studentAsk,
+]) {
+  assert(
+    retired.includes("student-surface-retired"),
+    "Every former Student KSI route must be retired at the page boundary.",
+  );
+}
+assert(
+  studentAskApi.includes("status: 410") &&
+    !studentAskApi.includes("generateOpenAIJson"),
+  "Retired Student Ask API must return 410 and perform no AI work.",
+);
+assert(
+  studentAccess.includes('redirect("/setup")'),
+  "Student account-code setup must be retired from school administration.",
+);
+
+const browserSurface = [
+  authForm,
+  dashboard,
+  navigation,
+  academicResources,
+  repairClient,
+  prefill,
+].join("\n");
+assert(
+  !browserSurface.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+    !browserSurface.includes("service_role"),
+  "Stage 16 browser code must not expose service-role credentials.",
+);
 
 console.log(
-  "Stage 16 verification passed: KSI is simplified to Teacher + Leadership/Owner, Academic Resources is first-class, Student-facing routes are retired, and scheme source repair remains pending-review, quarantined and non-promoting.",
+  "Stage 16 verification passed: KSI is simplified to Teacher + Leadership/Owner, Academic Resources is first-class, Student-facing routes are retired, and scheme source repair uses fast class-level extraction while remaining pending-review, quarantined and non-promoting.",
 );
