@@ -199,7 +199,10 @@ export function StaffAccessManager() {
           <h1 className="mt-2 text-3xl font-bold text-zinc-950">{context.workspaceName}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">Invite teachers and authorised staff with a one-time code bound to their exact email. Choosing a role on the public sign-in page never creates membership by itself.</p>
         </div>
-        <Link href="/teacher/join" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Teacher join page</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/setup/student-access" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Student Access</Link>
+          <Link href="/teacher/join" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Teacher join page</Link>
+        </div>
       </div>
 
       {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
@@ -238,21 +241,22 @@ export function StaffAccessManager() {
       <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 px-6 py-5">
           <h2 className="text-lg font-bold text-zinc-950">Recent staff invitations</h2>
+          <p className="mt-1 text-xs text-zinc-500">Unused codes are still subject to their displayed expiry time; KSI validates expiry again at redemption.</p>
         </div>
         {context.invites.length === 0 ? (
           <div className="px-6 py-8 text-sm text-zinc-500">No staff access invitations yet.</div>
         ) : (
           <div className="divide-y divide-zinc-100">
             {context.invites.map((invite) => {
-              const active = !invite.redeemed_at && !invite.revoked_at && new Date(invite.expires_at).getTime() > Date.now();
-              const status = invite.redeemed_at ? "Redeemed" : invite.revoked_at ? "Revoked" : new Date(invite.expires_at).getTime() <= Date.now() ? "Expired" : "Active";
+              const unused = !invite.redeemed_at && !invite.revoked_at;
+              const status = invite.redeemed_at ? "Redeemed" : invite.revoked_at ? "Revoked" : "Unused";
               return (
                 <div key={invite.invite_id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-zinc-950">{invite.invited_email}</p>
-                    <p className="mt-1 text-sm text-zinc-500">{invite.invited_role} · {status} · issued {new Date(invite.created_at).toLocaleDateString()}</p>
+                    <p className="mt-1 text-sm text-zinc-500">{invite.invited_role} · {status} · expires {new Date(invite.expires_at).toLocaleString()}</p>
                   </div>
-                  {active ? (
+                  {unused ? (
                     <button type="button" disabled={busyInviteId !== null} onClick={() => void revoke(invite.invite_id)} className="w-fit rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 disabled:opacity-60">{busyInviteId === invite.invite_id ? "Revoking…" : "Revoke"}</button>
                   ) : null}
                 </div>
