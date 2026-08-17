@@ -116,7 +116,7 @@ export function StudentJoinClient() {
     router.push("/sign-in");
   }
 
-  async function useDifferentAccount() {
+  async function switchToLearnerAccount() {
     setBusy(true);
     setError(null);
     try {
@@ -210,7 +210,7 @@ export function StudentJoinClient() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void useDifferentAccount()}
+              onClick={() => void switchToLearnerAccount()}
               className="mt-4 rounded-xl bg-amber-950 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
             >
               Sign out and use the student&apos;s account
