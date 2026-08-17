@@ -17,7 +17,6 @@ export default function DashboardPage() {
         <Link href="/interventions">Interventions</Link>
         <Link href="/leadership">Leadership</Link>
         <Link href="/setup/curriculum">Curriculum Intelligence</Link>
-        <Link href="/admin/schools">School Access Control</Link>
         <Link href="/setup/student-access">Student Access</Link>
       </div>
       <DashboardClient />
