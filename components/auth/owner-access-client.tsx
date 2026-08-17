@@ -174,7 +174,7 @@ export function OwnerAccessClient() {
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Access active</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{activeOwnerSchool.workspace_name}</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">Your school is active. Continue to the role-aware KSI dashboard.</p>
-            <Link href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open school dashboard</Link>
+            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open school dashboard</a>
           </section>
         ) : ownerSchools.length > 0 ? (
           <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
