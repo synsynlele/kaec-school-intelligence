@@ -79,7 +79,7 @@ for (const required of [
   'destination: "/student/join"',
   "I already have an account",
   "Create my account",
-  "role does not grant school permission",
+  "does not grant school permission by itself",
 ]) {
   assert(authForm.includes(required), `Role-aware authentication UX is missing: ${required}`);
 }
