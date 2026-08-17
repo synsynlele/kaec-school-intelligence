@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
@@ -9,6 +9,7 @@ const assert = (condition, message) => {
 
 const [
   constitution,
+  simplification,
   spec,
   securityRegression,
   homePage,
@@ -45,6 +46,7 @@ const [
   vercel,
 ] = await Promise.all([
   text("docs/PRODUCT_CONSTITUTION.md"),
+  text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("docs/STAGE_6_V1_INTEGRATION_LAUNCH_READINESS.md"),
   text("docs/STAGE_6_SECURITY_REGRESSION.md"),
   text("app/page.tsx"),
@@ -101,6 +103,13 @@ assert(
     constitution.includes("no dead-end core flows") &&
     constitution.includes("Lesson → Assessment → Diagnosis context transfer works"),
   "Stage 6 must remain anchored to the Constitution's three-engine Platform Gate.",
+);
+
+assert(
+  simplification.includes("Teacher & Leadership Simplification") &&
+    simplification.includes("Students are not an interactive KSI user surface") &&
+    simplification.includes("Academic Resource / Scheme → HQLS Lesson → Delivery & Evidence → Assessment → Diagnosis → Intervention → Next HQLS Lesson → Leadership Learning Signal"),
+  "KSI 2.2 must explicitly supersede the old three-surface release copy while preserving the complete adult-operated learning loop.",
 );
 
 assert(
@@ -230,12 +239,12 @@ assert(
 
 for (const required of [
   "KAEC School Intelligence",
-  "One governed learning system for Teacher, Student and Leadership KSI.",
-  "Run the HQLS learning loop",
-  "See learning health, not just activity",
-  "Signing up does not create or activate a school.",
+  "Teacher & Leadership learning intelligence",
+  "Teacher workspace",
+  "Leadership workspace",
+  "Student-facing KSI has been retired",
 ]) {
-  assert(dashboardClient.includes(required), `Dashboard release copy is missing: ${required}`);
+  assert(dashboardClient.includes(required), `KSI 2.2 dashboard release copy is missing: ${required}`);
 }
 assert(
   dashboardClient.includes('href: "/hqls"') &&
@@ -243,6 +252,11 @@ assert(
     dashboardClient.includes('href: "/diagnosis"') &&
     dashboardClient.includes('href: "/interventions"'),
   "Role-aware dashboard must preserve the complete closed learning loop.",
+);
+assert(
+  dashboardPage.includes("School Intelligence Workspace") &&
+    dashboardPage.includes("Teacher and Leadership Intelligence Workspace"),
+  "Dashboard must retain the historical closed-loop marker while declaring the simplified active workspace.",
 );
 assert(
   setupClient.includes("Define the school context used across HQLS lessons, assessments and diagnoses.") &&
@@ -307,5 +321,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, role-aware release navigation, live security evidence and quota-safe preview gating are present.",
+  "Stage 6 structure verification passed under KSI 2.2: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, simplified Teacher/Leadership navigation, live security evidence and quota-safe preview gating are present.",
 );
