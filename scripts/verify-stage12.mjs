@@ -12,7 +12,7 @@ const [
   migration,
   reviewPage,
   reviewClient,
-  dashboardPage,
+  dashboardClient,
   reviewShortcut,
   databaseTypes,
   vercel,
@@ -22,7 +22,7 @@ const [
   text("supabase/migrations/056_stage12_review_console_hardening.sql"),
   text("app/curriculum/review/page.tsx"),
   text("components/curriculum/scheme-review-client.tsx"),
-  text("app/dashboard/page.tsx"),
+  text("components/dashboard/dashboard-client.tsx"),
   text("components/dashboard/curriculum-review-shortcut.tsx"),
   text("lib/supabase/database.ts"),
   text("vercel.json"),
@@ -81,10 +81,15 @@ assert(
   "The governed Stage 12 review route must remain exposed through its dedicated page.",
 );
 assert(
-  dashboardPage.includes("CurriculumReviewShortcut") &&
-    reviewShortcut.includes("get_scheme_review_access") &&
+  reviewShortcut.includes("get_scheme_review_access") &&
     reviewShortcut.includes('href="/curriculum/review"'),
-  "Curriculum Review must remain hidden behind the platform-admin access check.",
+  "The legacy Curriculum Review shortcut must retain its platform-admin access check.",
+);
+assert(
+  dashboardClient.includes("state.isPlatformAdmin") &&
+    dashboardClient.includes('href: "/curriculum/review"') &&
+    dashboardClient.includes("These controls are platform-level and are not available to ordinary school owners."),
+  "Curriculum Review must remain hidden behind the role-aware platform-admin dashboard gate.",
 );
 
 for (const required of [
