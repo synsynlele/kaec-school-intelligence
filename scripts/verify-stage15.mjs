@@ -11,6 +11,7 @@ const [
   foundation,
   provisioning,
   hardening,
+  simplification,
   authForm,
   authCallback,
   signInPage,
@@ -24,6 +25,7 @@ const [
   text("supabase/migrations/065_stage15_role_aware_onboarding.sql"),
   text("supabase/migrations/064_stage14_school_provisioning_access_lock.sql"),
   text("supabase/migrations/066_stage15_staff_redeem_hardening.sql"),
+  text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("components/auth/auth-form.tsx"),
   text("app/auth/callback/page.tsx"),
   text("app/sign-in/page.tsx"),
@@ -70,19 +72,25 @@ assert(
 );
 
 for (const required of [
-  'type EntryRole = "owner" | "teacher" | "student"',
+  "Teacher & Leadership Simplification",
+  "Students are not an interactive KSI user surface",
+  "Historical student accounts and data must not be destructively deleted",
+]) {
+  assert(simplification.includes(required), `KSI 2.2 simplification authority is missing: ${required}`);
+}
+
+for (const required of [
+  'type EntryRole = "owner" | "teacher"',
   "School Owner",
   "Teacher / Staff",
-  "Student",
   'destination: "/owner/access"',
   'destination: "/teacher/join"',
-  'destination: "/student/join"',
-  "I already have an account",
-  "Create my account",
-  "does not grant school permission by itself",
+  "Choosing an entry path never grants authority",
 ]) {
-  assert(authForm.includes(required), `Role-aware authentication UX is missing: ${required}`);
+  assert(authForm.includes(required), `Simplified role-aware authentication UX is missing: ${required}`);
 }
+assert(!authForm.includes('destination: "/student/join"'), "Student KSI must not remain an active sign-in destination after KSI 2.2.");
+assert(!authForm.includes('type EntryRole = "owner" | "teacher" | "student"'), "Student must not remain an active entry role after KSI 2.2.");
 
 assert(
   !authForm.includes('.from("workspace_members")') &&
@@ -95,18 +103,20 @@ assert(
 assert(
   authCallback.includes('search.get("next")') &&
     authCallback.includes("safeInternalPath") &&
+    authCallback.includes('path.startsWith("/student/")') &&
     authCallback.includes("Opening the right KSI access path"),
-  "Auth callback must preserve a safe role-aware destination across OAuth/email confirmation.",
+  "Auth callback must preserve safe staff/owner destinations and neutralise retired Student KSI destinations.",
 );
 
 for (const required of [
-  "School Owners, Teachers and Students",
-  "KAEC approval and school activation",
+  "KSI for teaching & school leadership",
+  "School Owner",
+  "Teacher / Staff",
   "Staff Access Code",
-  "Student Access Code",
 ]) {
-  assert(signInPage.includes(required), `Role-aware sign-in page explanation is missing: ${required}`);
+  assert(signInPage.includes(required), `Simplified sign-in page explanation is missing: ${required}`);
 }
+assert(!signInPage.includes("Student Access Code"), "Student Access must not remain on the active sign-in surface.");
 
 for (const required of [
   "request_school_access",
@@ -122,10 +132,9 @@ for (const required of [
   "redeem_staff_access_code",
   "get_my_school_memberships",
   "This account is already a School Owner",
-  "This is already a Student KSI account",
   "Staff Access Code",
 ]) {
-  assert(teacherJoin.includes(required), `Teacher onboarding flow is missing: ${required}`);
+  assert(teacherJoin.includes(required), `Teacher/Leadership onboarding flow is missing: ${required}`);
 }
 
 for (const required of [
@@ -147,17 +156,16 @@ assert(
 );
 
 assert(
-  studentAccessPage.includes('href="/setup/staff-access"') &&
-    studentAccessPage.includes("People access"),
-  "School setup must connect Student Access and Staff Access journeys.",
+  studentAccessPage.includes('redirect("/setup")'),
+  "Retired Student Access setup must return owners to the active school setup experience.",
 );
 
 const browserSurface = [authForm, ownerAccess, teacherJoin, staffAccess, adminRequests].join("\n");
 assert(
   !browserSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !browserSurface.includes("service_role"),
-  "Stage 15 browser surfaces must not expose a Supabase service-role credential.",
+  "Stage 15/16 browser surfaces must not expose a Supabase service-role credential.",
 );
 
 console.log(
-  "Stage 15 verification passed: Owner, Teacher/Staff and Student have distinct sign-in/sign-up journeys; role selection grants no authority; owners enter a platform-reviewed request flow; staff use email-bound codes; and Student Access remains separately governed.",
+  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, Student KSI entry is retired, and no role selection can grant school authority.",
 );
