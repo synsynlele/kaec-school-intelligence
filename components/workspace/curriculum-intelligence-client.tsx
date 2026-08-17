@@ -81,6 +81,11 @@ export function CurriculumIntelligenceClient() {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-emerald-50/90">
           One versioned curriculum backbone for lessons, assessments, mastery and next-learning decisions. KSI-generated objectives remain distinct from official curriculum objectives until alignment is explicitly verified.
         </p>
+        <div className="mt-5">
+          <Link href="/setup/curriculum/schemes" className="inline-flex rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-emerald-950 transition hover:bg-emerald-50">
+            Open Scheme Ingestion →
+          </Link>
+        </div>
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
