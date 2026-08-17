@@ -1,10 +1,17 @@
 import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { EntryNotice } from "@/components/auth/entry-notice";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams: Promise<{ notice?: string | string[] }>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const params = await searchParams;
+  const notice = Array.isArray(params.notice) ? params.notice[0] : params.notice;
+  const showStudentRetiredNotice = notice === "student-surface-retired";
+
   return (
     <main className="min-h-screen bg-stone-50 px-5 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col">
@@ -26,7 +33,11 @@ export default function SignInPage() {
           </section>
 
           <div className="flex flex-col items-center justify-center lg:items-end">
-            <div className="w-full max-w-xl"><EntryNotice /></div>
+            {showStudentRetiredNotice ? (
+              <div className="mb-5 w-full max-w-xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                Student-facing KSI has been retired. Learner records remain securely available to authorised teachers and school leadership for diagnosis, intervention and learning support.
+              </div>
+            ) : null}
             <AuthForm />
           </div>
         </div>
