@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { DeliveryIntelligencePanel } from "@/components/leadership/delivery-intelligence-panel";
 import { LeadershipHomeClient } from "@/components/leadership/leadership-home-client";
 
 export default function LeadershipKsiPage() {
@@ -18,6 +19,7 @@ export default function LeadershipKsiPage() {
         </div>
       </header>
       <LeadershipHomeClient />
+      <DeliveryIntelligencePanel />
     </>
   );
 }
