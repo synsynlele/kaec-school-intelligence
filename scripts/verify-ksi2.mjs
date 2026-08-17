@@ -16,6 +16,7 @@ const [
   masteryMigration,
   curriculumMigration,
   accessRedeemFix,
+  masteryEvidenceFix,
   schoolAccessClient,
   studentHome,
   studentLearning,
@@ -32,6 +33,7 @@ const [
   text("supabase/migrations/047_stage11_mastery_graph_next_learning.sql"),
   text("supabase/migrations/050_stage12_curriculum_intelligence_foundation.sql"),
   text("supabase/migrations/057_stage8_student_access_redeem_conflict_fix.sql"),
+  text("supabase/migrations/058_stage11_mastery_distinct_evidence_fix.sql"),
   text("components/admin/school-access-client.tsx"),
   text("components/student/student-home-client.tsx"),
   text("components/student/student-learning-library.tsx"),
@@ -75,6 +77,13 @@ assert(
     accessRedeemFix.includes("on conflict on constraint workspace_members_pkey") &&
     !accessRedeemFix.includes("on conflict (workspace_id, user_id)"),
   "Student Access Code redemption must use the named workspace-members key and avoid the PL/pgSQL workspace_id conflict-target ambiguity.",
+);
+
+assert(
+  masteryEvidenceFix.includes("create or replace function private.refresh_student_mastery") &&
+    masteryEvidenceFix.match(/count\(distinct se\.id\)/g)?.length >= 4 &&
+    !masteryEvidenceFix.includes("count(se.id) filter"),
+  "Mastery confidence must count distinct student evidence records and never inflate qualitative evidence through join multiplicity.",
 );
 
 assert(
@@ -143,5 +152,5 @@ assert(
 assert(packageJson.includes("verify-ksi2.mjs"), "Permanent KSI 2.0 structural verification must remain enabled.");
 
 console.log(
-  "KSI 2.0 structure verification passed: access control, shared roles, Student KSI, Leadership KSI, synchronization, mastery/next-learning, curriculum foundations and Student Access redemption remain connected to one governed data model.",
+  "KSI 2.0 structure verification passed: access control, shared roles, Student KSI, Leadership KSI, synchronization, distinct-evidence mastery/next-learning, curriculum foundations and Student Access redemption remain connected to one governed data model.",
 );
