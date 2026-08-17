@@ -63,15 +63,18 @@ assert(
 );
 
 assert(
-  authForm.includes('redirectTo: `${window.location.origin}/auth/callback`') &&
-    authForm.includes('`${window.location.origin}/auth/callback`'),
-  "External authentication must return through the explicit KSI auth-completion route.",
+  authForm.includes("prepareReturnPath") &&
+    authForm.includes("/auth/callback?next=") &&
+    authForm.includes("encodeURIComponent(destination)"),
+  "External authentication must return through the explicit KSI auth-completion route while preserving a safe role-aware destination.",
 );
 
 for (const required of [
   "onAuthStateChange",
   "getSession()",
-  'router.replace("/dashboard")',
+  "safeInternalPath",
+  "postAuthPath",
+  "router.replace(destination)",
   "Completing secure sign-in",
 ]) {
   assert(
@@ -198,5 +201,5 @@ assert(
 );
 
 console.log(
-  `V1 stability verification passed: AI latency controls, auth completion, product-wide mobile containment across ${userInterfaceFiles.length} TSX files, and all KSI PDF layout guards are present.`,
+  `V1 stability verification passed: AI latency controls, safe role-aware auth completion, product-wide mobile containment across ${userInterfaceFiles.length} TSX files, and all KSI PDF layout guards are present.`,
 );

@@ -111,7 +111,6 @@ assert(
   "Stage 6 must retain live isolation plus guarded lifecycle audit evidence.",
 );
 
-// Existing exact workflow continuity stays protected.
 for (const required of [
   "requestedLessonId",
   'new URLSearchParams(window.location.search).get("lesson")',
@@ -141,8 +140,6 @@ for (const required of [
   assert(nextLessonClient.includes(required), `Intervention → HQLS continuity is missing: ${required}`);
 }
 
-// Generated artifacts must now open on dedicated result pages rather than extending
-// already-long mobile creation workspaces.
 for (const required of [
   'queryKey: "lesson" | "assessment"',
   'searchParams.get("edit") === "1"',
@@ -198,7 +195,6 @@ assert(
   "Intervention result/lifecycle separation is incomplete.",
 );
 
-// Destructive lifecycle is deliberately narrower than archive.
 for (const required of [
   "Only a workspace Owner or Admin can archive or permanently delete diagnoses.",
   "Archive the linked intervention first",
@@ -232,16 +228,22 @@ assert(
   "Approved diagnosis PDF must remain available after archival.",
 );
 
-// Release copy stays product-facing.
 for (const required of [
-  "Connected school intelligence",
-  "One workspace. One connected learning loop.",
-  "Ready for lesson planning and validation",
-  "Ready for aligned assessment design",
-  "Ready for evidence-based diagnosis",
+  "KAEC School Intelligence",
+  "One governed learning system for Teacher, Student and Leadership KSI.",
+  "Run the HQLS learning loop",
+  "See learning health, not just activity",
+  "Signing up does not create or activate a school.",
 ]) {
   assert(dashboardClient.includes(required), `Dashboard release copy is missing: ${required}`);
 }
+assert(
+  dashboardClient.includes('href: "/hqls"') &&
+    dashboardClient.includes('href: "/assessment"') &&
+    dashboardClient.includes('href: "/diagnosis"') &&
+    dashboardClient.includes('href: "/interventions"'),
+  "Role-aware dashboard must preserve the complete closed learning loop.",
+);
 assert(
   setupClient.includes("Define the school context used across HQLS lessons, assessments and diagnoses.") &&
     resourceClient.includes("governed source context for HQLS lessons and assessments"),
@@ -305,5 +307,5 @@ assert(
 );
 
 console.log(
-  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, release copy, live security evidence and quota-safe preview gating are present.",
+  "Stage 6 structure verification passed: the three-engine boundary, exact closed-loop handoffs, dedicated artifact result pages, guarded diagnosis/intervention archive lifecycle, role-aware release navigation, live security evidence and quota-safe preview gating are present.",
 );
