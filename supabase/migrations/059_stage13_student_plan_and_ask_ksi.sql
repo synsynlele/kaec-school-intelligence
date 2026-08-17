@@ -327,7 +327,7 @@ begin
       curriculum_row.id,
       coalesce(curriculum_row.subject_name || ': ', '') || coalesce(curriculum_row.objective_text, curriculum_row.title),
       'Study this approved curriculum objective, use a validated class resource where available, then build evidence through practice or assessment.',
-      'This objective comes from your school\'s active, human-approved curriculum framework and is not yet evidenced as mastered.',
+      'This objective comes from your school''s active, human-approved curriculum framework and is not yet evidenced as mastered.',
       'Complete a relevant learning activity and add reviewed evidence for this objective.'
     );
   end loop;
