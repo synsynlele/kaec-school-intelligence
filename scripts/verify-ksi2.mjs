@@ -22,7 +22,8 @@ const [
   studentLearning,
   studentMastery,
   leadershipHome,
-  dashboard,
+  dashboardPage,
+  dashboardClient,
   packageJson,
 ] = await Promise.all([
   text("docs/KSI_2_CONSTITUTIONAL_AMENDMENT.md"),
@@ -40,6 +41,7 @@ const [
   text("components/student/student-mastery-client.tsx"),
   text("components/leadership/leadership-home-client.tsx"),
   text("app/dashboard/page.tsx"),
+  text("components/dashboard/dashboard-client.tsx"),
   text("package.json"),
 ]);
 
@@ -133,18 +135,25 @@ assert(
   "The platform school-access console must remain backed by the governed access RPC.",
 );
 
+const dashboardSurface = `${dashboardPage}\n${dashboardClient}`;
 for (const route of [
-  'href="/hqls/deliver"',
-  'href="/hqls/review"',
-  'href="/leadership"',
-  'href="/setup/curriculum"',
-  'href="/admin/schools"',
-  'href="/setup/student-access"',
+  "/hqls/deliver",
+  "/hqls/review",
+  "/leadership",
+  "/setup/curriculum",
+  "/admin/schools",
+  "/setup/student-access",
 ]) {
-  assert(dashboard.includes(route), `KSI 2.0 dashboard route is missing: ${route}`);
+  assert(dashboardSurface.includes(route), `KSI 2.0 dashboard route is missing: ${route}`);
 }
+assert(
+  dashboardClient.includes("state.isPlatformAdmin") &&
+    dashboardClient.includes('href: "/admin/schools"') &&
+    dashboardClient.includes("These controls are platform-level and are not available to ordinary school owners."),
+  "Platform-admin dashboard routes must remain explicitly gated from ordinary school owners.",
+);
 
-const clientSurface = [schoolAccessClient, studentHome, studentLearning, studentMastery, leadershipHome].join("\n");
+const clientSurface = [schoolAccessClient, studentHome, studentLearning, studentMastery, leadershipHome, dashboardClient].join("\n");
 assert(
   !clientSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !clientSurface.includes("service_role"),
   "KSI 2.0 client surfaces must never contain the Supabase service-role credential.",
@@ -153,5 +162,5 @@ assert(
 assert(packageJson.includes("verify-ksi2.mjs"), "Permanent KSI 2.0 structural verification must remain enabled.");
 
 console.log(
-  "KSI 2.0 structure verification passed: access control, shared roles, Student KSI, Leadership KSI, synchronization, distinct-evidence mastery/next-learning, curriculum foundations and Student Access redemption remain connected to one governed data model.",
+  "KSI 2.0 structure verification passed: access control, shared roles, Student KSI, Leadership KSI, synchronization, distinct-evidence mastery/next-learning, curriculum foundations, role-gated navigation and Student Access redemption remain connected to one governed data model.",
 );
