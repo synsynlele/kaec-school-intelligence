@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { CurriculumRiskIntelligencePanel } from "@/components/leadership/curriculum-risk-intelligence-panel";
 import { DeliveryIntelligencePanel } from "@/components/leadership/delivery-intelligence-panel";
 import { LeadershipHomeClient } from "@/components/leadership/leadership-home-client";
 import { MasteryIntelligencePanel } from "@/components/leadership/mastery-intelligence-panel";
@@ -22,6 +23,7 @@ export default function LeadershipKsiPage() {
       <LeadershipHomeClient />
       <DeliveryIntelligencePanel />
       <MasteryIntelligencePanel />
+      <CurriculumRiskIntelligencePanel />
     </>
   );
 }
