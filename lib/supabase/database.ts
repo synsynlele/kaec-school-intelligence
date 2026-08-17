@@ -240,11 +240,10 @@ type FinalStageFunctions = Omit<
     };
     Returns: Json;
   };
-  replace_scheme_term_extraction: {
+  replace_scheme_class_extraction: {
     Args: {
       target_document_id: string;
       target_class_level: string;
-      target_term: string;
       target_entries: Json;
       target_extraction_note?: string | null;
     };
