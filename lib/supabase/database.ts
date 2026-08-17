@@ -231,6 +231,25 @@ type FinalStageFunctions = Omit<
     Args: { target_entry_ids: string[] };
     Returns: Json;
   };
+  get_academic_resource_catalog: {
+    Args: {
+      target_workspace_id: string;
+      target_class_level?: string | null;
+      target_subject?: string | null;
+      target_term?: string | null;
+    };
+    Returns: Json;
+  };
+  replace_scheme_term_extraction: {
+    Args: {
+      target_document_id: string;
+      target_class_level: string;
+      target_term: string;
+      target_entries: Json;
+      target_extraction_note?: string | null;
+    };
+    Returns: Json;
+  };
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
