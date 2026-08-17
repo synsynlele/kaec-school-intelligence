@@ -1,126 +1,211 @@
 # KAEC School Intelligence — Project State
 
-Updated: 8 August 2026
+Updated: 17 August 2026
 
-## Current stage
+## Current checkpoint
 
-**Stage 5 — Action & Intervention Intelligence: LIVE ACCEPTANCE PASSED / READY FOR MERGE**
+**KSI 2.0 — Consolidated Learning Intelligence release candidate / engineering verification in progress**
 
-Stage 0 Product Constitution v1.1 remains approved and frozen.
+KSI Version 1 remains the accepted production baseline on `main`. The founder-authorised KSI 2.0 constitutional amendment expands the product into synchronized Teacher, Student and Leadership learning-intelligence surfaces while preserving the specialist learning boundary: KSI is not a school ERP.
 
-Stages 1–4 are complete and merged. Stage 5 completes the governed KSI learning loop without introducing a fourth intelligence engine.
+The active consolidation lineage is:
 
-## Repository
+- branch: `ksi-2-consolidation`
+- draft PR: `#13 — KSI 2.0 — Consolidated Learning Intelligence release candidate`
+- base: current `main`
+- prior draft lines `#11` and `#12` are source lineages being superseded by PR #13
 
-- GitHub: `synsynlele/kaec-school-intelligence`
-- Default branch: `main`
-- Stage 5 branch: `stage-5-action-intervention-intelligence`
-- Stage 5 PR: `#6 — Stage 5 — Action & Intervention Intelligence`
-- Stage 5 base: `00597234403edab6261fd08eaa2f3f12583a71e7`
+No production merge or Vercel release is authorised at this checkpoint.
 
-## Product scope
+## Accepted foundation preserved
 
-Version 1 remains locked to three intelligence engines:
+The accepted Version 1 loop remains intact:
 
-1. HQLS Lesson Intelligence
-2. Assessment Intelligence
-3. Student Diagnosis Intelligence
+**HQLS Lesson → Assessment → Student Evidence → Diagnosis → Intervention → Next HQLS Lesson**
 
-Stage 5 is the governed handoff layer connecting those engines through the constitutional loop:
+KSI 2.0 extends the same governed record into:
 
-**HQLS Lesson → Assessment → Student Evidence → Diagnosis → Action / Intervention → Next HQLS Lesson**
+**HQLS Lesson → Student Learning Resource → Assessment → Student Evidence → Diagnosis → Intervention → Student Priority / Next Learning → Next HQLS Lesson → Leadership Learning Signal**
 
-KSI is not a school ERP.
+There is no second Student database and no separate Leadership intelligence store. The three product surfaces are designed to read and act on the same workspace-scoped learning record.
 
-## Stage 5 accepted behaviour
+## KSI 2.0 implementation present in the consolidation branch
 
-A final diagnosis can now produce one practical intervention handoff containing:
+### 1. School Access Control
 
-- Priority Growth Target
-- Evidence Basis
-- School Intervention
-- Parent Intervention
-- Overall Timeframe
-- Success Indicator
-- Review Date / Checkpoint
-- Next Learning Adjustment
+Implemented:
 
-The intervention begins as a draft and requires explicit human confirmation before it becomes authoritative. Confirmed intervention content is immutable and retained as durable audit history.
+- school access states: `active | paused | blocked | disabled`;
+- dedicated `platform_access_admins` authority;
+- guarded `set_school_access_status(...)` RPC;
+- append-only school access audit foundation;
+- school access console at `/admin/schools`;
+- normal protected school access is database-gated by active school state.
 
-A confirmed intervention can then feed the existing HQLS Lesson Intelligence engine. The teacher still selects the next lesson Subject, Topic, Objective and Duration. KSI supplies the intervention as private, class-safe differentiation context rather than exposing or singling out the learner.
+### 2. Shared roles and student identity
 
-The generated HQLS lesson is linked back to the intervention handoff and duplicate next-lesson generation from the same confirmed intervention is blocked.
+Implemented foundation:
 
-## Stage 5 live acceptance
+- workspace roles: `owner | admin | leader | teacher | student`;
+- student account binding to an existing KSI learner record;
+- one-time Student Access Code issue/redeem flow;
+- student-safe own-record boundaries;
+- school owner/admin provisioning surface.
 
-Manual Vercel deployment:
+### 3. Student KSI
 
-- deployment: `dpl_CmJXiydy6i44wNJZUhPw85kG1ndP`
-- branch: `stage-5-action-intervention-intelligence`
-- deployment commit: `acee75bda43c0c7a5ff77ca083735275b8c43165`
-- status: READY
+Implemented substantially:
 
-Founder live acceptance proved:
+- `/student` learning-intelligence home;
+- student-safe diagnosis and intervention view;
+- strengths and growth areas;
+- `What should I work on today?` guidance;
+- reviewed real-life learning evidence;
+- `/student/learning` living learning library;
+- student reflection / real-life assignment submission;
+- `/student/mastery` objective-level mastery graph;
+- Next Best Learning Action.
 
-- final diagnosis appeared in Interventions: PASS
-- intervention draft creation: PASS
-- intervention review/edit/save: PASS
-- intervention confirmation and lock: PASS
-- confirmed handoff entered next-HQLS flow: PASS
-- `/api/hqls` intervention generation request: HTTP 200
-- new lesson created and validated: PASS
-- intervention linked to exact new lesson ID: PASS
-- duplicate generation prevention: PASS
-- generated lesson reflected the intervention: PASS
-- learner was not named or singled out inside the HQLS lesson: PASS
+Not yet complete:
 
-Accepted generated lesson during live proof:
+- Ask KSI personal tutor;
+- complete curriculum-generated JSS1–SS3 learning-resource corpus;
+- persistent multi-step adaptive learning plan.
 
-- title: `Who, What, Whose? Practising Pronouns with Drawing and Numbered Steps`
-- lesson id: `4a29afd2-27e2-4c54-9002-228d35a9d0e8`
-- status: `validated`
+### 4. Leadership KSI
 
-The lesson demonstrably incorporated the intervention's English communication target, emotion-regulation routines, mathematical sequencing strength and creative/drawing strength across the seven constitutional HQLS stages without naming the target learner.
+Implemented substantially:
 
-The final UX clarification improves the intervention screen wording so an already-generated/linked lesson is clearly surfaced instead of appearing as if generation failed. The underlying closed-loop behaviour was already proven live.
+- `/leadership` school learning health;
+- class learning health;
+- subject intelligence;
+- intervention coverage and learners needing attention;
+- lesson-delivery / submission / teacher-review execution signals;
+- objective-level mastery intelligence and priority objectives.
 
-## Stage 5 database
+Curriculum coverage cannot yet be considered live because the canonical curriculum graph still contains zero promoted scheme nodes.
 
-Applied migrations:
+### 5. Synchronization backbone
 
-1. `021_stage5_intervention_handoff.sql`
-2. `022_stage5_handoff_actor_indexes.sql`
-3. `023_stage5_confirmed_handoff_retention.sql`
+Implemented:
 
-Verified guarantees:
+- governed Teacher ↔ Class ↔ Subject teaching map;
+- validated HQLS lesson delivery to a real class;
+- roster snapshot into `student_lesson_work`;
+- student submission;
+- teacher review and feedback;
+- reviewed qualitative work becomes governed `student_evidence`;
+- Student and Leadership surfaces consume the resulting shared learning state.
 
-- RLS enabled;
-- anon access revoked;
-- final-diagnosis-only provenance;
-- one intervention per diagnosis;
-- diagnosis/workspace/student provenance immutable;
-- authenticated confirmation actor/timestamp stamping;
-- required fields enforced before confirmation;
-- confirmed content immutable;
-- confirmed handoffs cannot be deleted by product users;
-- owner/admin may delete accidental drafts only;
-- next lesson must belong to the same workspace;
-- first linked lesson is immutable;
-- rollback proofs left no test rows.
+This synchronization implementation has not yet completed founder browser acceptance with distinct real Leader, Teacher and Student accounts.
+
+### 6. Mastery and next-learning
+
+Implemented foundation:
+
+- `learning_objective_nodes`;
+- `mastery_events`;
+- `learner_mastery`;
+- evidence-confidence handling;
+- student objective states;
+- intervention/mastery/baseline-aware Next Best Learning Action;
+- leadership mastery aggregation.
+
+### 7. Curriculum Intelligence and Lagos scheme ingestion
+
+Implemented database foundation:
+
+- curriculum source registry;
+- versioned curriculum frameworks;
+- canonical curriculum nodes and prerequisites;
+- KSI-objective ↔ curriculum alignment entities;
+- workspace curriculum adoption;
+- governed Lagos scheme document/batch/entry ingestion;
+- platform-admin review and explicit promotion workflow.
+
+Current protected production baseline:
+
+- `2,957` scheme entries total;
+- `2,957` pending review;
+- `0` approved;
+- `0` rejected;
+- `0` promoted;
+- `0` canonical curriculum nodes;
+- `0` scheme-entry node links;
+- mixed IRS source remains quarantined with zero staged rows.
+
+Approval and promotion remain separate human actions. Nothing is automatically promoted.
+
+## Consolidation correction
+
+PR #11 originally carried repository migrations `026–055`. PR #12 independently used repository migration number `026` for the Stage 12 review-console hardening.
+
+The consolidation branch resolves that collision by storing the exact review-console hardening SQL as:
+
+`056_stage12_review_console_hardening.sql`
+
+The same SQL is already applied to the dedicated KSI Supabase project under the live migration-history name `stage12_review_console_hardening`. Consolidation does not re-run it or mutate production curriculum data.
+
+## Live Supabase state at consolidation audit
+
+Read-only audit confirmed:
+
+- one school workspace: KAEC Nigerian Schools — `active`;
+- active membership roles currently present in live data: owner only;
+- student accounts: `0`;
+- lesson deliveries: `0`;
+- student lesson-work rows: `0`;
+- learning-objective nodes: `10`;
+- learner-mastery rows: `10`;
+- mastery events: `20`;
+- RLS enabled on the checked KSI 2.0 access, student, synchronization, mastery and curriculum tables.
+
+Therefore the architecture exists, but the multi-role live acceptance loop remains an open gate.
 
 ## Engineering verification
 
-Final Stage 5 closeout verification passed:
+The first PR #13 consolidation head passed GitHub CI:
 
-- dependency installation: PASS
-- lint: PASS
-- strict TypeScript: PASS
-- Stage 2–5 constitutional structure verification: PASS
-- production build: PASS
-- dependency audit: PASS
+- dependency installation: PASS;
+- lint: PASS;
+- strict TypeScript: PASS;
+- constitutional/structural verification: PASS;
+- production build: PASS;
+- high-severity dependency audit: PASS.
 
-Stage 5 is accepted and may be merged. The next stage must begin only from the resulting merged `main` head and must remain inside the frozen Product Constitution unless the constitution is explicitly amended.
+PR #13 also carries the NanoID `3.3.18` patched resolution and a permanent KSI 2.0 structural verifier. A final exact-head CI run is required after this project-state update.
 
-## Audit-trail preservation
+## Remaining acceptance gate before merge/release
 
-The prior detailed project-state snapshot is preserved in Git history at the Stage 5 base/main lineage, including blob `133c65eb32a7ce3f8797d971775378dc310e4362`. This current-state document advances the active checkpoint; earlier acceptance details remain recoverable from Git and the merged stage PRs.
+Do not declare KSI 2.0 accepted until one controlled browser/runtime proof demonstrates the synchronized role path:
+
+**Platform Admin → School Owner/Admin → Leader → Teacher → Student**
+
+Required proof includes:
+
+1. pause and reactivate a test school state without data loss;
+2. issue/redeem a Student Access Code;
+3. verify student cannot access another learner;
+4. verify leader sees permitted learning intelligence only;
+5. teacher delivers an approved HQLS lesson through the real teaching map;
+6. Student KSI receives the learning resource;
+7. student submits reflection/real-life work;
+8. teacher reviews the work;
+9. reviewed evidence enters the shared learning record;
+10. Student mastery/next-learning and Leadership intelligence update from the same evidence.
+
+This runtime proof requires a deliberate acceptance deployment and distinct test-role identities. It has not been performed from the consolidated branch yet.
+
+## Next product work after consolidation acceptance
+
+Build Student and Leadership forward in parallel on the same data model:
+
+- Student: Ask KSI, curriculum-generated learning-resource engine, persistent personalized learning plan;
+- Leadership: real curriculum coverage by class/subject/term/week/topic and stronger learning-risk signals;
+- Shared: human review/promotion of scheme entries and verified curriculum-objective alignment;
+- Parent layer remains later;
+- commercial multi-school onboarding follows the same platform-controlled school access model.
+
+## Release control
+
+PR #13 remains draft and unmerged until explicit founder release approval. Ordinary consolidation work must not consume Vercel preview quota. Use one deliberate acceptance deployment only when the exact code head is green and founder authorises the runtime acceptance step.
