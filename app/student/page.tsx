@@ -11,6 +11,12 @@ export default function StudentKsiPage() {
           <KaecBrand compact />
           <nav className="flex flex-wrap gap-2">
             <Link
+              href="/student/plan"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-950"
+            >
+              My Plan
+            </Link>
+            <Link
               href="/student/learning"
               className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-950"
             >
@@ -18,9 +24,15 @@ export default function StudentKsiPage() {
             </Link>
             <Link
               href="/student/mastery"
-              className="rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-950"
             >
               My Mastery
+            </Link>
+            <Link
+              href="/student/ask"
+              className="rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Ask KSI
             </Link>
             <Link
               href="/sign-in"
