@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type LearningResource = {
-  delivery_id: string;
+  delivery_id: string | null;
   lesson_id: string;
   title: string;
   topic: string | null;
@@ -16,15 +16,16 @@ type LearningResource = {
   subject: string;
   teacher_name: string;
   duration_minutes: number | null;
-  delivered_at: string;
+  delivered_at: string | null;
   updated_at: string;
+  is_taught: boolean;
   warm_up: string;
   explanation: string;
   practice: string;
   practice_actions: string[];
   transfer_task: string;
   reflection_prompt: string;
-  work_status: "assigned" | "submitted" | "reviewed";
+  work_status: "not_assigned" | "assigned" | "submitted" | "reviewed";
   reflection_response: string;
   assignment_response: string;
   submitted_at: string | null;
@@ -121,11 +122,11 @@ export function StudentLearningLibrary() {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">My Learning</p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-950">Your living learning library</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-            Only lessons actually delivered to your class appear here. Each one stays linked to your school, class, subject and teacher, with the HQLS reflection and real-life assignment attached to your own learning record.
+            All validated HQLS lessons for your class are available here for study. When your teacher marks a lesson taught, KSI also links that lesson to the teacher and unlocks its reflection and real-life assignment for your own learning record.
           </p>
         </div>
         <span className="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
-          {library.resources.length} delivered lesson{library.resources.length === 1 ? "" : "s"}
+          {library.resources.length} lesson{library.resources.length === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -153,17 +154,17 @@ export function StudentLearningLibrary() {
 
       {!library.class_id ? (
         <section className="mt-7 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
-          Your student profile is not assigned to a class yet. Ask your school administrator to assign your class so KSI can link the correct lessons to you.
+          Your student profile is not assigned to a class yet. Ask your school administrator to assign your class so KSI can show the correct lessons.
         </section>
       ) : null}
 
       <section className="mt-7 space-y-5">
         {filtered.length === 0 ? (
           <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-sm leading-6 text-zinc-600">
-            No delivered lesson matches this view yet. A lesson appears here after your teacher marks it taught to your class in KSI.
+            No validated lesson matches this view yet. New validated lessons for your class will appear here automatically.
           </div>
         ) : (
-          filtered.map((resource) => <LearningResourceCard key={resource.delivery_id} resource={resource} />)
+          filtered.map((resource) => <LearningResourceCard key={resource.lesson_id} resource={resource} />)
         )}
       </section>
     </main>
@@ -185,6 +186,10 @@ function LearningResourceCard({ resource }: { resource: LearningResource }) {
 
   async function submitWork(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!resource.delivery_id) {
+      setError("This lesson has not yet been marked taught by your teacher.");
+      return;
+    }
     if (!reflectionResponse.trim() && !assignmentResponse.trim()) {
       setError("Write your reflection or real-life assignment response before submitting.");
       return;
@@ -216,14 +221,20 @@ function LearningResourceCard({ resource }: { resource: LearningResource }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">{resource.subject}</span>
           {resource.topic ? <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">{resource.topic}</span> : null}
-          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">{status}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${resource.is_taught ? "bg-emerald-100 text-emerald-800" : "bg-zinc-100 text-zinc-600"}`}>
+            {resource.is_taught ? "Taught" : "Available to study"}
+          </span>
           {resource.duration_minutes ? <span className="text-xs font-semibold text-zinc-400">{resource.duration_minutes} min lesson</span> : null}
         </div>
         <h2 className="mt-4 text-2xl font-bold tracking-tight text-zinc-950">{resource.title}</h2>
         {resource.objective ? <p className="mt-3 text-sm leading-6 text-zinc-600"><strong>Goal:</strong> {resource.objective}</p> : null}
-        <p className="mt-3 text-xs font-semibold text-zinc-400">
-          Taught by {resource.teacher_name} · {new Date(resource.delivered_at).toLocaleDateString()}
-        </p>
+        {resource.is_taught && resource.delivered_at ? (
+          <p className="mt-3 text-xs font-semibold text-zinc-400">
+            Taught by {resource.teacher_name || "your teacher"} · {new Date(resource.delivered_at).toLocaleDateString()}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs font-semibold text-zinc-400">Validated learning resource for your class</p>
+        )}
       </div>
 
       <div className="grid gap-4 p-6 sm:p-7 lg:grid-cols-2">
@@ -234,7 +245,7 @@ function LearningResourceCard({ resource }: { resource: LearningResource }) {
         ) : null}
       </div>
 
-      {(transfer || reflection) ? (
+      {resource.is_taught && (transfer || reflection) ? (
         <form onSubmit={submitWork} className="border-t border-zinc-100 bg-stone-50 p-6 sm:p-7">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
