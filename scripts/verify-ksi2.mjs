@@ -72,10 +72,11 @@ for (const required of [
   assert(accessMigration.includes(required), `KSI 2.0 access foundation is missing: ${required}`);
 }
 
+const ambiguousWorkspaceMemberConflict = /on\s+conflict\s*\(\s*workspace_id\s*,\s*user_id\s*\)\s*do\s+update/i;
 assert(
   accessRedeemFix.includes("create or replace function public.redeem_student_access_code") &&
     accessRedeemFix.includes("on conflict on constraint workspace_members_pkey") &&
-    !accessRedeemFix.includes("on conflict (workspace_id, user_id)"),
+    !ambiguousWorkspaceMemberConflict.test(accessRedeemFix),
   "Student Access Code redemption must use the named workspace-members key and avoid the PL/pgSQL workspace_id conflict-target ambiguity.",
 );
 
