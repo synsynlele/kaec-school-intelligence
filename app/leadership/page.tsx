@@ -3,6 +3,7 @@ import Link from "next/link";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { DeliveryIntelligencePanel } from "@/components/leadership/delivery-intelligence-panel";
 import { LeadershipHomeClient } from "@/components/leadership/leadership-home-client";
+import { MasteryIntelligencePanel } from "@/components/leadership/mastery-intelligence-panel";
 
 export default function LeadershipKsiPage() {
   return (
@@ -20,6 +21,7 @@ export default function LeadershipKsiPage() {
       </header>
       <LeadershipHomeClient />
       <DeliveryIntelligencePanel />
+      <MasteryIntelligencePanel />
     </>
   );
 }
