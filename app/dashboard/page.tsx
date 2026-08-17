@@ -64,6 +64,12 @@ export default function DashboardPage() {
           School Access
         </Link>
         <Link
+          href="/setup/student-access"
+          className="rounded-2xl border border-emerald-900/20 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 shadow-lg shadow-zinc-950/5 transition hover:bg-emerald-50"
+        >
+          Student Access
+        </Link>
+        <Link
           href="/setup"
           className="rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-lg shadow-zinc-950/5 transition hover:border-zinc-400"
         >
