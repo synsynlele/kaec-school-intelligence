@@ -4,20 +4,20 @@ Updated: 17 August 2026
 
 ## Current checkpoint
 
-**KSI 2.0 — Consolidated Learning Intelligence release candidate / engineering verification in progress**
+**KSI 2.0 — Consolidated Learning Intelligence release candidate / database-runtime acceptance passed**
 
-KSI Version 1 remains the accepted production baseline on `main`. The founder-authorised KSI 2.0 constitutional amendment expands the product into synchronized Teacher, Student and Leadership learning-intelligence surfaces while preserving the specialist learning boundary: KSI is not a school ERP.
+KSI Version 1 remains the accepted production baseline on `main`. The KSI 2.0 constitutional amendment expands the product into synchronized Teacher, Student and Leadership learning-intelligence surfaces while preserving the specialist learning boundary: KSI is not a school ERP.
 
-The active consolidation lineage is:
+Authoritative development lineage:
 
-- branch: `ksi-2-consolidation`
-- draft PR: `#13 — KSI 2.0 — Consolidated Learning Intelligence release candidate`
-- base: current `main`
-- prior draft lines `#11` and `#12` are source lineages being superseded by PR #13
+- branch: `ksi-2-consolidation`;
+- draft PR: `#13 — KSI 2.0 — Consolidated Learning Intelligence release candidate`;
+- base: `main`;
+- PRs #11 and #12 are closed as superseded, not merged.
 
-No production merge or Vercel release is authorised at this checkpoint.
+No production merge or release is authorised at this checkpoint.
 
-## Accepted foundation preserved
+## Unified KSI 2.0 learning model
 
 The accepted Version 1 loop remains intact:
 
@@ -25,45 +25,47 @@ The accepted Version 1 loop remains intact:
 
 KSI 2.0 extends the same governed record into:
 
-**HQLS Lesson → Student Learning Resource → Assessment → Student Evidence → Diagnosis → Intervention → Student Priority / Next Learning → Next HQLS Lesson → Leadership Learning Signal**
+**HQLS Lesson → Student Learning Resource → Assessment / Student Work → Student Evidence → Diagnosis → Intervention → Mastery / Next Learning → Next HQLS Lesson → Leadership Learning Signal**
 
-There is no second Student database and no separate Leadership intelligence store. The three product surfaces are designed to read and act on the same workspace-scoped learning record.
+Student, Teacher and Leadership KSI operate over the same workspace-scoped learning record. There is no separate Student database or Leadership intelligence silo.
 
-## KSI 2.0 implementation present in the consolidation branch
+## Implemented KSI 2.0 foundation
 
-### 1. School Access Control
+### School Access Control
+
+Implemented and runtime-proved:
+
+- `active | paused | blocked | disabled` school states;
+- dedicated `platform_access_admins` authority;
+- guarded `set_school_access_status(...)`;
+- school-access audit foundation;
+- `/admin/schools` platform console;
+- inactive school state blocks normal Student/Leadership access without deleting learning data.
+
+### Shared roles and identity
 
 Implemented:
 
-- school access states: `active | paused | blocked | disabled`;
-- dedicated `platform_access_admins` authority;
-- guarded `set_school_access_status(...)` RPC;
-- append-only school access audit foundation;
-- school access console at `/admin/schools`;
-- normal protected school access is database-gated by active school state.
-
-### 2. Shared roles and student identity
-
-Implemented foundation:
-
-- workspace roles: `owner | admin | leader | teacher | student`;
-- student account binding to an existing KSI learner record;
+- `owner | admin | leader | teacher | student` roles;
 - one-time Student Access Code issue/redeem flow;
-- student-safe own-record boundaries;
-- school owner/admin provisioning surface.
+- student account binding to an existing learner record;
+- Teacher ↔ Class ↔ Subject teaching assignments;
+- student-safe own-record boundaries.
 
-### 3. Student KSI
+Runtime acceptance discovered and corrected the PL/pgSQL conflict-target defect in Student Access redemption through migration `057_stage8_student_access_redeem_conflict_fix.sql`.
+
+### Student KSI
 
 Implemented substantially:
 
 - `/student` learning-intelligence home;
-- student-safe diagnosis and intervention view;
+- diagnosis/intervention priority;
 - strengths and growth areas;
-- `What should I work on today?` guidance;
+- `What should I work on today?`;
 - reviewed real-life learning evidence;
-- `/student/learning` living learning library;
-- student reflection / real-life assignment submission;
-- `/student/mastery` objective-level mastery graph;
+- `/student/learning` learning library;
+- lesson reflection / real-life task submission;
+- `/student/mastery` objective mastery graph;
 - Next Best Learning Action.
 
 Not yet complete:
@@ -72,140 +74,147 @@ Not yet complete:
 - complete curriculum-generated JSS1–SS3 learning-resource corpus;
 - persistent multi-step adaptive learning plan.
 
-### 4. Leadership KSI
+### Leadership KSI
 
 Implemented substantially:
 
-- `/leadership` school learning health;
-- class learning health;
-- subject intelligence;
+- school learning health;
+- class/subject intelligence;
 - intervention coverage and learners needing attention;
-- lesson-delivery / submission / teacher-review execution signals;
-- objective-level mastery intelligence and priority objectives.
+- lesson-delivery / submission / teacher-review signals;
+- objective mastery intelligence and priority objectives.
 
-Curriculum coverage cannot yet be considered live because the canonical curriculum graph still contains zero promoted scheme nodes.
+True curriculum-coverage intelligence remains limited until canonical curriculum nodes are human-reviewed and promoted.
 
-### 5. Synchronization backbone
+### Synchronization backbone
+
+Implemented and runtime-proved:
+
+- validated HQLS lesson delivery through the real teaching map;
+- roster snapshot into `student_lesson_work`;
+- Student receives the taught resource;
+- Student submits reflection / real-life work;
+- Teacher reviews the work;
+- reviewed work becomes governed `student_evidence`;
+- Student mastery refreshes from that evidence;
+- Leadership sees delivery/review/mastery changes from the same record.
+
+### Mastery and next-learning
 
 Implemented:
-
-- governed Teacher ↔ Class ↔ Subject teaching map;
-- validated HQLS lesson delivery to a real class;
-- roster snapshot into `student_lesson_work`;
-- student submission;
-- teacher review and feedback;
-- reviewed qualitative work becomes governed `student_evidence`;
-- Student and Leadership surfaces consume the resulting shared learning state.
-
-This synchronization implementation has not yet completed founder browser acceptance with distinct real Leader, Teacher and Student accounts.
-
-### 6. Mastery and next-learning
-
-Implemented foundation:
 
 - `learning_objective_nodes`;
 - `mastery_events`;
 - `learner_mastery`;
-- evidence-confidence handling;
-- student objective states;
+- evidence-confidence states;
 - intervention/mastery/baseline-aware Next Best Learning Action;
-- leadership mastery aggregation.
+- Leadership mastery aggregation.
 
-### 7. Curriculum Intelligence and Lagos scheme ingestion
+Runtime acceptance identified join multiplication that could count one qualitative evidence row more than once. Migration `058_stage11_mastery_distinct_evidence_fix.sql` now counts distinct evidence records. Final acceptance proved that one reviewed qualitative item remains `evidence_building` / low-confidence rather than prematurely becoming `developing`.
 
-Implemented database foundation:
+### Curriculum Intelligence and scheme ingestion
 
-- curriculum source registry;
-- versioned curriculum frameworks;
-- canonical curriculum nodes and prerequisites;
-- KSI-objective ↔ curriculum alignment entities;
-- workspace curriculum adoption;
-- governed Lagos scheme document/batch/entry ingestion;
-- platform-admin review and explicit promotion workflow.
+Implemented database/review foundation:
 
-Current protected production baseline:
+- curriculum sources/frameworks/nodes;
+- prerequisite/alignment/adoption entities;
+- Lagos scheme document/batch/entry ingestion;
+- platform-admin review console;
+- explicit approval separate from explicit promotion.
 
-- `2,957` scheme entries total;
-- `2,957` pending review;
-- `0` approved;
-- `0` rejected;
-- `0` promoted;
-- `0` canonical curriculum nodes;
-- `0` scheme-entry node links;
-- mixed IRS source remains quarantined with zero staged rows.
+Protected live baseline remains:
 
-Approval and promotion remain separate human actions. Nothing is automatically promoted.
+- scheme entries: `2,957`;
+- pending: `2,957`;
+- approved: `0`;
+- rejected: `0`;
+- promoted: `0`;
+- canonical curriculum nodes: `0`;
+- scheme-entry node links: `0`;
+- mixed IRS source remains quarantined.
 
-## Consolidation correction
+Nothing is automatically promoted.
 
-PR #11 originally carried repository migrations `026–055`. PR #12 independently used repository migration number `026` for the Stage 12 review-console hardening.
+## Migration reconciliation
 
-The consolidation branch resolves that collision by storing the exact review-console hardening SQL as:
+The consolidated repository owns migrations `026–058` after Version 1.
+
+PR #11 originally occupied `026–055`, while PR #12 independently used `026` for review-console hardening. Consolidation stores that exact hardening as:
 
 `056_stage12_review_console_hardening.sql`
 
-The same SQL is already applied to the dedicated KSI Supabase project under the live migration-history name `stage12_review_console_hardening`. Consolidation does not re-run it or mutate production curriculum data.
+Acceptance added:
 
-## Live Supabase state at consolidation audit
+- `057_stage8_student_access_redeem_conflict_fix.sql`;
+- `058_stage11_mastery_distinct_evidence_fix.sql`.
 
-Read-only audit confirmed:
+The three relevant live migration-history names are:
 
-- one school workspace: KAEC Nigerian Schools — `active`;
-- active membership roles currently present in live data: owner only;
+- `stage12_review_console_hardening`;
+- `stage8_student_access_redeem_conflict_fix`;
+- `stage11_mastery_distinct_evidence_fix`.
+
+## KSI 2.0 runtime acceptance
+
+Detailed evidence: `docs/KSI_2_RUNTIME_ACCEPTANCE_2026-08-17.md`.
+
+A single quota-controlled Vercel Preview was successfully created from `ksi-2-acceptance-preview`. The frontend content was unchanged by the subsequent schema-only runtime fixes, so no second Vercel build was consumed.
+
+The final authenticated rollback transaction passed **21/21** database/runtime checks across:
+
+**Platform Admin → Owner/Admin → Leader → Teacher → Student → Student Evidence → Mastery → Leadership**
+
+Key final proof:
+
+- Student baseline mastery objectives: `10`;
+- after one reviewed HQLS lesson inside the transaction: `11`;
+- new qualitative evidence count: exactly `1`;
+- all 11 remained conservatively `evidence_building` after one qualitative item;
+- Leadership saw the same 11-objective graph;
+- one delivery produced one assigned, one submitted and one reviewed student-work record;
+- Leadership delivery intelligence reflected 100% submission/review for that acceptance delivery;
+- pausing the school preserved the linked data while blocking Student KSI.
+
+The transaction ended with `ROLLBACK`.
+
+Post-acceptance live audit returned to the original data state:
+
+- school status: `active`;
+- temporary acceptance memberships: `0`;
 - student accounts: `0`;
 - lesson deliveries: `0`;
 - student lesson-work rows: `0`;
-- learning-objective nodes: `10`;
+- school access audit rows from acceptance: `0`;
 - learner-mastery rows: `10`;
 - mastery events: `20`;
-- RLS enabled on the checked KSI 2.0 access, student, synchronization, mastery and curriculum tables.
+- scheme pending: `2,957`;
+- promoted schemes: `0`;
+- curriculum nodes: `0`.
 
-Therefore the architecture exists, but the multi-role live acceptance loop remains an open gate.
+The function-fix migrations remain intentionally applied.
 
-## Engineering verification
+## Browser visual acceptance limitation
 
-The first PR #13 consolidation head passed GitHub CI:
+GitHub/Vercel reported the deliberate Preview deployment as successful. The Vercel connector available in the current ChatGPT session is authenticated to a different Vercel scope from the KSI project and therefore cannot open the protected preview deployment for visual browser smoke testing.
 
-- dependency installation: PASS;
-- lint: PASS;
-- strict TypeScript: PASS;
-- constitutional/structural verification: PASS;
-- production build: PASS;
-- high-severity dependency audit: PASS.
+Accordingly:
 
-PR #13 also carries the NanoID `3.3.18` patched resolution and a permanent KSI 2.0 structural verifier. A final exact-head CI run is required after this project-state update.
+- **database/runtime multi-role acceptance: PASSED**;
+- **preview deployment: SUCCESS**;
+- **protected-preview browser visual smoke: not independently executed from this tool session**.
 
-## Remaining acceptance gate before merge/release
+Do not misstate the browser gate as passed until it is actually observed through an authorised KSI Vercel session or founder manual check.
 
-Do not declare KSI 2.0 accepted until one controlled browser/runtime proof demonstrates the synchronized role path:
+## Next product work after acceptance
 
-**Platform Admin → School Owner/Admin → Leader → Teacher → Student**
-
-Required proof includes:
-
-1. pause and reactivate a test school state without data loss;
-2. issue/redeem a Student Access Code;
-3. verify student cannot access another learner;
-4. verify leader sees permitted learning intelligence only;
-5. teacher delivers an approved HQLS lesson through the real teaching map;
-6. Student KSI receives the learning resource;
-7. student submits reflection/real-life work;
-8. teacher reviews the work;
-9. reviewed evidence enters the shared learning record;
-10. Student mastery/next-learning and Leadership intelligence update from the same evidence.
-
-This runtime proof requires a deliberate acceptance deployment and distinct test-role identities. It has not been performed from the consolidated branch yet.
-
-## Next product work after consolidation acceptance
-
-Build Student and Leadership forward in parallel on the same data model:
+Continue Student and Leadership in parallel over the same data model:
 
 - Student: Ask KSI, curriculum-generated learning-resource engine, persistent personalized learning plan;
 - Leadership: real curriculum coverage by class/subject/term/week/topic and stronger learning-risk signals;
-- Shared: human review/promotion of scheme entries and verified curriculum-objective alignment;
+- Shared: human review/promotion of scheme entries and curriculum-objective alignment;
 - Parent layer remains later;
-- commercial multi-school onboarding follows the same platform-controlled school access model.
+- commercial multi-school onboarding follows the same platform-controlled access model.
 
 ## Release control
 
-PR #13 remains draft and unmerged until explicit founder release approval. Ordinary consolidation work must not consume Vercel preview quota. Use one deliberate acceptance deployment only when the exact code head is green and founder authorises the runtime acceptance step.
+PR #13 remains draft and unmerged. No production release follows automatically from runtime acceptance. A merge/release still requires explicit founder authorisation after the exact consolidated head passes CI and any desired protected-preview visual check is completed.
