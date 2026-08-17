@@ -118,7 +118,7 @@ export function SchemeIngestionClient() {
     setError(null);
     try {
       const supabase: SupabaseClient = getBrowserSupabaseClient();
-      const { error: actionError } = await supabase.rpc("review_scheme_entry", { target_entry_id: entryId, target_status: status, review_note: null });
+      const { error: actionError } = await supabase.rpc("review_scheme_entry", { target_entry_id: entryId, target_status: status, target_review_note: null });
       if (actionError) throw actionError;
       await refresh();
     } catch (caught) {
