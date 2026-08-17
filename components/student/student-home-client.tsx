@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -325,16 +326,22 @@ export function StudentHomeClient() {
       </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-2">
-        <article className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
+        <article className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">
             My Learning
           </p>
           <h2 className="mt-2 text-lg font-bold text-zinc-950">
-            Curriculum resources are next
+            Learn from your class resources
           </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Subject-by-subject explanations, examples, practice and revision will connect directly to your class and learning priorities.
+            Open validated HQLS learning resources shaped for you: explanations, practice, transfer tasks and reflection.
           </p>
+          <Link
+            href="/student/learning"
+            className="mt-5 inline-flex rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Open My Learning
+          </Link>
         </article>
         <article className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
