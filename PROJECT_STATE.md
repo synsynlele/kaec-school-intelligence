@@ -2,284 +2,209 @@
 
 Updated: 17 August 2026
 
-## Current checkpoint
+## Production baseline
 
-**KSI 2.0 — Coordinated Learning Intelligence implementation COMPLETE / final release-candidate preview pending**
+KSI 2.0 remains released on production `main` at:
 
-KSI Version 1 remains the accepted production baseline on `main`. The KSI 2.0 constitutional amendments extend the same governed learning record into synchronized Teacher, Student and Leadership intelligence without turning KSI into a school ERP.
+- commit: `974eab88965d3b6549fa478c5341863e9155d9bd`;
+- production domains: `www.ksi.name.ng` and `ksi.name.ng`;
+- production deployment: `dpl_H8GNHMgLXFiEnFSKirsmV6KJqS3V`.
+
+The production application code baseline remains unchanged while Stage 16 is reviewed.
+
+## Current development checkpoint
+
+**Stage 16 — KSI 2.2 Teacher & Leadership Simplification — database recovery complete / source repair pending explicit authorisation**
 
 Authoritative development lineage:
 
-- branch: `ksi-2-consolidation`;
-- draft PR: `#13 — KSI 2.0 — Consolidated Learning Intelligence release candidate`;
-- base: `main`;
-- prior KSI 2.0 source PRs are superseded by the consolidation lineage.
+- branch: `stage16-ksi-simplification`;
+- draft PR: `#15 — Stage 16 — Simplify KSI around Teacher & Leadership`;
+- current Stage 16 head includes migrations 067 and 068;
+- Stage 16 CI is green;
+- existing acceptance preview remains READY and no additional Vercel deployment was required for database recovery.
 
-No production merge or release is authorised at this checkpoint.
+Migration `067_stage16_teacher_academic_resources.sql` is applied to the live KSI Supabase project.
+Migration `068_stage16_curriculum_governance_recovery.sql` is also applied to the live KSI Supabase project.
 
-## Unified KSI 2.0 learning model
+No Stage 16 merge to `main`, production application deployment, or scheme-source re-extraction is authorised automatically by this checkpoint.
 
-The accepted Version 1 loop remains intact:
+## KSI 2.2 product direction
 
-**HQLS Lesson → Assessment → Student Evidence → Diagnosis → Intervention → Next HQLS Lesson**
+The founder-authorised amendment is recorded in:
 
-KSI 2.0 completes the coordinated learning-intelligence loop as:
+- `docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md`.
 
-**HQLS Lesson → Student Learning Resource → Assessment / Student Work → Student Evidence → Diagnosis → Intervention → Mastery / Personalized Plan → Next Learning → Next HQLS Lesson → Leadership Learning Signal**
+KSI is deliberately focused around two active product experiences and one governed administration layer:
 
-Student, Teacher and Leadership KSI operate over the same workspace-scoped learning record. There is no separate Student database and no Leadership intelligence silo.
+1. **Teacher KSI** — plan, teach, assess, diagnose and intervene.
+2. **Leadership KSI** — understand learning health, curriculum coverage, intervention and improvement signals.
+3. **Owner / Administration** — school access, people, teaching assignments and setup required to operate Teacher and Leadership KSI.
 
-## KSI 2.0 completion status
+The Student-facing KSI application surface is retired. This does **not** delete students or learner data. Student records, lesson evidence, assessments, diagnoses, interventions and mastery remain governed domain data because Teacher and Leadership intelligence depend on them.
 
-### 1. School Access Control — COMPLETE
+The active adult-operated learning loop is:
 
-Implemented and runtime-proved:
+**Academic Resource / Scheme → HQLS Lesson → Delivery & Evidence → Assessment → Diagnosis → Intervention → Next HQLS Lesson → Leadership Learning Signal**
 
-- `active | paused | blocked | disabled` school states;
-- dedicated `platform_access_admins` authority;
-- guarded `set_school_access_status(...)`;
-- school-access audit foundation;
-- `/admin/schools` platform console;
-- inactive school state blocks ordinary Student/Leadership access without deleting learning data.
+The constitutional intelligence engines remain exactly:
 
-### 2. Shared roles and identity — COMPLETE
+1. HQLS Lesson Intelligence;
+2. Assessment Intelligence;
+3. Student Diagnosis Intelligence.
 
-Implemented and runtime-proved:
+Stage 16 creates no fourth authoritative intelligence engine.
 
-- `owner | admin | leader | teacher | student` roles;
-- one-time Student Access Code issue/redeem flow;
-- student account binding to an existing learner record;
-- Teacher ↔ Class ↔ Subject teaching assignments;
-- student-safe own-record boundaries.
+## Teacher experience — implemented in Stage 16
 
-Acceptance corrected the Student Access redemption conflict-target defect through `057_stage8_student_access_redeem_conflict_fix.sql`.
+Teacher KSI is intentionally small and task-oriented.
 
-### 3. Student KSI — COMPLETE for immediate KSI 2.0 scope
+Primary destinations:
 
-Implemented:
+- Home;
+- Academic Resources;
+- HQLS Lessons;
+- Assessments;
+- Diagnosis & Intervention;
+- Saved Work.
 
-- `/student` learning-intelligence home;
-- diagnosis/intervention priority;
-- strengths and growth areas;
-- `What should I work on today?`;
-- reviewed real-life learning evidence;
-- `/student/learning` validated HQLS learning library;
-- published curriculum self-study library;
-- lesson reflection / real-life task submission;
-- `/student/mastery` objective mastery graph;
-- Next Best Learning Action;
-- `/student/plan` persistent, versioned personalized learning plan;
-- `/student/ask` bounded Ask KSI learning tutor.
+Persistent Teacher navigation is mounted across the application so teachers do not have to return to a feature directory after every task.
 
-Ask KSI is a supporting tutor, not a fourth authoritative engine. It may explain, practise and guide learning but cannot create or alter official diagnosis, intervention or mastery states and does not receive private teacher notes.
+### Academic Resources
 
-### 4. Leadership KSI — COMPLETE for immediate KSI 2.0 scope
+New Teacher route:
 
-Implemented:
+- `/teacher/resources`.
 
-- school learning health;
-- class/subject intelligence;
-- intervention coverage and learners needing attention;
-- lesson-delivery / submission / teacher-review signals;
-- objective mastery intelligence and priority objectives;
-- curriculum readiness and coverage;
-- published-resource coverage;
-- verified curriculum-objective alignment coverage;
-- aggregate learning-risk signals for missing intervention response, mastery risk, stale evidence, overdue intervention review, low-confidence mastery and inactive personalized plans.
+It provides:
 
-Learning-risk signals direct system response and do not rank learner or teacher worth.
+- Scheme of Work navigation through **Class → Subject → Term → Week → Topic**;
+- learning objectives when present;
+- learning activities when present;
+- embedded core skills when present;
+- learning resources when present;
+- explicit source/provenance context;
+- extraction-completeness visibility instead of pretending missing fields exist;
+- direct **Create HQLS lesson** handoff from a weekly scheme row;
+- school-uploaded curriculum, notes and reference material through the same Teacher workspace.
 
-### 5. Synchronization backbone — COMPLETE
+The HQLS page accepts the scheme handoff and pre-fills subject, class, topic and objective context without replacing the existing HQLS engine.
 
-Implemented and runtime-proved:
+## Leadership / Owner experience — implemented in Stage 16
 
-- validated HQLS lesson delivery through the real teaching map;
-- class roster snapshot into `student_lesson_work`;
-- Student receives the taught resource;
-- Student submits reflection / real-life work;
-- Teacher reviews work;
-- reviewed work becomes governed `student_evidence`;
-- mastery refreshes from the same evidence;
-- Student personalized planning reads the same intervention/mastery/curriculum state;
-- Leadership sees delivery/review/mastery/risk changes from the same shared record.
+Leadership home is focused on decisions rather than modules:
 
-### 6. Mastery and next-learning — COMPLETE
+- Learning Health;
+- Curriculum & Coverage;
+- Intervention Follow-through;
+- Academic Resources / teaching context.
 
-Implemented:
+Owners/Admins additionally receive:
 
-- `learning_objective_nodes`;
-- `mastery_events`;
-- `learner_mastery`;
-- evidence-confidence states;
-- intervention/mastery/baseline-aware Next Best Learning Action;
-- persistent personalized plan;
-- Leadership mastery aggregation.
+- Classes, Subjects & Student records;
+- Teaching Assignments;
+- Staff Access.
 
-Acceptance corrected qualitative-evidence join multiplication through `058_stage11_mastery_distinct_evidence_fix.sql`.
+Platform governance remains separately gated by `state.isPlatformAdmin`.
 
-Migration `063_stage13_learning_plan_fingerprint_stability.sql` now preserves `learner_mastery.updated_at` on substantive no-op writes so personalized-plan versions remain stable across separate requests unless governed learning state actually changes.
+## Student-facing retirement — implemented in Stage 16
 
-### 7. Curriculum Intelligence — ENGINE COMPLETE / CONTENT AWAITS HUMAN GOVERNANCE
+Active sign-in choices are now only:
 
-Implemented:
+- School Owner;
+- Teacher / Staff.
 
-- curriculum sources/frameworks/nodes;
-- prerequisite/alignment/adoption entities;
-- Lagos scheme document/batch/entry ingestion;
-- platform-admin review console;
-- explicit approval separate from explicit promotion;
-- canonical-objective curriculum learning-resource factory;
-- AI draft generation;
-- human review;
-- separate explicit publication;
-- Student published-resource library;
-- Leadership curriculum/resource/alignment coverage.
+Teacher / Staff is the entry path for Teacher, Leader and Admin accounts; the school-issued Staff Access Code determines the actual governed role.
 
-Protected live content baseline remains intentionally unchanged:
+Former Student KSI routes redirect to a retired-surface notice. Historical learner tables/RPCs remain in place to preserve data integrity and Teacher/Leadership dependencies.
 
-- scheme entries: `2,957`;
-- pending: `2,957`;
-- approved: `0`;
-- rejected: `0`;
-- promoted: `0`;
-- canonical curriculum nodes: `0`;
-- curriculum learning resources: `0`;
-- mixed IRS source remains quarantined.
+## Scheme-data diagnosis
 
-This is a governance state, not an unfinished code path. No pending scheme entry can become a student curriculum resource until a human completes review and explicit promotion. AI-generated learning resources then require human review and separate publication.
+The live Supabase scheme registry contains 26 registered supplied scheme PDFs and 2,957 staged scheme rows.
 
-Nothing is automatically promoted or published.
+The original ingestion was predominantly topic-only extraction. The source PDFs contain richer fields in many cases, so Stage 16 provides a governed source-repair workflow rather than pretending missing data exists.
 
-## Completion migrations
+The mixed/misbundled JSS Islamic Religious Studies source remains quarantined with zero staged rows and must not be automatically repaired or promoted.
 
-The consolidation repository now carries KSI 2.0 migrations through `063`.
+## Governance recovery — completed
 
-Acceptance/runtime corrections:
+Authenticated acceptance after migration 067 exposed an important state contradiction: all 2,957 supplied scheme rows had been bulk-approved/promoted during an earlier review-console operation, contrary to the agreed Pending-review / zero-auto-promotion boundary.
 
-- `057_stage8_student_access_redeem_conflict_fix.sql`;
-- `058_stage11_mastery_distinct_evidence_fix.sql`.
+A dependency audit confirmed that the promotion-created `state_scheme` curriculum graph had no references from learning resources, objective links, student learning plans or curriculum prerequisites.
 
-Completion layer:
+Migration `068_stage16_curriculum_governance_recovery.sql` was therefore founder-authorised and applied on 17 August 2026.
 
-- `059_stage13_student_plan_and_ask_ksi.sql`;
-- `060_stage13_curriculum_learning_resource_engine.sql`;
-- `061_stage13_leadership_curriculum_risk_intelligence.sql`;
-- `062_stage13_curriculum_resource_review_detail.sql`;
-- `063_stage13_learning_plan_fingerprint_stability.sql`.
+Live post-migration verification is exact:
 
-All five Stage 13 migrations are applied to the dedicated KSI Supabase project.
+- total scheme rows: **2,957**;
+- Pending: **2,957**;
+- Approved: **0**;
+- Rejected: **0**;
+- Promoted: **0**;
+- Reviewed: **0**;
+- scheme-entry graph links: **0**;
+- promotion-created `state_scheme` curriculum nodes: **0**;
+- valid non-quarantined source documents staged: **25**;
+- quarantined IRS source: **1**, still registered/quarantined and untouched.
 
-## Runtime acceptance evidence
+Permanent database controls now include:
 
-Detailed records:
+- a human review note is mandatory before approving or rejecting a scheme row;
+- bulk review is capped at 50 visible rows per operation;
+- bulk curriculum promotion is disabled;
+- single-row promotion remains separate and requires approved state plus recorded reviewer, review timestamp and human review note;
+- promoted rows are protected from legacy update/upsert mutation paths.
 
-- `docs/KSI_2_RUNTIME_ACCEPTANCE_2026-08-17.md` — coordinated role/synchronization acceptance;
-- `docs/KSI_2_COMPLETION_ACCEPTANCE_2026-08-17.md` — final Student/Leadership/curriculum completion acceptance.
+Direct authenticated guard tests passed after migration:
 
-### Coordinated role/synchronization acceptance
+- review without a human note: BLOCKED;
+- bulk promotion: BLOCKED.
 
-Final authenticated rollback transaction passed **21/21** across:
+Migration history records:
 
-**Platform Admin → Owner/Admin → Leader → Teacher → Student → Student Evidence → Mastery → Leadership**
+- `stage16_teacher_academic_resources`;
+- `stage16_curriculum_governance_recovery`.
 
-Key proof:
+## Stage 16 scheme repair readiness
 
-- baseline Student mastery: `10` objectives;
-- one reviewed HQLS qualitative work item produced exactly one new qualitative evidence item;
-- mastery moved to `11` objectives without exaggerating confidence;
-- Leadership saw the same 11-objective graph;
-- one delivery produced one assigned, one submitted and one reviewed work record;
-- pausing school access preserved linked data while blocking Student KSI.
+The governance recovery has removed the reviewed/promoted replacement blocker from every valid staged class slice.
 
-### Completion acceptance
+Live readiness audit shows **0 repair blockers** across all non-quarantined classes represented by the 25 valid source documents.
 
-Final Stage 13 rollback harness passed **10/10**:
+The next source-repair workflow remains:
 
-1. platform curriculum factory stays empty before human promotion;
-2. Leader is denied platform curriculum-resource authority;
-3. Leader receives aggregate curriculum readiness/risk intelligence;
-4. personalized plan is intervention-first, mastery-backed and stable;
-5. no-op mastery writes preserve the timestamp used by plan fingerprinting;
-6. plan progress persists without directly changing mastery;
-7. Ask KSI context is own-student and explicitly non-authoritative;
-8. Ask KSI turn lifecycle/history works;
-9. Ask KSI four-turn/minute rate boundary works;
-10. Student curriculum library remains empty until human promotion/publication.
+1. upload the exact matching registered source PDF;
+2. run one source-faithful extraction pass per class, covering all terms present in that class;
+3. replace only that class's current Pending extraction transactionally;
+4. keep every repaired row Pending;
+5. compare extraction completeness and source fidelity;
+6. only then begin human curriculum review;
+7. promotion, if ever desired, remains a separate one-row governed action.
 
-All acceptance data was created inside transactions ending with `ROLLBACK`.
+No source PDF re-extraction has been started yet after migration 068.
 
-## Post-acceptance live audit
+## Engineering / operational gate
 
-Production data remains clean:
+- Stage 16 PR #15 remains a draft.
+- Current Stage 16 CI is green.
+- No new Vercel deployment was spent for migrations 067 or 068.
+- Existing broader Supabase advisor notices remain a separate hardening backlog; Stage 16 recovery did not broaden scope into unrelated RLS/index/security-definer refactors.
 
-- KAEC Nigerian Schools: `active`;
-- temporary acceptance memberships: `0`;
-- student accounts: `0`;
-- personalized plans: `0`;
-- plan steps: `0`;
-- tutor turns: `0`;
-- curriculum learning resources: `0`;
-- learner mastery rows: `10`;
-- mastery events: `20`;
-- scheme pending: `2,957`;
-- promoted schemes: `0`;
-- curriculum nodes: `0`.
+## Remaining Stage 16 gates
 
-## Stage 13 security audit
+1. Obtain explicit authorisation before production scheme-source re-extraction.
+2. Repair the 25 non-quarantined source PDFs through the source-faithful class-level workflow.
+3. Validate extraction completeness against source material before any human curriculum review.
+4. Keep the quarantined IRS source blocked until a correct source is supplied.
+5. Final browser acceptance of Teacher and Leadership navigation.
+6. Only after explicit founder release authorisation: merge PR #15 to `main` and release production.
 
-New tables:
+## Permanent governance reminders
 
-- `student_learning_plans`;
-- `student_learning_plan_steps`;
-- `student_tutor_turns`;
-- `curriculum_learning_resources`.
-
-Verified on all four:
-
-- RLS enabled;
-- anonymous direct SELECT denied;
-- authenticated direct SELECT denied;
-- authenticated direct INSERT denied;
-- authenticated direct UPDATE denied.
-
-Stage 13 public RPCs deny anonymous execution and allow authenticated execution only through their internal student/role/platform checks. Platform curriculum-resource functions additionally enforce `private.is_platform_access_admin()`.
-
-No client-side service-role credential is introduced.
-
-## Engineering verification
-
-Exact completion implementation has passed:
-
-- dependency installation;
-- lint;
-- strict TypeScript;
-- constitutional/structural verification;
-- permanent KSI 2.0 completion verifier;
-- production build;
-- dependency audit.
-
-A final exact-head CI run is required after this project-state closeout commit before the final preview branch is cut.
-
-## Remaining release gate
-
-Implementation is complete. The remaining work is release proof, not product construction:
-
-1. create one final Vercel Preview from the exact green completion head;
-2. perform protected-browser visual smoke through an authorised KSI Vercel/browser session;
-3. perform one real Ask KSI AI turn using a genuine separate Student account.
-
-The Vercel connector available in this ChatGPT session is authenticated to a different protected Vercel scope, so protected-preview browser interaction cannot be independently executed here.
-
-## Later roadmap
-
-Not part of the immediate KSI 2.0 completion:
-
-- Parent KSI surface;
-- broader commercial multi-school onboarding operations beyond the already-built platform school-access model;
-- ongoing human review/promotion of the 2,957 staged curriculum entries and generation/publication of the actual student curriculum resource corpus.
-
-Those are rollout/content operations or later product layers, not blockers to the coordinated KSI 2.0 application architecture.
-
-## Release control
-
-PR #13 remains **draft and unmerged**. No production release follows automatically from implementation or runtime acceptance. Merge to `main` and production release still require explicit founder authorisation after the final preview/browser gate.
+- Do not auto-promote curriculum.
+- Do not represent supplied scheme copies as independently verified official curriculum unless separately verified.
+- Do not weaken RLS or approval rules to make acceptance pass.
+- Do not expose Supabase service-role credentials to browser code.
+- Do not delete learner records merely because Student KSI is retired.
+- Do not merge to `main` or deploy production without explicit release authorisation.
+- Strict commercial subscription/entitlement gating remains a separate business-control layer.

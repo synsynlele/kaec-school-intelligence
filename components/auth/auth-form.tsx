@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Mode = "sign_in" | "sign_up";
-type EntryRole = "owner" | "teacher" | "student";
+type EntryRole = "owner" | "teacher";
 
 const AUTH_RETURN_KEY = "ksi:auth:returnTo";
 
@@ -27,33 +26,22 @@ const ROLE_CONFIG: Record<
     shortLabel: "Owner",
     description: "For proprietors and authorised school owners.",
     signUpHelp:
-      "Create your KSI identity, then request school access. KAEC must approve and activate the school before school-level KSI opens.",
+      "Create your KSI identity, then request school access. KAEC reviews and activates the school before school-level KSI opens.",
     signInHelp:
-      "Sign in to an activated school or continue a school-access request already under review.",
+      "Sign in to your school leadership workspace or continue a school-access request already under review.",
     destination: "/owner/access",
     icon: "🏫",
   },
   teacher: {
     label: "Teacher / Staff",
-    shortLabel: "Teacher",
-    description: "For teachers, school leaders and authorised staff.",
+    shortLabel: "Staff",
+    description: "For teachers, school leaders and authorised school staff.",
     signUpHelp:
-      "Create your KSI identity, then enter the Staff Access Code issued to your school email by the school owner or admin.",
+      "Create your KSI identity, then enter the Staff Access Code sent to your school email by the owner or administrator.",
     signInHelp:
-      "Sign in to your existing school role or connect your account with a Staff Access Code.",
+      "Sign in to your existing Teacher or Leadership workspace, or connect your account with a Staff Access Code.",
     destination: "/teacher/join",
     icon: "🧑🏾‍🏫",
-  },
-  student: {
-    label: "Student",
-    shortLabel: "Student",
-    description: "For learners using Student KSI.",
-    signUpHelp:
-      "Create the learner's own KSI identity, then enter the Student Access Code issued by the school.",
-    signInHelp:
-      "Sign in to Student KSI or connect your learner account with a Student Access Code.",
-    destination: "/student/join",
-    icon: "🎓",
   },
 };
 
@@ -62,7 +50,6 @@ function safePath(path: string) {
 }
 
 export function AuthForm() {
-  const router = useRouter();
   const [role, setRole] = useState<EntryRole | null>(null);
   const [mode, setMode] = useState<Mode>("sign_in");
   const [displayName, setDisplayName] = useState("");
@@ -86,7 +73,7 @@ export function AuthForm() {
 
   async function handleGoogleSignIn() {
     if (!roleConfig) {
-      setError("Choose School Owner, Teacher / Staff or Student first.");
+      setError("Choose School Owner or Teacher / Staff first.");
       return;
     }
 
@@ -95,14 +82,10 @@ export function AuthForm() {
     setMessage(null);
 
     try {
-      const supabase = getBrowserSupabaseClient();
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const { error: oauthError } = await getBrowserSupabaseClient().auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: prepareReturnPath(),
-        },
+        options: { redirectTo: prepareReturnPath() },
       });
-
       if (oauthError) throw oauthError;
     } catch (caught) {
       setError(
@@ -116,7 +99,7 @@ export function AuthForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!roleConfig) {
+    if (!roleConfig || !role) {
       setError("Choose how you are entering KSI first.");
       return;
     }
@@ -136,8 +119,7 @@ export function AuthForm() {
         });
         if (signInError) throw signInError;
 
-        router.replace(destination);
-        router.refresh();
+        window.location.assign(destination);
         return;
       }
 
@@ -153,12 +135,10 @@ export function AuthForm() {
             typeof window === "undefined" ? undefined : prepareReturnPath(),
         },
       });
-
       if (signUpError) throw signUpError;
 
       if (data.session) {
-        router.replace(destination);
-        router.refresh();
+        window.location.assign(destination);
       } else {
         setMessage(
           `Account created. Check your email to confirm it. After confirmation, KSI will continue with the ${roleConfig.label} access flow.`,
@@ -190,18 +170,14 @@ export function AuthForm() {
   return (
     <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
-          Enter KSI
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">
-          Who are you?
-        </h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Enter KSI</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">Choose your workspace</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          Choose your role first. This controls the onboarding journey; it does not grant school permission by itself.
+          KSI is built for teachers and school leadership. Your school-issued access determines what you can actually do after sign-in.
         </p>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {(Object.keys(ROLE_CONFIG) as EntryRole[]).map((entryRole) => {
           const config = ROLE_CONFIG[entryRole];
           const selected = role === entryRole;
@@ -210,14 +186,14 @@ export function AuthForm() {
               key={entryRole}
               type="button"
               onClick={() => chooseRole(entryRole)}
-              className={`rounded-2xl border p-4 text-left transition ${
+              className={`rounded-2xl border p-5 text-left transition ${
                 selected
                   ? "border-emerald-800 bg-emerald-50 ring-2 ring-emerald-800/10"
                   : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
               }`}
             >
               <span className="text-2xl" aria-hidden="true">{config.icon}</span>
-              <span className="mt-3 block text-sm font-bold text-zinc-950">{config.label}</span>
+              <span className="mt-3 block text-base font-bold text-zinc-950">{config.label}</span>
               <span className="mt-1 block text-xs leading-5 text-zinc-500">{config.description}</span>
             </button>
           );
@@ -231,23 +207,19 @@ export function AuthForm() {
               type="button"
               onClick={() => changeMode("sign_in")}
               className={`rounded-lg px-3 py-2.5 transition ${
-                mode === "sign_in"
-                  ? "bg-white text-zinc-950 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-800"
+                mode === "sign_in" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
               }`}
             >
-              I already have an account
+              Sign in
             </button>
             <button
               type="button"
               onClick={() => changeMode("sign_up")}
               className={`rounded-lg px-3 py-2.5 transition ${
-                mode === "sign_up"
-                  ? "bg-white text-zinc-950 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-800"
+                mode === "sign_up" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
               }`}
             >
-              Create my account
+              Create account
             </button>
           </div>
 
@@ -270,7 +242,7 @@ export function AuthForm() {
             {googleBusy
               ? "Connecting to Google…"
               : mode === "sign_in"
-                ? `Sign in with Google as ${roleConfig.shortLabel}`
+                ? `Continue with Google as ${roleConfig.shortLabel}`
                 : `Create ${roleConfig.shortLabel} account with Google`}
           </button>
 
@@ -304,7 +276,7 @@ export function AuthForm() {
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
                 className="w-full rounded-xl border border-zinc-300 px-3.5 py-3 text-zinc-950 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/10"
-                placeholder={role === "student" ? "student@email.com" : role === "teacher" ? "teacher@school.com" : "owner@school.com"}
+                placeholder={role === "teacher" ? "teacher@school.com" : "owner@school.com"}
               />
             </label>
 
@@ -344,12 +316,12 @@ export function AuthForm() {
         </div>
       ) : (
         <div className="mt-7 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-6 text-center">
-          <p className="text-sm font-semibold text-zinc-700">Select your role above to continue.</p>
+          <p className="text-sm font-semibold text-zinc-700">Choose School Owner or Teacher / Staff to continue.</p>
         </div>
       )}
 
       <p className="mt-6 text-xs leading-5 text-zinc-500">
-        Choosing a role here never creates school authority. Owner access requires KAEC approval; Teacher/Staff access requires a school-issued Staff Access Code; Student access requires a Student Access Code linked to an existing learner record.
+        Choosing an entry path never grants authority. Owner access requires KAEC approval. Teacher, Leader and Admin access is granted only through a school-issued, email-bound Staff Access Code.
       </p>
     </div>
   );

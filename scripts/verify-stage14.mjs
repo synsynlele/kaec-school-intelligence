@@ -7,8 +7,9 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const [migration, dashboard, studentJoin, schoolAdmin] = await Promise.all([
+const [migration, simplification, dashboard, studentJoin, schoolAdmin] = await Promise.all([
   text("supabase/migrations/064_stage14_school_provisioning_access_lock.sql"),
+  text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("components/dashboard/dashboard-client.tsx"),
   text("components/student/student-join-client.tsx"),
   text("components/admin/school-access-client.tsx"),
@@ -33,13 +34,22 @@ assert(
 );
 
 for (const required of [
-  "Signing up does not create or activate a school",
-  "platform administrator provisions it",
-  "School Access Control",
-  "Curriculum Resource Factory",
+  "KAEC platform administration",
+  "Governance controls",
+  'href="/admin/schools"',
+  "Student-facing KSI has been retired",
 ]) {
-  assert(dashboard.includes(required), `Role-aware dashboard is missing: ${required}`);
+  assert(dashboard.includes(required), `KSI 2.2 role-aware dashboard is missing: ${required}`);
 }
+assert(
+  dashboard.includes("state.isPlatformAdmin") && dashboard.includes("School Access"),
+  "Platform School Access Control must remain behind the platform-admin gate.",
+);
+assert(
+  simplification.includes("Students are not an interactive KSI user surface") &&
+    simplification.includes("Historical student accounts and data must not be destructively deleted"),
+  "Stage 14 historical learner-access protections must be retained while Student KSI is retired.",
+);
 
 for (const required of [
   "This is a staff account, not a student account",
@@ -47,7 +57,7 @@ for (const required of [
   "messageFrom",
   "redeem_student_access_code",
 ]) {
-  assert(studentJoin.includes(required), `Student Access redemption UX is missing: ${required}`);
+  assert(studentJoin.includes(required), `Historical Student Access redemption safety is missing: ${required}`);
 }
 
 for (const required of [
@@ -67,5 +77,5 @@ assert(
 );
 
 console.log(
-  "Stage 14 verification passed: self-service school creation is closed, platform-admin provisioning starts paused, Student Access explains staff-account rejection, and the dashboard is role/access-state aware.",
+  "Stage 14 verification passed under KSI 2.2: self-service school creation remains closed, platform-admin provisioning starts paused, historical Student Access protections remain intact, and the active dashboard is Teacher/Leadership role-aware.",
 );

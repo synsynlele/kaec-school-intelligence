@@ -1,11 +1,5 @@
-import { StudentCurriculumLibraryPanel } from "@/components/student/student-curriculum-library-panel";
-import { StudentLearningLibrary } from "@/components/student/student-learning-library";
+import { redirect } from "next/navigation";
 
-export default function StudentLearningPage() {
-  return (
-    <>
-      <StudentLearningLibrary />
-      <StudentCurriculumLibraryPanel />
-    </>
-  );
+export default function RetiredStudentLearningPage() {
+  redirect("/sign-in?notice=student-surface-retired");
 }

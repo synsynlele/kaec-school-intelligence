@@ -87,8 +87,9 @@ assert(
 );
 assert(
   dashboardClient.includes("state.isPlatformAdmin") &&
-    dashboardClient.includes('href: "/curriculum/review"') &&
-    dashboardClient.includes("These controls are platform-level and are not available to ordinary school owners."),
+    dashboardClient.includes('href="/curriculum/review"') &&
+    dashboardClient.includes("KAEC platform administration") &&
+    dashboardClient.includes("Governance controls"),
   "Curriculum Review must remain hidden behind the role-aware platform-admin dashboard gate.",
 );
 

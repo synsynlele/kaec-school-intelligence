@@ -1,5 +1,5 @@
-import { StudentMasteryClient } from "@/components/student/student-mastery-client";
+import { redirect } from "next/navigation";
 
-export default function StudentMasteryPage() {
-  return <StudentMasteryClient />;
+export default function RetiredStudentMasteryPage() {
+  redirect("/sign-in?notice=student-surface-retired");
 }

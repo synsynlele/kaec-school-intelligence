@@ -1,5 +1,5 @@
-import { AskKsiClient } from "@/components/student/ask-ksi-client";
+import { redirect } from "next/navigation";
 
-export default function AskKsiPage() {
-  return <AskKsiClient />;
+export default function RetiredStudentAskPage() {
+  redirect("/sign-in?notice=student-surface-retired");
 }

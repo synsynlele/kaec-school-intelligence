@@ -1,5 +1,5 @@
-import { StudentLearningPlanClient } from "@/components/student/student-learning-plan-client";
+import { redirect } from "next/navigation";
 
-export default function StudentLearningPlanPage() {
-  return <StudentLearningPlanClient />;
+export default function RetiredStudentPlanPage() {
+  redirect("/sign-in?notice=student-surface-retired");
 }

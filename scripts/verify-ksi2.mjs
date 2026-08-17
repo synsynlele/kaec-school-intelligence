@@ -9,6 +9,7 @@ const assert = (condition, message) => {
 
 const [
   amendment,
+  simplification,
   accessMigration,
   studentMigration,
   leadershipMigration,
@@ -21,12 +22,14 @@ const [
   studentHome,
   studentLearning,
   studentMastery,
+  studentPage,
   leadershipHome,
   dashboardPage,
   dashboardClient,
   packageJson,
 ] = await Promise.all([
   text("docs/KSI_2_CONSTITUTIONAL_AMENDMENT.md"),
+  text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("supabase/migrations/026_stage7_ksi2_access_identity_foundation.sql"),
   text("supabase/migrations/033_stage8_student_learning_intelligence_rpc.sql"),
   text("supabase/migrations/032_stage9_leadership_learning_intelligence_rpc.sql"),
@@ -39,6 +42,7 @@ const [
   text("components/student/student-home-client.tsx"),
   text("components/student/student-learning-library.tsx"),
   text("components/student/student-mastery-client.tsx"),
+  text("app/student/page.tsx"),
   text("components/leadership/leadership-home-client.tsx"),
   text("app/dashboard/page.tsx"),
   text("components/dashboard/dashboard-client.tsx"),
@@ -59,7 +63,17 @@ for (const required of [
   "teacher",
   "student",
 ]) {
-  assert(amendment.includes(required), `KSI 2.0 constitutional amendment is missing: ${required}`);
+  assert(amendment.includes(required), `KSI 2.0 historical constitutional foundation is missing: ${required}`);
+}
+
+for (const required of [
+  "Teacher KSI",
+  "Leadership KSI",
+  "Students are not an interactive KSI user surface",
+  "Historical student accounts and data must not be destructively deleted",
+  "Academic Resource / Scheme → HQLS Lesson",
+]) {
+  assert(simplification.includes(required), `KSI 2.2 simplification amendment is missing: ${required}`);
 }
 
 for (const required of [
@@ -71,7 +85,7 @@ for (const required of [
   "set_school_access_status",
   "check (role in ('owner','admin','leader','teacher','student'))",
 ]) {
-  assert(accessMigration.includes(required), `KSI 2.0 access foundation is missing: ${required}`);
+  assert(accessMigration.includes(required), `KSI 2.0 access/data foundation is missing: ${required}`);
 }
 
 const ambiguousWorkspaceMemberConflict = /on\s+conflict\s*\(\s*workspace_id\s*,\s*user_id\s*\)\s*do\s+update/i;
@@ -79,21 +93,24 @@ assert(
   accessRedeemFix.includes("create or replace function public.redeem_student_access_code") &&
     accessRedeemFix.includes("on conflict on constraint workspace_members_pkey") &&
     !ambiguousWorkspaceMemberConflict.test(accessRedeemFix),
-  "Student Access Code redemption must use the named workspace-members key and avoid the PL/pgSQL workspace_id conflict-target ambiguity.",
+  "Historical Student Access redemption must remain safe because student account records are preserved.",
 );
 
 assert(
   masteryEvidenceFix.includes("create or replace function private.refresh_student_mastery") &&
     masteryEvidenceFix.match(/count\(distinct se\.id\)/g)?.length >= 4 &&
     !masteryEvidenceFix.includes("count(se.id) filter"),
-  "Mastery confidence must count distinct student evidence records and never inflate qualitative evidence through join multiplicity.",
+  "Mastery confidence must continue to count distinct learner evidence records.",
 );
 
 assert(
   studentMigration.includes("get_my_learning_intelligence") &&
-    studentHome.includes("What should I work on today?") &&
     studentHome.includes("get_my_learning_intelligence"),
-  "Student KSI must remain connected to the governed shared learning record.",
+  "The preserved learner-data foundation must remain internally coherent even though Student KSI is no longer an active product surface.",
+);
+assert(
+  studentPage.includes('redirect("/sign-in?notice=student-surface-retired")'),
+  "Student KSI home must be retired at the route boundary under KSI 2.2.",
 );
 
 assert(
@@ -113,16 +130,13 @@ for (const required of [
   assert(syncMigration.includes(required), `KSI synchronization backbone is missing: ${required}`);
 }
 assert(
-  studentLearning.includes("get_my_learning_resources") &&
-    studentLearning.includes("submit_my_lesson_work"),
-  "Student learning resources must remain connected to lesson delivery and learner work.",
+  studentLearning.includes("get_my_learning_resources") && studentLearning.includes("submit_my_lesson_work"),
+  "Preserved historical learner-work components must remain compatible with the shared evidence model.",
 );
 
 assert(
-  masteryMigration.includes("get_my_mastery_graph") &&
-    studentMastery.includes("get_my_mastery_graph") &&
-    studentMastery.includes("Next Best Learning Action"),
-  "KSI mastery and next-learning guidance must remain wired together.",
+  masteryMigration.includes("get_my_mastery_graph") && studentMastery.includes("get_my_mastery_graph"),
+  "Mastery data must remain wired to the shared learning record for teacher and leadership intelligence.",
 );
 
 for (const required of ["curriculum_frameworks", "curriculum_nodes", "objective_curriculum_links"]) {
@@ -130,37 +144,41 @@ for (const required of ["curriculum_frameworks", "curriculum_nodes", "objective_
 }
 
 assert(
-  schoolAccessClient.includes("set_school_access_status") &&
-    schoolAccessClient.includes("SCHOOL_ACCESS_STATUSES"),
+  schoolAccessClient.includes("set_school_access_status") && schoolAccessClient.includes("SCHOOL_ACCESS_STATUSES"),
   "The platform school-access console must remain backed by the governed access RPC.",
 );
 
 const dashboardSurface = `${dashboardPage}\n${dashboardClient}`;
 for (const route of [
-  "/hqls/deliver",
-  "/hqls/review",
+  "/teacher/resources",
+  "/hqls",
+  "/assessment",
+  "/diagnosis",
+  "/interventions",
   "/leadership",
   "/setup/curriculum",
-  "/admin/schools",
-  "/setup/student-access",
+  "/setup/staff-access",
 ]) {
-  assert(dashboardSurface.includes(route), `KSI 2.0 dashboard route is missing: ${route}`);
+  assert(dashboardSurface.includes(route), `KSI 2.2 active dashboard route is missing: ${route}`);
 }
+assert(!dashboardSurface.includes('href="/setup/student-access"'), "Student Access must not remain in the active KSI dashboard navigation.");
 assert(
-  dashboardClient.includes("state.isPlatformAdmin") &&
-    dashboardClient.includes('href: "/admin/schools"') &&
-    dashboardClient.includes("These controls are platform-level and are not available to ordinary school owners."),
-  "Platform-admin dashboard routes must remain explicitly gated from ordinary school owners.",
+  dashboardClient.includes("state.isPlatformAdmin") && dashboardClient.includes('href="/admin/schools"'),
+  "Platform-admin controls must remain explicitly gated from ordinary users.",
+);
+assert(
+  dashboardClient.includes("Student-facing KSI has been retired"),
+  "Historical student memberships must fail closed into a retirement message rather than gaining Teacher/Leadership navigation.",
 );
 
 const clientSurface = [schoolAccessClient, studentHome, studentLearning, studentMastery, leadershipHome, dashboardClient].join("\n");
 assert(
   !clientSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !clientSurface.includes("service_role"),
-  "KSI 2.0 client surfaces must never contain the Supabase service-role credential.",
+  "KSI client surfaces must never contain the Supabase service-role credential.",
 );
 
-assert(packageJson.includes("verify-ksi2.mjs"), "Permanent KSI 2.0 structural verification must remain enabled.");
+assert(packageJson.includes("verify-ksi2.mjs"), "Permanent KSI 2 structural verification must remain enabled.");
 
 console.log(
-  "KSI 2.0 structure verification passed: access control, shared roles, Student KSI, Leadership KSI, synchronization, distinct-evidence mastery/next-learning, curriculum foundations, role-gated navigation and Student Access redemption remain connected to one governed data model.",
+  "KSI 2 foundation verification passed under KSI 2.2: governed learner data remains intact, Student KSI routes are retired, and Teacher/Leadership navigation is connected to the same synchronized learning model.",
 );
