@@ -10,6 +10,7 @@ const assert = (condition, message) => {
 const [
   amendment,
   migration,
+  governanceRecovery,
   authForm,
   signIn,
   callback,
@@ -22,6 +23,7 @@ const [
   repairApi,
   repairClient,
   schemePage,
+  schemeIngestion,
   databaseTypes,
   studentHome,
   studentJoin,
@@ -34,6 +36,7 @@ const [
 ] = await Promise.all([
   text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("supabase/migrations/067_stage16_teacher_academic_resources.sql"),
+  text("supabase/migrations/068_stage16_curriculum_governance_recovery.sql"),
   text("components/auth/auth-form.tsx"),
   text("app/sign-in/page.tsx"),
   text("app/auth/callback/page.tsx"),
@@ -46,6 +49,7 @@ const [
   text("app/api/curriculum/scheme-repair/route.ts"),
   text("components/curriculum/scheme-source-repair-client.tsx"),
   text("app/setup/curriculum/schemes/page.tsx"),
+  text("components/workspace/scheme-ingestion-client.tsx"),
   text("lib/supabase/database.ts"),
   text("app/student/page.tsx"),
   text("app/student/join/page.tsx"),
@@ -64,7 +68,10 @@ for (const required of [
   "Academic Resources is a first-class Teacher capability",
   "no curriculum content may be auto-promoted",
 ]) {
-  assert(amendment.includes(required), `Stage 16 constitutional authority is missing: ${required}`);
+  assert(
+    amendment.includes(required),
+    `Stage 16 constitutional authority is missing: ${required}`,
+  );
 }
 
 assert(
@@ -98,7 +105,10 @@ for (const required of [
   'href: "/setup/staff-access"',
   "Student-facing KSI has been retired",
 ]) {
-  assert(dashboard.includes(required), `Simplified dashboard is missing: ${required}`);
+  assert(
+    dashboard.includes(required),
+    `Simplified dashboard is missing: ${required}`,
+  );
 }
 assert(
   !dashboard.includes('href: "/setup/student-access"'),
@@ -114,7 +124,10 @@ for (const required of [
   'label: "Learning Health"',
   'role === "student"',
 ]) {
-  assert(navigation.includes(required), `Persistent KSI navigation is missing: ${required}`);
+  assert(
+    navigation.includes(required),
+    `Persistent KSI navigation is missing: ${required}`,
+  );
 }
 
 assert(
@@ -132,7 +145,10 @@ for (const required of [
   "rich extraction",
   "pending source repair",
 ]) {
-  assert(academicResources.includes(required), `Teacher Academic Resources is missing: ${required}`);
+  assert(
+    academicResources.includes(required),
+    `Teacher Academic Resources is missing: ${required}`,
+  );
 }
 assert(
   academicResources.includes("get_academic_resource_catalog"),
@@ -160,7 +176,10 @@ for (const required of [
   "This source is quarantined",
   "class contains reviewed or promoted rows",
 ]) {
-  assert(migration.includes(required), `Stage 16 database governance is missing: ${required}`);
+  assert(
+    migration.includes(required),
+    `Stage 16 database governance is missing: ${required}`,
+  );
 }
 assert(
   !migration.includes("replace_scheme_term_extraction"),
@@ -172,6 +191,19 @@ assert(
 );
 
 for (const required of [
+  "A human review note is required before approving or rejecting a scheme entry.",
+  "A human review note is required for every bulk review decision.",
+  "guard_scheme_entry_governance",
+  "Promotion requires an approved row with recorded human review evidence.",
+  "Bulk curriculum promotion is disabled. Promote one reviewed entry at a time.",
+]) {
+  assert(
+    governanceRecovery.includes(required),
+    `Stage 16 curriculum governance recovery is missing: ${required}`,
+  );
+}
+
+for (const required of [
   "source-faithful Scheme of Work extraction utility",
   "Never invent a missing cell",
   "covering ALL terms for that class",
@@ -181,7 +213,10 @@ for (const required of [
   "stage12_review_required",
   "Requested class:",
 ]) {
-  assert(repairApi.includes(required), `Scheme repair API is missing: ${required}`);
+  assert(
+    repairApi.includes(required),
+    `Scheme repair API is missing: ${required}`,
+  );
 }
 assert(
   !repairApi.includes('form.get("term")') &&
@@ -202,7 +237,10 @@ for (const required of [
   "document.class_scope",
   "extraction passes",
 ]) {
-  assert(repairClient.includes(required), `Scheme repair console is missing: ${required}`);
+  assert(
+    repairClient.includes(required),
+    `Scheme repair console is missing: ${required}`,
+  );
 }
 assert(
   !repairClient.includes("const TERMS") &&
@@ -214,6 +252,31 @@ assert(
     schemePage.includes("SchemeIngestionClient"),
   "Scheme governance page must combine source repair with the existing review console.",
 );
+
+for (const required of [
+  "Required human review note",
+  "target_review_note: reviewNote",
+  "Nothing was promoted automatically",
+  "Zero automatic promotion · bulk promotion disabled",
+  'promotionText !== "PROMOTE"',
+  'supabase.rpc("promote_scheme_entry"',
+  "Promote one reviewed row",
+]) {
+  assert(
+    schemeIngestion.includes(required),
+    `Active Scheme Ingestion governance UI is missing: ${required}`,
+  );
+}
+assert(
+  !schemeIngestion.includes("target_review_note:null") &&
+    !schemeIngestion.includes("target_review_note: null"),
+  "Active Scheme Ingestion must never submit an empty review note.",
+);
+assert(
+  !schemeIngestion.includes("promote_scheme_entries_bulk"),
+  "Active Scheme Ingestion must expose only one-row curriculum promotion.",
+);
+
 assert(
   databaseTypes.includes("replace_scheme_class_extraction") &&
     !databaseTypes.includes("replace_scheme_term_extraction"),
@@ -249,6 +312,7 @@ const browserSurface = [
   navigation,
   academicResources,
   repairClient,
+  schemeIngestion,
   prefill,
 ].join("\n");
 assert(
@@ -258,5 +322,5 @@ assert(
 );
 
 console.log(
-  "Stage 16 verification passed: KSI is simplified to Teacher + Leadership/Owner, Academic Resources is first-class, Student-facing routes are retired, and scheme source repair uses fast class-level extraction while remaining pending-review, quarantined and non-promoting.",
+  "Stage 16 verification passed: KSI is simplified to Teacher + Leadership/Owner, Academic Resources is first-class, Student-facing routes are retired, source repair remains pending-only, and curriculum review requires human evidence with single-row promotion only.",
 );
