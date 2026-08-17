@@ -158,6 +158,10 @@ export function StudentHomeClient() {
           <h2 className="mt-2 text-2xl font-bold">{state.today_priority.title}</h2>
           <p className="mt-3 text-base leading-7 text-zinc-700">{state.today_priority.action}</p>
           <p className="mt-4 text-sm font-medium text-zinc-500">Why this: {state.today_priority.why}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href="/student/plan" className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Open My Plan</Link>
+            <Link href="/student/ask" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-950">Ask KSI about this</Link>
+          </div>
         </div>
       </section>
 
@@ -235,17 +239,24 @@ export function StudentHomeClient() {
         </article>
       </section>
 
-      <section className="mt-5 grid gap-4 md:grid-cols-2">
+      <section className="mt-5 grid gap-4 md:grid-cols-3">
+        <article className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">My Plan</p>
+          <h2 className="mt-2 text-lg font-bold text-zinc-950">Know what to do next</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">Follow a versioned plan built from your confirmed intervention, mastery evidence and approved curriculum.</p>
+          <Link href="/student/plan" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Open My Plan</Link>
+        </article>
         <article className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">My Learning</p>
-          <h2 className="mt-2 text-lg font-bold text-zinc-950">Learn from your class resources</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">Open validated HQLS learning resources shaped for you: explanations, practice, transfer tasks and reflection.</p>
+          <h2 className="mt-2 text-lg font-bold text-zinc-950">Study from governed resources</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">Use validated HQLS class lessons and, when published, approved curriculum self-study resources.</p>
           <Link href="/student/learning" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Open My Learning</Link>
         </article>
         <article className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">Ask KSI</p>
-          <h2 className="mt-2 text-lg font-bold text-zinc-950">Personal tutor is next</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">Ask KSI will use your curriculum and approved learning state to explain difficult ideas without exposing private teacher notes.</p>
+          <h2 className="mt-2 text-lg font-bold text-zinc-950">Get help understanding your learning</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">Ask for explanations, examples, hints and practice grounded in your student-safe KSI learning state without exposing private teacher notes.</p>
+          <Link href="/student/ask" className="mt-5 inline-flex rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-950">Ask KSI</Link>
         </article>
       </section>
     </main>
