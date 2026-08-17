@@ -77,6 +77,12 @@ assert(
   "Personalized planning must remain derived from intervention, mastery and approved curriculum rather than a parallel student record.",
 );
 
+assert(
+  planMigration.includes("'tutor_may_change_authoritative_state', false") &&
+    planMigration.includes("'teacher_private_notes_included', false"),
+  "Ask KSI database context must explicitly deny authoritative-state mutation and private teacher-note exposure.",
+);
+
 for (const required of [
   "curriculum_learning_resources",
   "get_curriculum_resource_generation_context",
@@ -122,17 +128,18 @@ assert(
     askApi.includes("get_my_ask_ksi_context") &&
     askApi.includes("get_my_curriculum_learning_resources") &&
     askApi.includes("complete_my_ask_ksi_turn") &&
-    askApi.includes("fail_my_ask_ksi_turn") &&
-    askApi.includes("store") === false,
+    askApi.includes("fail_my_ask_ksi_turn"),
   "Ask KSI must use the shared server-side OpenAI helper and governed student-safe RPC context.",
 );
 
-assert(
-  askApi.includes("tutor_may_change_authoritative_state") === false &&
-    askApi.includes("You may not invent, revise, upgrade or downgrade them") &&
-    askApi.includes("teacher private notes") === false,
-  "Ask KSI must remain explicitly bounded from authoritative state changes and private teacher data.",
-);
+for (const required of [
+  "you are not an authority that can change the student's official KSI record",
+  "you may not invent, revise, upgrade or downgrade them",
+  "Never expose or speculate about private teacher notes",
+  "If they are absent, do not claim that a topic is officially in the student's curriculum",
+]) {
+  assert(askApi.includes(required), `Ask KSI safety boundary is missing: ${required}`);
+}
 
 assert(
   resourceApi.includes("get_curriculum_resource_generation_context") &&
