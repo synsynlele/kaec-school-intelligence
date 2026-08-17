@@ -83,17 +83,23 @@ async function loadAccessContext(
     accountResult.error;
   if (firstError) throw firstError;
 
-  if (workspaceResult.data.workspace_type !== "school") {
+  const workspace = workspaceResult.data;
+  const membership = membershipResult.data;
+  if (!workspace || !membership) {
+    throw new Error("Your active school membership could not be resolved.");
+  }
+
+  if (workspace.workspace_type !== "school") {
     throw new Error("Student access is available only inside a school workspace.");
   }
-  if (!["owner", "admin"].includes(membershipResult.data.role)) {
+  if (!["owner", "admin"].includes(membership.role)) {
     throw new Error("Only a school owner or admin can issue Student KSI access.");
   }
 
   return {
     workspaceId,
-    workspaceName: workspaceResult.data.name,
-    role: membershipResult.data.role,
+    workspaceName: workspace.name,
+    role: membership.role,
     students: (studentResult.data ?? []) as StudentRow[],
     classes: (classResult.data ?? []) as ClassRow[],
     accounts: (accountResult.data ?? []) as StudentAccountRow[],
