@@ -199,7 +199,7 @@ export function StudentAccessManager() {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Student Access</p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-950">{context.workspaceName}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-            Issue one-time access codes that connect a learner's own Google or email account to the correct existing KSI student record.
+            Issue one-time access codes that connect a learner&apos;s own Google or email account to the correct existing KSI student record.
           </p>
         </div>
         <Link href="/student/join" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">
