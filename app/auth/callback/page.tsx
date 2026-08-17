@@ -23,11 +23,20 @@ function returnedAuthError() {
   );
 }
 
+function safeInternalPath(value: string | null) {
+  const path = value?.trim() ?? "";
+  if (!path.startsWith("/") || path.startsWith("//")) return null;
+  return path;
+}
+
 function postAuthPath() {
   if (typeof window === "undefined") return "/dashboard";
-  const stored = window.sessionStorage.getItem(AUTH_RETURN_KEY)?.trim() ?? "";
-  if (!stored.startsWith("/") || stored.startsWith("//")) return "/dashboard";
-  return stored;
+  const search = new URLSearchParams(window.location.search);
+  const queryDestination = safeInternalPath(search.get("next"));
+  if (queryDestination) return queryDestination;
+
+  const stored = safeInternalPath(window.sessionStorage.getItem(AUTH_RETURN_KEY));
+  return stored ?? "/dashboard";
 }
 
 export default function AuthCallbackPage() {
@@ -55,16 +64,13 @@ export default function AuthCallbackPage() {
       if (!active || completed || !session?.user) return;
       completed = true;
       const destination = postAuthPath();
+      window.sessionStorage.removeItem(AUTH_RETURN_KEY);
       setMessage(
         destination === "/dashboard"
           ? "Sign-in complete. Opening your workspace…"
-          : "Sign-in complete. Returning to the secure connection…",
+          : "Sign-in complete. Opening the right KSI access path…",
       );
-      if (destination === "/dashboard") {
-        router.replace("/dashboard");
-      } else {
-        router.replace(destination);
-      }
+      router.replace(destination);
       router.refresh();
     }
 
