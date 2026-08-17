@@ -18,7 +18,7 @@ export default function HqlsPage() {
           <KaecBrand compact />
           <div className="flex flex-wrap gap-2">
             <Link href="/teacher/resources" className="inline-flex w-fit items-center justify-center rounded-xl border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50">Academic Resources</Link>
-            <Link href="/saved-work" className="inline-flex w-fit items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-stone-50">Saved Work</Link>
+            <Link href="/saved-work" className="inline-flex w-fit items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-stone-50">Manage Saved Work</Link>
             <Link href="/hqls/exports" className="inline-flex w-fit items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-stone-50">Lesson PDFs</Link>
           </div>
         </div>
