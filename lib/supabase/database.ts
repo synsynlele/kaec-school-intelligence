@@ -180,6 +180,57 @@ type FinalStageFunctions = Omit<
     };
     Returns: Json;
   };
+  get_scheme_review_access: {
+    Args: Record<PropertyKey, never>;
+    Returns: boolean;
+  };
+  get_scheme_review_console: {
+    Args: { target_workspace_id: string };
+    Returns: Json;
+  };
+  get_scheme_review_page: {
+    Args: {
+      target_workspace_id: string;
+      target_document_id?: string | null;
+      target_status?: string;
+      target_class_level?: string | null;
+      target_term?: string | null;
+      target_limit?: number;
+      target_offset?: number;
+    };
+    Returns: Json;
+  };
+  update_scheme_entry: {
+    Args: {
+      target_entry_id: string;
+      target_patch: Json;
+    };
+    Returns: Json;
+  };
+  review_scheme_entry: {
+    Args: {
+      target_entry_id: string;
+      target_status: string;
+      target_review_note?: string | null;
+    };
+    Returns: Json;
+  };
+  review_scheme_entries_bulk: {
+    Args: {
+      target_entry_ids: string[];
+      target_status: string;
+      target_review_note?: string | null;
+    };
+    Returns: Json;
+  };
+  promote_scheme_entry: {
+    Args: { target_entry_id: string };
+    Returns: Json;
+  };
+  promote_scheme_entries_bulk: {
+    Args: { target_entry_ids: string[] };
+    Returns: Json;
+  };
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
