@@ -9,6 +9,7 @@ const assert = (condition, message) => {
 
 const [
   foundation,
+  provisioning,
   hardening,
   authForm,
   authCallback,
@@ -21,6 +22,7 @@ const [
   studentAccessPage,
 ] = await Promise.all([
   text("supabase/migrations/065_stage15_role_aware_onboarding.sql"),
+  text("supabase/migrations/064_stage14_school_provisioning_access_lock.sql"),
   text("supabase/migrations/066_stage15_staff_redeem_hardening.sql"),
   text("components/auth/auth-form.tsx"),
   text("app/auth/callback/page.tsx"),
@@ -48,11 +50,17 @@ for (const required of [
   "get_my_school_memberships",
   "private.is_platform_access_admin()",
   "private.has_workspace_role",
-  "'paused'",
   "extensions.digest",
 ]) {
   assert(foundation.includes(required), `Stage 15 onboarding foundation is missing: ${required}`);
 }
+
+assert(
+  foundation.includes("public.provision_school_workspace") &&
+    provisioning.includes("'paused'") &&
+    provisioning.includes("Awaiting explicit platform activation"),
+  "Approved Owner requests must delegate to the governed Stage 14 provisioning path that starts schools Paused.",
+);
 
 assert(
   hardening.includes("membership is suspended") &&
