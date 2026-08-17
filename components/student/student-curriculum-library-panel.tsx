@@ -45,6 +45,12 @@ type Payload = {
   resources: CurriculumResource[];
 };
 
+async function loadCurriculumResources(supabase: SupabaseClient): Promise<Payload> {
+  const { data, error } = await supabase.rpc("get_my_curriculum_learning_resources");
+  if (error) throw error;
+  return data as Payload;
+}
+
 export function StudentCurriculumLibraryPanel() {
   const [payload, setPayload] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +58,11 @@ export function StudentCurriculumLibraryPanel() {
   useEffect(() => {
     let cancelled = false;
     const supabase: SupabaseClient = getBrowserSupabaseClient();
-    void supabase.rpc("get_my_curriculum_learning_resources")
-      .then(({ data, error: rpcError }) => {
-        if (cancelled) return;
-        if (rpcError) throw rpcError;
-        setPayload(data as Payload);
+    void loadCurriculumResources(supabase)
+      .then((next) => {
+        if (!cancelled) setPayload(next);
       })
-      .catch((caught) => {
+      .catch((caught: unknown) => {
         if (!cancelled) setError(caught instanceof Error ? caught.message : "Curriculum learning resources could not be loaded.");
       });
     return () => {
@@ -133,7 +137,7 @@ function CurriculumResourceCard({ resource }: { resource: CurriculumResource }) 
             {content.worked_examples.map((example, index) => (
               <div key={`${resource.resource_id}-example-${index}`} className="rounded-2xl bg-zinc-50 p-4">
                 <h4 className="font-bold text-zinc-900">{example.title || `Example ${index + 1}`}</h4>
-                {example.steps?.length ? <ol className="mt-3 space-y-2 text-sm leading-6 text-zinc-700">{example.steps.map((step, stepIndex) => <li key={step}> {stepIndex + 1}. {step}</li>)}</ol> : null}
+                {example.steps?.length ? <ol className="mt-3 space-y-2 text-sm leading-6 text-zinc-700">{example.steps.map((step, stepIndex) => <li key={step}>{stepIndex + 1}. {step}</li>)}</ol> : null}
                 {example.answer ? <p className="mt-3 text-sm font-semibold text-emerald-900">Answer: {example.answer}</p> : null}
               </div>
             ))}
