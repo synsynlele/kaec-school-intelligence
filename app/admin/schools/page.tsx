@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SchoolAccessClient } from "@/components/admin/school-access-client";
+import { SchoolAccessRequests } from "@/components/admin/school-access-requests";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 
 export default function SchoolAccessAdminPage() {
@@ -17,7 +18,7 @@ export default function SchoolAccessAdminPage() {
             </p>
             <h1 className="mt-1 text-2xl font-bold">School Access Control</h1>
             <p className="mt-1 max-w-3xl text-sm text-emerald-50/90">
-              Activate, pause, block or disable school access without deleting the school&apos;s learning data.
+              Review owner requests, provision schools and control Active / Paused / Blocked / Disabled access without deleting learning data.
             </p>
           </div>
           <Link
@@ -29,6 +30,7 @@ export default function SchoolAccessAdminPage() {
         </div>
       </header>
 
+      <SchoolAccessRequests />
       <SchoolAccessClient />
     </>
   );
