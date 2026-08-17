@@ -38,7 +38,7 @@ const EXTRACTION_SCHEMA = {
 
 type ExtractedRow = {
   class_level: string;
-  term: string;
+  term: (typeof TERMS)[number];
   week_label: string;
   week_number: number | null;
   component_name: string;
@@ -59,7 +59,6 @@ type ReviewDocument = {
   class_scope: string[];
   metadata?: Record<string, unknown>;
 };
-
 type ReviewConsole = { documents?: ReviewDocument[] };
 
 function json(value: unknown, status = 200) {
@@ -74,34 +73,42 @@ async function authenticatedClient(request: Request) {
   const { url, publishableKey } = getSupabasePublicEnv();
   const supabase = createClient(url, publishableKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   });
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) throw new Error("Your session is no longer valid. Sign in again and retry.");
+  if (error || !user) {
+    throw new Error("Your session is no longer valid. Sign in again and retry.");
+  }
   return supabase;
 }
 
-function extractionInstruction(document: ReviewDocument, classLevel: string, term: string) {
+function extractionInstruction(document: ReviewDocument, classLevel: string) {
   return `You are KSI's source-faithful Scheme of Work extraction utility.
 
 You are given the original supplied PDF registered as "${document.filename}" for ${document.subject}.
-Extract ONLY rows belonging to ${classLevel}, ${term}.
+Extract ONLY rows belonging to ${classLevel}, covering ALL terms for that class that actually appear in the source: First Term, Second Term and Third Term.
 
 The source table may contain these columns: WEEK(S), TOPIC(S), LEARNING OBJECTIVES, LEARNING ACTIVITIES, EMBEDDED CORE SKILLS, LEARNING RESOURCES. Preserve their meaning faithfully.
 
 NON-NEGOTIABLE RULES:
-1. This is transcription/extraction, not curriculum writing. Never invent a missing cell.
+1. This is transcription/extraction, not curriculum writing. Never invent a missing cell, term or row.
 2. If a source cell is blank or genuinely absent, return an empty array for that field.
-3. Preserve every weekly row for the requested class and term, including revision, examination, mid-term or resumption rows when the source contains them.
+3. Preserve every weekly row for ${classLevel}, including revision, examination, mid-term or resumption rows when the source contains them.
 4. Some subjects contain several component rows in one week. Return each component as a separate row and use component_name where the source identifies one.
-5. class_level must be exactly ${classLevel}; term must be exactly ${term}.
-6. week_label should preserve the source wording such as "Week 1", "Weeks 4-5" or equivalent. week_number is the first numeric week when unambiguous; otherwise null.
-7. topic must be faithful to the PDF. Do not summarise away important subtopics.
-8. Split distinct bullets/items in objectives, activities, skills and resources into separate strings when the source visually separates them.
-9. source_page is the visible PDF page number when confidently known, otherwise null.
-10. source_reference must name the registered file and, when known, the page.
-11. Do not treat publisher claims as independent government verification.
-12. Return only the requested structured rows. Do not include rows from another class or term.
+5. class_level must be exactly ${classLevel} for every returned row.
+6. term must faithfully identify First Term, Second Term or Third Term from the source. Do not fabricate a term that is absent from the PDF.
+7. week_label should preserve source wording such as "Week 1", "Weeks 4-5" or equivalent. week_number is the first numeric week when unambiguous; otherwise null.
+8. topic must be faithful to the PDF. Do not summarise away important subtopics.
+9. Split distinct bullets/items in objectives, activities, skills and resources into separate strings when the source visually separates them.
+10. source_page is the PDF page number when confidently known, otherwise null.
+11. source_reference must name the registered file and, when known, the page.
+12. Do not treat publisher claims as independent government verification.
+13. Return only ${classLevel}. Never include another class.
+14. Do not collapse multiple weeks or multiple source rows into one unless the source itself presents them as one row.
 
 This extraction will return to Pending human review. It is not approval and not curriculum promotion.`;
 }
@@ -126,52 +133,85 @@ export async function POST(request: Request) {
     const workspaceId = String(form.get("workspaceId") ?? "").trim();
     const documentId = String(form.get("documentId") ?? "").trim();
     const classLevel = String(form.get("classLevel") ?? "").trim();
-    const term = String(form.get("term") ?? "").trim();
     const source = form.get("source");
 
-    if (!workspaceId || !documentId) throw new Error("Choose a registered scheme document first.");
-    if (!CLASSES.includes(classLevel as (typeof CLASSES)[number])) throw new Error("Choose a valid class level.");
-    if (!TERMS.includes(term as (typeof TERMS)[number])) throw new Error("Choose a valid term.");
-    if (!(source instanceof File) || source.type !== "application/pdf") throw new Error("Upload the matching source PDF.");
-    if (source.size > MAX_SOURCE_BYTES) throw new Error("The source PDF is too large. Maximum size is 20 MB.");
+    if (!workspaceId || !documentId) {
+      throw new Error("Choose a registered scheme document first.");
+    }
+    if (!CLASSES.includes(classLevel as (typeof CLASSES)[number])) {
+      throw new Error("Choose a valid class level.");
+    }
+    if (!(source instanceof File) || source.type !== "application/pdf") {
+      throw new Error("Upload the matching source PDF.");
+    }
+    if (source.size > MAX_SOURCE_BYTES) {
+      throw new Error("The source PDF is too large. Maximum size is 20 MB.");
+    }
 
     const supabase = await authenticatedClient(request);
-    const consoleResult = await supabase.rpc("get_scheme_review_console", { target_workspace_id: workspaceId });
+    const consoleResult = await supabase.rpc("get_scheme_review_console", {
+      target_workspace_id: workspaceId,
+    });
     if (consoleResult.error) throw consoleResult.error;
+
     const reviewConsole = (consoleResult.data ?? {}) as ReviewConsole;
     const document = reviewConsole.documents?.find((item) => item.id === documentId);
-    if (!document) throw new Error("The registered scheme document is not available to this curriculum administrator.");
-    if (document.metadata?.stage12_review_required === true) throw new Error("This source is quarantined and cannot be automatically re-extracted.");
-    if (!document.class_scope?.includes(classLevel)) throw new Error("The selected class does not belong to this source document.");
+    if (!document) {
+      throw new Error(
+        "The registered scheme document is not available to this curriculum administrator.",
+      );
+    }
+    if (document.metadata?.stage12_review_required === true) {
+      throw new Error(
+        "This source is quarantined and cannot be automatically re-extracted.",
+      );
+    }
+    if (!document.class_scope?.includes(classLevel)) {
+      throw new Error("The selected class does not belong to this source document.");
+    }
 
-    const normalisedUpload = source.name.trim().toLowerCase();
-    const normalisedRegistered = document.filename.trim().toLowerCase();
-    if (normalisedUpload !== normalisedRegistered) {
+    if (source.name.trim().toLowerCase() !== document.filename.trim().toLowerCase()) {
       throw new Error(`Upload the exact registered source file: ${document.filename}`);
     }
 
     const bytes = Buffer.from(await source.arrayBuffer());
     const extraction = await generateOpenAIJson<Extraction>({
-      systemInstruction: extractionInstruction(document, classLevel, term),
+      systemInstruction: extractionInstruction(document, classLevel),
       parts: [
-        { text: `Registered subject: ${document.subject}\nRequested slice: ${classLevel} · ${term}\nExtract the source table faithfully.` },
-        { inlineData: { mimeType: "application/pdf", data: bytes.toString("base64") } },
+        {
+          text: `Registered subject: ${document.subject}\nRequested class: ${classLevel}\nExtract all terms for this class faithfully.`,
+        },
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: bytes.toString("base64"),
+          },
+        },
       ],
       responseSchema: EXTRACTION_SCHEMA,
       schemaName: "ksi_scheme_source_extraction",
-      maxOutputTokens: 18000,
+      maxOutputTokens: 20000,
       reasoningEffort: "low",
     });
 
-    const rows = extraction.data.rows.filter((row) => row.class_level === classLevel && row.term === term && row.topic.trim());
-    if (rows.length === 0) throw new Error(`No ${classLevel} ${term} rows were found in the uploaded PDF. Nothing was changed.`);
+    const rows = extraction.data.rows.filter(
+      (row) =>
+        row.class_level === classLevel &&
+        TERMS.includes(row.term) &&
+        row.topic.trim().length > 0,
+    );
+    if (rows.length === 0) {
+      throw new Error(
+        `No ${classLevel} scheme rows were found in the uploaded PDF. Nothing was changed.`,
+      );
+    }
 
-    const saveResult = await supabase.rpc("replace_scheme_term_extraction", {
+    const termCoverage = [...new Set(rows.map((row) => row.term))];
+    const saveResult = await supabase.rpc("replace_scheme_class_extraction", {
       target_document_id: documentId,
       target_class_level: classLevel,
-      target_term: term,
       target_entries: rows,
-      target_extraction_note: `Stage 16 source-faithful re-extraction via ${extraction.model}; source ${document.filename}`,
+      target_extraction_note: `Stage 16 source-faithful class re-extraction via ${extraction.model}; source ${document.filename}; extracted terms ${termCoverage.join(", ")}`,
     });
     if (saveResult.error) throw saveResult.error;
 
@@ -180,7 +220,7 @@ export async function POST(request: Request) {
       documentId,
       filename: document.filename,
       classLevel,
-      term,
+      terms: termCoverage,
       rows: rows.length,
       model: extraction.model,
       durationMs: extraction.durationMs,
@@ -190,7 +230,12 @@ export async function POST(request: Request) {
     });
   } catch (caught) {
     return json(
-      { error: caught instanceof Error ? caught.message : "Scheme source repair failed. Nothing was promoted." },
+      {
+        error:
+          caught instanceof Error
+            ? caught.message
+            : "Scheme source repair failed. Nothing was promoted.",
+      },
       errorStatus(caught),
     );
   }
