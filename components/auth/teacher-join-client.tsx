@@ -156,14 +156,14 @@ export function TeacherJoinClient() {
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Staff access connected</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{linked.workspace_name}</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">Your governed role is <strong>{linked.member_role}</strong>. KSI has connected this account to the school without changing any other account identity.</p>
-            <Link href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</Link>
+            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</a>
           </section>
         ) : activeStaff ? (
           <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-7 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Already connected</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{activeStaff.workspace_name}</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">This account already has the <strong>{activeStaff.member_role}</strong> role in an active school.</p>
-            <Link href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</Link>
+            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</a>
           </section>
         ) : inactiveStaff ? (
           <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
@@ -176,7 +176,7 @@ export function TeacherJoinClient() {
             <p className="text-sm font-bold text-amber-950">This account is already a School Owner at {ownerMembership.workspace_name}.</p>
             <p className="mt-2 text-sm leading-6 text-amber-900">Choosing “Teacher / Staff” on the entry screen does not downgrade or rewrite your owner role. Use your owner dashboard, or sign out and use the teacher&apos;s own account.</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/dashboard" className="rounded-xl bg-amber-950 px-4 py-2.5 text-sm font-bold text-white">Open owner dashboard</Link>
+              <a href="/dashboard" className="rounded-xl bg-amber-950 px-4 py-2.5 text-sm font-bold text-white">Open owner dashboard</a>
               <button type="button" disabled={busy} onClick={() => void signOutAndChangeAccount()} className="rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-bold text-amber-950">Use another account</button>
             </div>
           </section>
