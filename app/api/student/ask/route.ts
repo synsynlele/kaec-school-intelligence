@@ -37,6 +37,14 @@ type CurriculumResource = {
   source_reference?: string | null;
 };
 
+type RpcResult = { data: unknown; error: unknown };
+type AskKsiRpcClient = {
+  rpc: (
+    functionName: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<RpcResult>;
+};
+
 function json(value: unknown, status = 200) {
   return Response.json(value, { status });
 }
@@ -137,23 +145,24 @@ function errorStatus(caught: unknown) {
 
 export async function POST(request: Request) {
   let turnId: string | null = null;
-  let supabase: ReturnType<typeof createClient> | null = null;
+  let failureClient: AskKsiRpcClient | null = null;
 
   try {
     const body = (await request.json()) as AskBody;
     const question = cleanQuestion(body.question);
     const auth = await getAuthenticatedClient(request);
-    supabase = auth.supabase;
+    const client = auth.supabase as unknown as AskKsiRpcClient;
+    failureClient = client;
 
-    const beginResult = await supabase.rpc("begin_my_ask_ksi_turn", {
+    const beginResult = await client.rpc("begin_my_ask_ksi_turn", {
       target_question: question,
     });
     if (beginResult.error) throw beginResult.error;
     turnId = beginResult.data as string;
 
     const [contextResult, curriculumResult] = await Promise.all([
-      supabase.rpc("get_my_ask_ksi_context"),
-      supabase.rpc("get_my_curriculum_learning_resources"),
+      client.rpc("get_my_ask_ksi_context"),
+      client.rpc("get_my_curriculum_learning_resources"),
     ]);
     const contextError = contextResult.error ?? curriculumResult.error;
     if (contextError) throw contextError;
@@ -172,7 +181,7 @@ export async function POST(request: Request) {
       reasoningEffort: "low",
     });
 
-    const completeResult = await supabase.rpc("complete_my_ask_ksi_turn", {
+    const completeResult = await client.rpc("complete_my_ask_ksi_turn", {
       target_turn_id: turnId,
       target_answer: result.data.answer,
       target_model: result.model,
@@ -187,9 +196,9 @@ export async function POST(request: Request) {
       ...result.data,
     });
   } catch (caught) {
-    if (turnId && supabase) {
+    if (turnId && failureClient) {
       try {
-        await supabase.rpc("fail_my_ask_ksi_turn", {
+        await failureClient.rpc("fail_my_ask_ksi_turn", {
           target_turn_id: turnId,
           target_error_message:
             caught instanceof Error ? caught.message : "Ask KSI generation failed.",
