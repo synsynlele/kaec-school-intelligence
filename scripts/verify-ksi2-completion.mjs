@@ -13,6 +13,7 @@ const [
   resourceMigration,
   leadershipMigration,
   reviewMigration,
+  planStabilityMigration,
   askApi,
   resourceApi,
   askClient,
@@ -29,6 +30,7 @@ const [
   text("supabase/migrations/060_stage13_curriculum_learning_resource_engine.sql"),
   text("supabase/migrations/061_stage13_leadership_curriculum_risk_intelligence.sql"),
   text("supabase/migrations/062_stage13_curriculum_resource_review_detail.sql"),
+  text("supabase/migrations/063_stage13_learning_plan_fingerprint_stability.sql"),
   text("app/api/student/ask/route.ts"),
   text("app/api/curriculum/resource/route.ts"),
   text("components/student/ask-ksi-client.tsx"),
@@ -75,6 +77,14 @@ assert(
     planMigration.includes("lm.state <> 'mastered'") &&
     planMigration.includes("workspace_curriculum_adoptions"),
   "Personalized planning must remain derived from intervention, mastery and approved curriculum rather than a parallel student record.",
+);
+
+assert(
+  planStabilityMigration.includes("preserve_learner_mastery_timestamp_on_noop") &&
+    planStabilityMigration.includes("is not distinct from") &&
+    planStabilityMigration.includes("new.updated_at := old.updated_at") &&
+    planStabilityMigration.includes("before update on public.learner_mastery"),
+  "Personalized plan fingerprints must remain stable when mastery refresh performs a substantive no-op.",
 );
 
 assert(
@@ -165,5 +175,5 @@ const browserSurface = [askClient, planClient, curriculumStudent, resourceFactor
 assert(!browserSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !browserSurface.includes("service_role"), "KSI 2.0 completion surfaces must not expose a Supabase service-role credential.");
 
 console.log(
-  "KSI 2.0 completion verification passed: bounded Ask KSI, persistent personalized plans, human-published curriculum resources and aggregate Leadership curriculum/risk intelligence remain synchronized with the governed shared learning record.",
+  "KSI 2.0 completion verification passed: bounded Ask KSI, persistent personalized plans, stable plan fingerprints, human-published curriculum resources and aggregate Leadership curriculum/risk intelligence remain synchronized with the governed shared learning record.",
 );
