@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { CurriculumReviewShortcut } from "@/components/dashboard/curriculum-review-shortcut";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 
 export default function DashboardPage() {
@@ -35,6 +36,7 @@ export default function DashboardPage() {
       <DashboardClient />
 
       <nav className="fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2 sm:bottom-7 sm:right-7">
+        <CurriculumReviewShortcut />
         <Link href="/admin/schools" className="rounded-2xl border border-emerald-900/20 bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-950/10 transition hover:bg-emerald-900">School Access</Link>
         <Link href="/setup/student-access" className="rounded-2xl border border-emerald-900/20 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 shadow-lg shadow-zinc-950/5 transition hover:bg-emerald-50">Student Access</Link>
         <Link href="/setup" className="rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-lg shadow-zinc-950/5 transition hover:border-zinc-400">Academic Setup</Link>
