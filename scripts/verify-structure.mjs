@@ -181,15 +181,18 @@ for (const brandedSurface of [
 
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
-  "HQLS_ENGINE_v1.0",
-  "HQLS_PROMPT_v1.1",
+  "HQLS_ENGINE_v1.1",
+  "HQLS_PROMPT_v1.2",
   "validateHqlsLesson",
   "full_illumination_ignores_revealed_gaps",
+  "full_illumination_delivery_prompts_missing",
   "trial_second_has_no_genuine_reattempt",
   "integration_reflection_missing",
   "reflectionPrompt",
   "readOptionalString",
   "teaching_content_outside_full_illumination",
+  "at least two concrete experiences or applications",
+  "without needing a separate textbook or lesson note",
 ]) {
   assert(
     stage2Engine.includes(required),
