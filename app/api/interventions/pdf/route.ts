@@ -23,17 +23,17 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function actions(value: unknown): InterventionPdfAction[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      const row = record(item);
-      if (!row || typeof row.action !== "string" || !row.action.trim()) return null;
-      return {
-        domain: typeof row.domain === "string" ? row.domain : "academic",
-        action: row.action.trim(),
-        timeframe: typeof row.timeframe === "string" ? row.timeframe : "",
-      } satisfies InterventionPdfAction;
-    })
-    .filter((item): item is InterventionPdfAction => Boolean(item));
+  const output: InterventionPdfAction[] = [];
+  for (const item of value) {
+    const row = record(item);
+    if (!row || typeof row.action !== "string" || !row.action.trim()) continue;
+    output.push({
+      domain: typeof row.domain === "string" ? row.domain : "academic",
+      action: row.action.trim(),
+      timeframe: typeof row.timeframe === "string" ? row.timeframe : "",
+    });
+  }
+  return output;
 }
 
 async function authenticatedClient(request: Request) {
