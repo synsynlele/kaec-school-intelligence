@@ -23,6 +23,12 @@ export default function SavedWorkPage() {
               HQLS Lessons
             </Link>
             <Link
+              href="/hqls/exports"
+              className="rounded-xl border border-emerald-800 px-3 py-2 text-emerald-900 transition hover:bg-emerald-50"
+            >
+              Download Lesson PDFs
+            </Link>
+            <Link
               href="/assessment"
               className="rounded-xl border border-zinc-200 px-3 py-2 text-zinc-700 transition hover:bg-stone-50"
             >
