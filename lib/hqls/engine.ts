@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.0";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.1";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.1";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.2";
 
 export type HqlsStageAction =
   | "improve"
@@ -158,7 +158,16 @@ Every stage must include:
 - Guide Guardrails describing what the teacher must not do;
 - observable evidence the teacher should notice.
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
-Use teachingContent only for Stage 5 Full Illumination; it must be clear, sufficient, concise and targeted rather than a lecture dump.
+Use teachingContent only for Stage 5 Full Illumination. Stage 5 is the teacher's complete teaching-and-delivery guide, not a summary or outline. Its teachingContent must:
+- actually teach the concept accurately and age-appropriately from first principles, rather than telling the teacher to "explain" it;
+- directly repair the misconceptions, gaps and weak reasoning exposed by Trial 1;
+- give the key ideas, vocabulary, relationships, rules, processes, formulas or principles learners need, including why they work where appropriate;
+- provide worked examples, modelled reasoning, demonstrations or step-by-step illustrations where these are needed for genuine understanding;
+- weave real-life meaning into the explanation itself, using at least two concrete experiences or applications that learners can recognise from everyday Nigerian/African life, home, community, commerce, transport, technology, nature, media or work, as appropriate to the concept;
+- show the teacher a logical delivery sequence: what to establish first, what to say/show/model next, what questions to ask, where to pause for learner thinking, and how to connect the concrete example back to the abstract concept;
+- include quick checks for understanding and likely misconceptions so the teacher can adjust the explanation while teaching;
+- be substantial enough that a competent teacher can teach the concept confidently from the generated lesson without needing a separate textbook or lesson note.
+Stage 5 teacherPrompts must support the actual delivery with purposeful questions, checks for understanding and learner participation; Full Illumination must not become a one-way lecture even though it is the main teaching stage.
 Use respondsToFirstAttempt in Stage 5 to state exactly which likely gaps from Trial 1 the teaching addresses; use an empty string elsewhere.
 Use reflectionPrompt only for Stage 7 Integration. It must explicitly ask learners to reflect on how their thinking, understanding or approach changed; use an empty string elsewhere.
 Use transferTask only for Stage 7 Integration. It must require application beyond the immediate exercise; use an empty string elsewhere.
@@ -208,7 +217,7 @@ CLASS CONTEXT: ${clean(input.classContext)}
 TEACHER INSTRUCTIONS: ${clean(input.teacherInstructions)}
 AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "None selected"}
 
-Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
+Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 5 Full Illumination must provide the teacher with the full concept content and a usable delivery flow: teach the concept step by step, model it where appropriate, connect it to concrete real-life experiences while explaining it, check understanding during the explanation, and supply enough substance for the teacher to deliver the lesson without needing another lesson note. Do not write placeholders such as "teacher explains the concept"; write the explanation and delivery itself. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
 `;
 }
 
@@ -234,7 +243,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
+Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. When repairing Stage 5, preserve or restore complete teacher-ready concept teaching, worked/modelled explanation where appropriate, real-life connections woven into the teaching, checks for understanding and an explicit response to Trial 1 gaps. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
 `;
 }
 
@@ -261,7 +270,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1; Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1 and, whenever Stage 5 is the target, its teachingContent must remain a complete teacher-ready concept explanation and delivery sequence with modelled examples where appropriate, real-life connections woven into the explanation, and checks for understanding. Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
 `;
 }
 
@@ -471,11 +480,18 @@ export function validateHqlsLesson(
   );
 
   const illumination = lesson.stages[4];
-  if (illumination.teachingContent.length < 80) {
+  if (illumination.teachingContent.length < 600) {
     fail(
       "full_illumination",
       "full_illumination_insufficient",
-      "Full Illumination must contain enough targeted teaching content to produce clarity after effort.",
+      "Full Illumination must provide substantial teacher-ready concept teaching and delivery, not a short explanation or outline.",
+    );
+  }
+  if (illumination.teacherPrompts.length < 3) {
+    fail(
+      "full_illumination",
+      "full_illumination_delivery_prompts_missing",
+      "Full Illumination must include enough teacher prompts to support explanation, learner participation and checks for understanding.",
     );
   }
   if (illumination.respondsToFirstAttempt.length < 25) {
@@ -486,7 +502,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Full Illumination is checked for adequate targeted teaching and an explicit Trial 1 gap connection.",
+    "Full Illumination is checked for substantial teacher-ready teaching content, usable delivery prompts and an explicit Trial 1 gap connection; the prompt also requires real-life meaning to be woven into the explanation.",
   );
 
   const trialSecond = lesson.stages[5];
