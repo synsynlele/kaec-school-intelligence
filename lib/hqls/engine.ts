@@ -143,6 +143,8 @@ NON-NEGOTIABLE LAW:
 - Micro-Illumination gives only minimal orientation, never a worked solution or lecture.
 - Trial 1 must require real cognitive effort. The Guide must not rescue, solve or correct during the attempt.
 - Full Illumination happens only after Trial 1 and directly addresses the gaps/misconceptions the first attempt is designed to expose.
+- STAGE 5 IS THE DIRECT-TEACHING EXCEPTION: once learners reach Full Illumination, formal teaching is explicitly allowed and expected. Definitions, detailed notes, concept explanations, formulas, rules, laws, principles, classifications, worked examples, modelled solutions and teacher-led explanation may be taught fully when appropriate to the subject and objective.
+- The inquiry restriction applies BEFORE Full Illumination, not inside it. Do not withhold necessary subject knowledge at Stage 5 in the name of learner discovery.
 - Trial 2 must require genuine re-application so improvement is observable.
 - Integration must include reflection on changed thinking and transfer beyond the immediate lesson.
 - Preserve learner dignity and learner cognitive ownership throughout.
@@ -158,16 +160,26 @@ Every stage must include:
 - Guide Guardrails describing what the teacher must not do;
 - observable evidence the teacher should notice.
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
-Use teachingContent only for Stage 5 Full Illumination. Stage 5 is the teacher's complete teaching-and-delivery guide, not a summary or outline. Its teachingContent must:
-- actually teach the concept accurately and age-appropriately from first principles, rather than telling the teacher to "explain" it;
-- directly repair the misconceptions, gaps and weak reasoning exposed by Trial 1;
-- give the key ideas, vocabulary, relationships, rules, processes, formulas or principles learners need, including why they work where appropriate;
-- provide worked examples, modelled reasoning, demonstrations or step-by-step illustrations where these are needed for genuine understanding;
-- weave real-life meaning into the explanation itself, using at least two concrete experiences or applications that learners can recognise from everyday Nigerian/African life, home, community, commerce, transport, technology, nature, media or work, as appropriate to the concept;
-- show the teacher a logical delivery sequence: what to establish first, what to say/show/model next, what questions to ask, where to pause for learner thinking, and how to connect the concrete example back to the abstract concept;
-- include quick checks for understanding and likely misconceptions so the teacher can adjust the explanation while teaching;
-- be substantial enough that a competent teacher can teach the concept confidently from the generated lesson without needing a separate textbook or lesson note.
-Stage 5 teacherPrompts must support the actual delivery with purposeful questions, checks for understanding and learner participation; Full Illumination must not become a one-way lecture even though it is the main teaching stage.
+
+Use teachingContent only for Stage 5 Full Illumination. Stage 5 must function as BOTH the teacher's DETAILED LESSON NOTE and the teacher's FULL TEACHING/EXPLANATION CONTENT. It is not a summary, outline, hint sheet or list of things the teacher should later research. Write the actual subject content the teacher can teach.
+
+Stage 5 teachingContent must:
+- teach the complete concept scope required by the stated lesson objective, not merely patch the mistakes from Trial 1;
+- directly repair the misconceptions, gaps and weak reasoning exposed by Trial 1 while still giving learners the full knowledge they need;
+- include clear formal definitions and key terms where the subject requires them;
+- include the important facts, sub-concepts, relationships, classifications, properties, processes, principles, rules, laws, formulas, procedures or conventions needed to understand the topic;
+- explain each major idea in age-appropriate language, including WHY and HOW where that supports understanding instead of presenting bare facts only;
+- provide worked examples, modelled reasoning, calculations, demonstrations, sample analyses or step-by-step illustrations wherever appropriate;
+- include clear note-ready or board-ready content that a teacher may dictate, display, summarise on the board or allow learners to copy AFTER understanding has been developed. Notes are explicitly allowed in Full Illumination;
+- weave real-life meaning into the teaching itself, using at least two concrete experiences or applications learners can recognise from everyday Nigerian/African life, home, community, commerce, transport, technology, nature, media, work or civic life as appropriate to the concept;
+- explicitly connect those real-life experiences back to the formal concept so they are teaching examples, not decorative anecdotes;
+- give enough depth and breadth for a competent teacher to use Full Illumination as the main lesson note for that objective without needing a separate textbook or lesson note;
+- include likely misconceptions, confusing distinctions, common errors and the corrections/explanations the teacher should give;
+- remain accurate to the subject. Do not invent facts, formulas, quotations, laws, dates, scientific claims or curriculum content.
+
+Stage 5 teacherPrompts must provide the delivery flow around that detailed content: what the teacher should establish first, what to explain or write next, where to model an example, what purposeful questions to ask, where to pause, how to check understanding, and how to connect learners' Trial 1 thinking to the formal knowledge. Full teaching is allowed, but learners should still think, answer, predict, compare and ask questions during the explanation.
+
+Do NOT replace actual teachingContent with phrases such as "teacher explains", "discuss the concept", "teach the definition", "give notes", "show examples" or "explain the formula". Write the definition, explanation, note, formula, example and teaching itself.
 Use respondsToFirstAttempt in Stage 5 to state exactly which likely gaps from Trial 1 the teaching addresses; use an empty string elsewhere.
 Use reflectionPrompt only for Stage 7 Integration. It must explicitly ask learners to reflect on how their thinking, understanding or approach changed; use an empty string elsewhere.
 Use transferTask only for Stage 7 Integration. It must require application beyond the immediate exercise; use an empty string elsewhere.
@@ -217,7 +229,11 @@ CLASS CONTEXT: ${clean(input.classContext)}
 TEACHER INSTRUCTIONS: ${clean(input.teacherInstructions)}
 AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "None selected"}
 
-Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 5 Full Illumination must provide the teacher with the full concept content and a usable delivery flow: teach the concept step by step, model it where appropriate, connect it to concrete real-life experiences while explaining it, check understanding during the explanation, and supply enough substance for the teacher to deliver the lesson without needing another lesson note. Do not write placeholders such as "teacher explains the concept"; write the explanation and delivery itself. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
+Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly.
+
+For Stage 5 Full Illumination, the pre-teaching restriction is over. Give the teacher the FULL TEACHING OF THE CONCEPT and a DETAILED LESSON NOTE inside teachingContent. Include the actual definitions, explanations, key terms, facts/sub-concepts, rules/formulas/laws/processes where relevant, note-ready content, worked/modelled examples, real-life applications, misconceptions and corrections needed to teach the objective properly. Do not merely instruct the teacher to explain these things: write the content itself. The teacher must be able to open the generated lesson, study Stage 5 and teach from it directly.
+
+Stage 5 must also show a usable delivery flow through teacherPrompts and connect the formal knowledge to at least two concrete real-life experiences while teaching it. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
 `;
 }
 
@@ -243,7 +259,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. When repairing Stage 5, preserve or restore complete teacher-ready concept teaching, worked/modelled explanation where appropriate, real-life connections woven into the teaching, checks for understanding and an explicit response to Trial 1 gaps. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
+Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. When repairing Stage 5, restore it as a detailed teacher lesson note plus the full teaching/explanation of the concept: actual definitions, explanations, subject knowledge, rules/formulas/laws where relevant, worked examples, note-ready content, real-life applications, misconceptions and checks for understanding. Full direct teaching and formal notes are explicitly allowed at Stage 5. Preserve an explicit response to Trial 1 gaps. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
 `;
 }
 
@@ -270,7 +286,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1 and, whenever Stage 5 is the target, its teachingContent must remain a complete teacher-ready concept explanation and delivery sequence with modelled examples where appropriate, real-life connections woven into the explanation, and checks for understanding. Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Whenever Stage 5 is the target, the restriction on direct teaching has already ended: regenerate teachingContent as a detailed lesson note AND full teacher explanation, including actual definitions, core subject knowledge, rules/formulas/laws/processes where relevant, worked examples, note-ready content, at least two concrete real-life applications, misconceptions/corrections and checks for understanding. Do not return an outline of what to teach; return the teaching content itself. Stage 5 must remain responsive to Trial 1. Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
 `;
 }
 
@@ -480,18 +496,18 @@ export function validateHqlsLesson(
   );
 
   const illumination = lesson.stages[4];
-  if (illumination.teachingContent.length < 600) {
+  if (illumination.teachingContent.length < 1200) {
     fail(
       "full_illumination",
       "full_illumination_insufficient",
-      "Full Illumination must provide substantial teacher-ready concept teaching and delivery, not a short explanation or outline.",
+      "Full Illumination must contain a detailed teacher lesson note and full concept teaching, not a short explanation, outline or teaching instruction.",
     );
   }
-  if (illumination.teacherPrompts.length < 3) {
+  if (illumination.teacherPrompts.length < 4) {
     fail(
       "full_illumination",
       "full_illumination_delivery_prompts_missing",
-      "Full Illumination must include enough teacher prompts to support explanation, learner participation and checks for understanding.",
+      "Full Illumination must include enough delivery prompts to sequence the detailed teaching, examples, learner participation and checks for understanding.",
     );
   }
   if (illumination.respondsToFirstAttempt.length < 25) {
@@ -502,7 +518,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Full Illumination is checked for substantial teacher-ready teaching content, usable delivery prompts and an explicit Trial 1 gap connection; the prompt also requires real-life meaning to be woven into the explanation.",
+    "Full Illumination is the explicit direct-teaching stage: it is checked for a substantial note-ready concept explanation, usable delivery prompts and an explicit Trial 1 gap connection; the prompt requires formal subject content, worked examples where appropriate and at least two concrete experiences or applications from real life.",
   );
 
   const trialSecond = lesson.stages[5];
