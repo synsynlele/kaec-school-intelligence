@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
@@ -48,6 +48,9 @@ export function KsiAppNav() {
   const [schoolActive, setSchoolActive] = useState(false);
   const [platformAdmin, setPlatformAdmin] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("School workspace");
+  const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileOpen = mobileMenuPath === pathname;
 
   useEffect(() => {
     if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix)) || pathname === "/") return;
@@ -115,6 +118,24 @@ export function KsiAppNav() {
       window.removeEventListener("ksi-workspace-change", reload);
     };
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuPath(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
 
   const groups = useMemo<NavGroup[]>(() => {
     const schoolGroups: NavGroup[] = [];
@@ -246,30 +267,86 @@ export function KsiAppNav() {
         </p>
       </aside>
 
-      <nav
-        aria-label="KSI mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white/95 px-3 py-2 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] backdrop-blur lg:hidden"
+      <button
+        type="button"
+        aria-label="Open KSI navigation"
+        aria-expanded={mobileOpen}
+        aria-controls="ksi-mobile-menu"
+        onClick={() => setMobileMenuPath(pathname)}
+        className="fixed bottom-4 right-4 z-50 inline-flex min-h-12 items-center gap-2 rounded-full border border-emerald-900/15 bg-emerald-950 px-4 py-3 text-sm font-bold text-white shadow-[0_12px_35px_rgba(6,78,59,0.28)] transition active:scale-[0.98] lg:hidden"
       >
-        <div className="mx-auto flex max-w-4xl items-center gap-1 overflow-x-auto">
-          {items.map((item) => {
-            const current = isCurrent(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={current ? "page" : undefined}
-                className={`min-w-fit flex-1 rounded-xl px-3 py-2.5 text-center text-xs font-bold transition sm:text-sm ${
-                  current
-                    ? "bg-emerald-950 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-                }`}
+        <span aria-hidden="true" className="grid gap-1">
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+        </span>
+        Menu
+      </button>
+
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-[60] lg:hidden">
+          <button
+            type="button"
+            aria-label="Close KSI navigation"
+            onClick={() => setMobileMenuPath(null)}
+            className="absolute inset-0 bg-zinc-950/45 backdrop-blur-[2px]"
+          />
+          <section
+            id="ksi-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="KSI mobile navigation"
+            className="absolute inset-x-0 bottom-0 max-h-[84dvh] overflow-hidden rounded-t-[2rem] border-t border-zinc-200 bg-[#f8faf7] shadow-[0_-24px_70px_rgba(0,0,0,0.18)]"
+          >
+            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-zinc-300" aria-hidden="true" />
+            <header className="flex items-start justify-between gap-4 border-b border-zinc-200 px-5 pb-4 pt-4">
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold text-zinc-950">{contextName}</p>
+                <p className="mt-1 text-xs font-semibold text-emerald-800">{contextRole}</p>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={() => setMobileMenuPath(null)}
+                className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 shadow-sm"
               >
-                {item.label}
-              </Link>
-            );
-          })}
+                Close
+              </button>
+            </header>
+
+            <nav className="max-h-[calc(84dvh-7rem)] space-y-5 overflow-y-auto px-5 py-5" aria-label="KSI mobile menu sections">
+              {groups.map((group) => (
+                <section key={`mobile:${group.label}`} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-zinc-400">{group.label}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {group.items.map((item) => {
+                      const current = isCurrent(pathname, item.href);
+                      return (
+                        <Link
+                          key={`mobile:${group.label}:${item.href}`}
+                          href={item.href}
+                          onClick={() => setMobileMenuPath(null)}
+                          aria-current={current ? "page" : undefined}
+                          className={`min-h-12 rounded-xl px-3 py-3 text-sm font-bold transition ${
+                            current
+                              ? "bg-emerald-950 text-white shadow-sm"
+                              : "bg-zinc-50 text-zinc-700 hover:bg-emerald-50 hover:text-emerald-950"
+                          }`}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+              <p className="pb-4 text-center text-[11px] leading-5 text-zinc-400">
+                KAEC School Intelligence · Teacher + Leadership OS
+              </p>
+            </nav>
+          </section>
         </div>
-      </nav>
+      ) : null}
     </>
   );
 }
