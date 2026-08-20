@@ -93,6 +93,9 @@ for (const required of [
   "ksi-desktop-nav",
   "KSI desktop navigation",
   "KSI mobile navigation",
+  "Open KSI navigation",
+  "ksi-mobile-menu",
+  'aria-modal="true"',
   "Teacher workspace",
   "Teaching workflow",
   "Leadership workspace",
@@ -106,6 +109,7 @@ for (const required of [
 ]) {
   assert(nav.includes(required), `Responsive structured navigation is missing: ${required}`);
 }
+assert(!nav.includes("overflow-x-auto"), "Mobile KSI navigation must not use a horizontally scrolling link bar.");
 assert(workspaceCss.includes("body.ksi-school-nav-active"), "Desktop workspace shell must reserve space for the sidebar.");
 
 assert(hqlsResultPage.includes("ksi-hqls-result-document"), "HQLS result must use the lesson-document layout.");
