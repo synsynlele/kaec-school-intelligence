@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { SchoolDashboardClient } from "@/components/dashboard/school-dashboard-client";
 
 export default function DashboardPage() {
   return (
@@ -19,7 +19,7 @@ export default function DashboardPage() {
         <Link href="/setup/curriculum">Curriculum & Coverage</Link>
         <Link href="/setup/staff-access">Staff Access</Link>
       </div>
-      <DashboardClient />
+      <SchoolDashboardClient />
     </>
   );
 }
