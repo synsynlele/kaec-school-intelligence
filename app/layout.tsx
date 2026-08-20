@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { KsiAppNav } from "@/components/navigation/ksi-app-nav";
 import { KsiSchoolShell } from "@/components/navigation/ksi-school-shell";
 import "./globals.css";
+import "./workspace-shell.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
