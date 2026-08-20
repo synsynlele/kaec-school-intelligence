@@ -77,7 +77,7 @@ assert(layout.includes("<KsiSchoolShell>{children}</KsiSchoolShell>"), "Protecte
 assert(dashboardPage.includes("SchoolDashboardClient"), "Dashboard must mount the school-only dashboard.");
 for (const required of [
   '.eq("workspace_type", "school")',
-  '.eq("access_status", "active")',
+  'workspace.access_status === "active"',
   'activeSchool.role === "owner" || activeSchool.role === "admin"',
   "Teacher workspace",
   "Leadership workspace",
