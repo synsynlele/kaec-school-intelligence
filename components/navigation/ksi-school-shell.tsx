@@ -28,16 +28,16 @@ type GateState = "checking" | "ready" | "needs-school";
 export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [state, setState] = useState<GateState>(() => (isUngated(pathname) ? "ready" : "checking"));
+  const ungated = isUngated(pathname);
+  const [state, setState] = useState<GateState>("checking");
 
   useEffect(() => {
-    if (isUngated(pathname)) {
-      setState("ready");
-      return;
-    }
+    if (ungated) return;
 
     let cancelled = false;
-    setState("checking");
+    queueMicrotask(() => {
+      if (!cancelled) setState("checking");
+    });
 
     void (async () => {
       const supabase = getBrowserSupabaseClient();
@@ -97,6 +97,7 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
           .update({ default_workspace_id: preferred.id })
           .eq("id", user.id);
         if (updateError) throw updateError;
+        window.dispatchEvent(new Event("ksi-workspace-change"));
         router.refresh();
       }
 
@@ -108,7 +109,9 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [pathname, router, ungated]);
+
+  if (ungated) return <>{children}</>;
 
   if (state === "checking") {
     return (
