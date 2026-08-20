@@ -212,7 +212,7 @@ export function SchoolDashboardClient() {
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">{activeSchool.name}</h1>
               <p className="mt-2 text-sm text-zinc-500">{roleLabel(activeSchool.role)} · {state.displayName}{state.email ? ` · ${state.email}` : ""}</p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto] xl:min-w-[420px]">
+            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto] xl:w-[420px] xl:max-w-full">
               <label className="rounded-2xl border border-zinc-200 bg-stone-50 px-3 py-2">
                 <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">Active school</span>
                 <select value={state.activeWorkspaceId} disabled={switching} onChange={(event) => void switchSchool(event.target.value)} className="mt-1 w-full bg-transparent text-sm font-bold text-zinc-900 outline-none">
