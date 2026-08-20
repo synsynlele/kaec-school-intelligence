@@ -107,9 +107,9 @@ assert(workspaceCss.includes("body.ksi-school-nav-active"), "Desktop workspace s
 assert(hqlsResultPage.includes("ksi-hqls-result-document"), "HQLS result must use the lesson-document layout.");
 assert(workspaceCss.includes("article:nth-child(5)"), "Full Illumination must receive full-width document treatment.");
 for (const required of [
-  "normal conventional teaching",
-  "direct-teaching exception",
-  "detailed lesson note",
+  "NORMAL LESSON MODE",
+  "detailed conventional lesson note",
+  "no HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1",
 ]) {
   assert(hqlsEngine.includes(required), `Full Illumination normal-lesson rule is missing: ${required}`);
 }
