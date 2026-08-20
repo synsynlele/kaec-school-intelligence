@@ -118,8 +118,9 @@ export function KsiAppNav() {
 
   const groups = useMemo<NavGroup[]>(() => {
     const schoolGroups: NavGroup[] = [];
+    const studentWorkspaceRetired = role === "student";
 
-    if (schoolActive && role && role !== "student") {
+    if (schoolActive && role && !studentWorkspaceRetired) {
       const home = { href: "/dashboard", label: "Home" };
       const teaching: NavItem[] = [
         { href: "/teacher/resources", label: "Resources" },
