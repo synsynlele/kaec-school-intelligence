@@ -1,0 +1,70 @@
+/* KSI school workspace chrome */
+body.ksi-school-nav-active {
+  padding-bottom: 4.75rem;
+}
+
+@media (min-width: 1024px) {
+  body.ksi-school-nav-active {
+    padding-left: 16rem;
+    padding-bottom: 0;
+  }
+
+  body.ksi-school-nav-active > * {
+    min-width: 0;
+  }
+}
+
+/*
+ * HQLS lesson results should read like a professionally structured lesson
+ * document, not seven full-width cards stacked endlessly down the page.
+ * Stages 1-4 and 6-7 form a compact two-column teaching flow on desktop.
+ * Full Illumination (Stage 5) is deliberately full-width because it now holds
+ * the complete normal lesson explanation and teacher-ready note.
+ */
+.ksi-hqls-result-document main {
+  max-width: 72rem;
+}
+
+@media (min-width: 900px) {
+  .ksi-hqls-result-document main > .mt-5.grid.gap-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ksi-hqls-result-document main > .mt-5.grid.gap-4 > article:nth-child(5) {
+    grid-column: 1 / -1;
+    border-color: rgba(6, 78, 59, 0.22);
+    box-shadow: 0 18px 45px rgba(6, 78, 59, 0.08);
+  }
+
+  .ksi-hqls-result-document main > .mt-5.grid.gap-4 > article:nth-child(5) > .mt-5.grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ksi-hqls-result-document main > .mt-5.grid.gap-4 > article:nth-child(5) > .mt-5.grid > div {
+    grid-column: 1 / -1;
+  }
+}
+
+.ksi-hqls-result-document main > .mt-5.grid.gap-4 > article:nth-child(5) h2 {
+  color: #064e3b;
+}
+
+.ksi-hqls-result-document main > .mt-5.grid.gap-4 > article:nth-child(5) .whitespace-pre-wrap {
+  font-size: 0.975rem;
+  line-height: 1.8;
+}
+
+/* Keep long generated documents readable rather than visually cramped. */
+.ksi-hqls-result-document article,
+.ksi-hqls-result-document section {
+  min-width: 0;
+}
+
+.ksi-hqls-result-document p,
+.ksi-hqls-result-document li,
+.ksi-hqls-result-document h1,
+.ksi-hqls-result-document h2,
+.ksi-hqls-result-document h3 {
+  overflow-wrap: anywhere;
+}
