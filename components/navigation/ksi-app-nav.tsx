@@ -45,6 +45,7 @@ export function KsiAppNav() {
   const pathname = usePathname();
   const [role, setRole] = useState<Role | null>(null);
   const [schoolActive, setSchoolActive] = useState(false);
+  const [platformAdmin, setPlatformAdmin] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("School workspace");
 
   useEffect(() => {
@@ -55,14 +56,27 @@ export function KsiAppNav() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("default_workspace_id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!profile?.default_workspace_id || cancelled) {
+
+      const [{ data: profile }, { data: platformAdminRow }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("default_workspace_id")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("platform_access_admins")
+          .select("active")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
+
+      if (cancelled) return;
+      setPlatformAdmin(Boolean(platformAdminRow?.active));
+
+      if (!profile?.default_workspace_id) {
         setRole(null);
         setSchoolActive(false);
+        setWorkspaceName("School workspace");
         return;
       }
 
@@ -102,50 +116,64 @@ export function KsiAppNav() {
   }, [pathname]);
 
   const groups = useMemo<NavGroup[]>(() => {
-    if (!schoolActive || !role || role === "student") return [];
+    const schoolGroups: NavGroup[] = [];
 
-    const home = { href: "/dashboard", label: "Home" };
-    const teaching: NavItem[] = [
-      { href: "/teacher/resources", label: "Resources" },
-      { href: "/hqls", label: "HQLS" },
-      { href: "/assessment", label: "Assess" },
-      { href: "/diagnosis", label: "Diagnose" },
-      { href: "/saved-work", label: "Saved" },
-    ];
-
-    if (role === "teacher") {
-      return [
-        { label: "Teacher workspace", items: [home] },
-        { label: "Teaching workflow", items: teaching },
+    if (schoolActive && role && role !== "student") {
+      const home = { href: "/dashboard", label: "Home" };
+      const teaching: NavItem[] = [
+        { href: "/teacher/resources", label: "Resources" },
+        { href: "/hqls", label: "HQLS" },
+        { href: "/assessment", label: "Assess" },
+        { href: "/diagnosis", label: "Diagnose" },
+        { href: "/saved-work", label: "Saved" },
       ];
+
+      if (role === "teacher") {
+        schoolGroups.push(
+          { label: "Teacher workspace", items: [home] },
+          { label: "Teaching workflow", items: teaching },
+        );
+      } else {
+        const leadership: NavItem[] = [
+          { href: "/leadership", label: "Learning Health" },
+          { href: "/interventions", label: "Interventions" },
+          { href: "/teacher/resources", label: "Resources" },
+        ];
+
+        if (role === "leader") {
+          schoolGroups.push(
+            { label: "Leadership workspace", items: [home] },
+            { label: "Learning intelligence", items: leadership },
+          );
+        } else {
+          schoolGroups.push(
+            { label: "Leadership workspace", items: [home] },
+            { label: "Teaching & learning", items: teaching },
+            {
+              label: "Learning intelligence",
+              items: leadership.filter((item) => item.href !== "/teacher/resources"),
+            },
+            {
+              label: "School administration",
+              items: [
+                { href: "/setup", label: "Setup" },
+                { href: "/setup/staff-access", label: "Staff" },
+              ],
+            },
+          );
+        }
+      }
     }
 
-    const leadership: NavItem[] = [
-      { href: "/leadership", label: "Learning Health" },
-      { href: "/interventions", label: "Interventions" },
-      { href: "/teacher/resources", label: "Resources" },
-    ];
-
-    if (role === "leader") {
-      return [
-        { label: "Leadership workspace", items: [home] },
-        { label: "Learning intelligence", items: leadership },
-      ];
+    if (platformAdmin) {
+      schoolGroups.push({
+        label: "KAEC platform",
+        items: [{ href: "/admin/schools", label: "Super Admin" }],
+      });
     }
 
-    return [
-      { label: "Leadership workspace", items: [home] },
-      { label: "Teaching & learning", items: teaching },
-      { label: "Learning intelligence", items: leadership.filter((item) => item.href !== "/teacher/resources") },
-      {
-        label: "School administration",
-        items: [
-          { href: "/setup", label: "Setup" },
-          { href: "/setup/staff-access", label: "Staff" },
-        ],
-      },
-    ];
-  }, [role, schoolActive]);
+    return schoolGroups;
+  }, [platformAdmin, role, schoolActive]);
 
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -170,6 +198,9 @@ export function KsiAppNav() {
     return null;
   }
 
+  const contextName = schoolActive ? workspaceName : platformAdmin ? "KAEC-NG Platform" : workspaceName;
+  const contextRole = schoolActive ? roleLabel(role) : platformAdmin ? "Super Admin" : roleLabel(role);
+
   return (
     <>
       <aside
@@ -178,8 +209,8 @@ export function KsiAppNav() {
       >
         <div className="px-2"><KaecBrand compact /></div>
         <div className="mt-5 rounded-2xl border border-emerald-950/10 bg-white p-3.5">
-          <p className="truncate text-sm font-bold text-zinc-950">{workspaceName}</p>
-          <p className="mt-1 text-xs font-semibold text-emerald-800">{roleLabel(role)}</p>
+          <p className="truncate text-sm font-bold text-zinc-950">{contextName}</p>
+          <p className="mt-1 text-xs font-semibold text-emerald-800">{contextRole}</p>
         </div>
 
         <nav className="mt-6 flex-1 space-y-6 overflow-y-auto pb-5" aria-label="KSI workspace sections">
