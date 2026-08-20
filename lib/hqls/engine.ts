@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.0";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.1";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.3";
 
 export type HqlsStageAction =
   | "improve"
@@ -131,54 +131,86 @@ export const HQLS_LESSON_JSON_SCHEMA = {
 
 const HQLS_CONSTITUTIONAL_RULES = `
 You are operating inside KAEC School Intelligence under the Human Quest Learning System (HQLS).
-The learner is the HERO. The teacher is the GUIDE. The problem is the VILLAIN.
 The exact lesson sequence is immutable:
 1 Awakening → 2 Exploration → 3 Micro-Illumination → 4 Trial — First Attempt → 5 Full Illumination → 6 Trial — Second Attempt → 7 Integration.
 
-NON-NEGOTIABLE LAW:
+STAGES 1–4:
 - Do not start with definitions, notes, formulas, rules, laws or topic explanation.
 - Do not give full explanations before learners make a meaningful first attempt.
-- Struggle must come before full clarity, but struggle must have guardrails.
-- Exploration must allow crude, incomplete or wrong thinking without premature correction.
-- Micro-Illumination gives only minimal orientation, never a worked solution or lecture.
-- Trial 1 must require real cognitive effort. The Guide must not rescue, solve or correct during the attempt.
-- Full Illumination happens only after Trial 1 and directly addresses the gaps/misconceptions the first attempt is designed to expose.
-- Trial 2 must require genuine re-application so improvement is observable.
-- Integration must include reflection on changed thinking and transfer beyond the immediate lesson.
-- Preserve learner dignity and learner cognitive ownership throughout.
-- There is no HQLS Lite.
+- Exploration allows crude, incomplete or wrong thinking without premature correction.
+- Micro-Illumination gives only minimal orientation, never a worked solution or full lecture.
+- Trial 1 requires real cognitive effort. The teacher does not rescue, solve or correct during the attempt.
+
+STAGE 5 — FULL ILLUMINATION:
+- Full Illumination occurs after Trial 1.
+- Once Stage 5 begins, ALL HQLS restrictions on teaching style end for this stage.
+- Treat Stage 5 as a normal, conventional lesson-teaching period.
+- The teacher may lecture, explain directly, define terms, give detailed notes, dictate or display notes, write on the board, use a textbook-like explanation, teach formulas/rules/laws, demonstrate procedures, solve worked examples, model answers, correct misconceptions and answer questions.
+- Do not force learner-discovery language, Guide/Hero language, productive-struggle language, mandatory learner participation, a special prompt count, a Trial 1 repair format, or any anti-lecture/anti-note rule inside Stage 5.
+- The only HQLS structural requirement for Stage 5 is its position after Trial 1. Its teaching style is otherwise unrestricted.
+- Make the teaching accurate, detailed, age-appropriate and genuinely useful to the stated lesson objective.
+
+STAGES 6–7:
+- Trial 2 requires genuine re-application so improvement is observable.
+- Integration includes reflection on changed thinking and transfer beyond the immediate lesson.
 `;
 
 const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
-Every stage must include:
+
+For Stages 1, 2, 3, 4, 6 and 7 include:
 - a concrete learning experience/task;
 - exact teacher prompts/actions where useful;
 - expected learner actions;
 - Guide Guardrails describing what the teacher must not do;
 - observable evidence the teacher should notice.
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
-Use teachingContent only for Stage 5 Full Illumination; it must be clear, sufficient, concise and targeted rather than a lecture dump.
-Use respondsToFirstAttempt in Stage 5 to state exactly which likely gaps from Trial 1 the teaching addresses; use an empty string elsewhere.
-Use reflectionPrompt only for Stage 7 Integration. It must explicitly ask learners to reflect on how their thinking, understanding or approach changed; use an empty string elsewhere.
-Use transferTask only for Stage 7 Integration. It must require application beyond the immediate exercise; use an empty string elsewhere.
-For Trial 1, Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving, but natural wording is allowed.
+Use teachingContent only for Stage 5.
+Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere.
+Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
+For Trial 1, Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving.
+
+FULL ILLUMINATION — NORMAL LESSON MODE:
+Stage 5 is not to be written in the special HQLS facilitation style used by the surrounding stages. Write it like an excellent normal lesson note and full classroom explanation a competent teacher can teach from directly.
+
+Inside teachingContent, give the actual lesson content, not instructions about content. Teach the topic fully to the depth required by the lesson objective. Use the conventional structure that best suits the subject. It may include, without restriction:
+- introduction to the concept;
+- formal definitions and key terms;
+- detailed explanatory notes;
+- facts, features, types, classifications, properties and relationships;
+- principles, rules, laws, formulas, processes, procedures and conventions;
+- derivations or reasons where useful;
+- diagrams described in words where useful;
+- worked examples, calculations, model answers, demonstrations and step-by-step solutions;
+- board-ready or note-ready material learners can copy;
+- teacher explanations in natural classroom language;
+- corrections of misconceptions and common errors;
+- questions and answers;
+- summaries, memory aids and evaluation examples;
+- links to familiar real-life experiences and applications whenever they help learners understand the concept.
+
+There is no required Full Illumination template, no required number of examples, no required number of real-life connections, no required number of teacher prompts, and no requirement that the teaching be organised around Trial 1 mistakes. Trial 1 may be referenced if useful, but it must not limit the scope or style of the normal lesson.
+
+Do not artificially shorten Full Illumination. Give teachers enough substantive content to serve as both their lesson note and the explanation they can deliver in class. A teacher should be able to read Stage 5, understand the concept, write or display appropriate notes, explain it properly and teach it without needing a separate lesson note. Real-life support may include at least two concrete experiences or applications when that naturally improves the lesson, but there is no fixed number.
+
+Because the JSON schema is shared across all stages, Stage 5 must still return all schema fields. For Stage 5, experience, teacherPrompts, learnerActions, guideGuardrails, evidenceToNotice, productiveStruggle, respondsToFirstAttempt, reflectionPrompt and transferTask may be empty when they do not naturally belong in a normal lesson. Do not invent HQLS restrictions merely to fill those fields.
+
 Do not invent expensive resources. Prefer activities feasible in ordinary Nigerian/African school conditions unless supplied context says otherwise.
 `;
 
 const ACTION_INSTRUCTIONS: Record<HqlsStageAction, string> = {
   improve:
-    "Improve the stage for stronger HQLS fidelity, clearer learner ownership and more usable teacher guidance without changing its constitutional purpose.",
+    "Improve the stage for stronger clarity, usefulness and age-appropriate learning while preserving its stage purpose.",
   simplify:
-    "Simplify language, instructions and logistics while preserving the same intellectual demand and HQLS fidelity. Do not turn the stage into passive recall.",
+    "Simplify language, instructions and logistics while preserving intellectual correctness and the lesson objective.",
   increase_challenge:
-    "Increase meaningful cognitive challenge and learner reasoning without adding premature teaching or teacher rescue.",
+    "Increase meaningful cognitive challenge and learner reasoning while preserving the stage purpose.",
   make_more_practical:
-    "Make the stage more practical, realistic and connected to learners' lived environment while preserving its constitutional role.",
+    "Make the stage more practical, realistic and connected to learners' lived environment.",
   reduce_resource_dependence:
     "Redesign the stage to work with little or no specialised equipment, electricity or internet while preserving learning quality.",
   regenerate:
-    "Regenerate the stage from scratch while preserving its exact HQLS constitutional purpose and the lesson context.",
+    "Regenerate the stage from scratch while preserving its stage purpose and lesson context.",
 };
 
 function clean(value: string | undefined) {
@@ -208,7 +240,11 @@ CLASS CONTEXT: ${clean(input.classContext)}
 TEACHER INSTRUCTIONS: ${clean(input.teacherInstructions)}
 AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "None selected"}
 
-Design the seven stages in exact constitutional order. Stage 4 must expose specific likely gaps that Stage 5 can then address explicitly. Stage 6 must make improvement from Stage 4 observable. Stage 7 must populate both reflectionPrompt and transferTask so reflection and transfer are explicit rather than ceremonial.
+Design the seven stages in exact order.
+
+IMPORTANT: Stage 5 Full Illumination is NORMAL LESSON MODE. Stop using the discovery/facilitation style when Stage 5 begins. Write a detailed conventional lesson note and the actual teaching of the concept inside teachingContent. The teacher is free to teach normally: explain, lecture, define, give notes, write on the board, teach rules/formulas/laws, demonstrate, solve examples and correct learners. Use whatever conventional teaching structure best fits ${input.subject.trim()} and this topic. Relate the concept to real-life experiences where that improves understanding. Do not force Stage 5 to be concise, inquiry-led, learner-led, Trial-1-led or anti-note. Do not write placeholders such as “teacher explains”; write the explanation and lesson note itself.
+
+Stage 6 must make learners apply the now-taught concept again. Stage 7 must populate both reflectionPrompt and transferTask.
 `;
 }
 
@@ -234,7 +270,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
+Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Do not impose HQLS facilitation restrictions on Stage 5: it must remain a normal, detailed conventional lesson note and full teaching explanation. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
 `;
 }
 
@@ -245,12 +281,17 @@ export function buildStageRegenerationPrompt(args: {
   lessonContext: string;
 }) {
   const definition = HQLS_STAGES[args.targetStage.stageNumber - 1];
+  const actionInstruction =
+    definition.index === 5
+      ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve detailed conventional teaching.`
+      : ACTION_INSTRUCTIONS[args.action];
+
   return `
 Revise ONLY Stage ${definition.index} — ${definition.title} of the HQLS lesson below.
-Action requested: ${ACTION_INSTRUCTIONS[args.action]}
+Action requested: ${actionInstruction}
 
-Constitutional purpose: ${definition.purpose}
-Non-negotiable behaviour: ${definition.nonNegotiable}
+Stage purpose: ${definition.purpose}
+Stage rule: ${definition.nonNegotiable}
 
 LESSON CONTEXT:
 ${args.lessonContext}
@@ -261,7 +302,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Stage 5 must remain responsive to Trial 1; Stage 6 must remain a genuine re-application; Stage 7 must retain both explicit changed-thinking reflection and transfer.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. If the target is Stage 5, teachingContent must be a detailed normal lesson note and full teacher explanation, with no HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must remain a genuine re-application; Stage 7 must retain explicit changed-thinking reflection and transfer.
 `;
 }
 
@@ -378,6 +419,18 @@ export function validateHqlsLesson(
         `Stage ${definition.index} must remain ${definition.title} in constitutional order.`,
       );
     }
+
+    if (stage.stageNumber === 5) {
+      if (!stage.teachingContent.trim()) {
+        fail(
+          definition.key,
+          "full_illumination_teaching_missing",
+          "Full Illumination must contain the actual normal lesson teaching content.",
+        );
+      }
+      return;
+    }
+
     if (!stage.experience || stage.learnerActions.length === 0) {
       fail(
         definition.key,
@@ -399,7 +452,7 @@ export function validateHqlsLesson(
         `${definition.title} must tell the Guide what learner evidence to notice.`,
       );
     }
-    if (stage.stageNumber !== 5 && stage.teachingContent.length > 0) {
+    if (stage.teachingContent.length > 0) {
       fail(
         definition.key,
         "teaching_content_outside_full_illumination",
@@ -426,7 +479,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Awakening is checked for problem-first entry and explicit absence of premature teaching content.",
+    "Awakening is checked for problem-first entry and absence of premature full teaching.",
   );
 
   const exploration = lesson.stages[1];
@@ -455,7 +508,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Micro-Illumination is checked structurally for minimal guidance without teaching content, rather than by an arbitrary prompt-count limit.",
+    "Micro-Illumination is checked for minimal guidance before the full teaching stage.",
   );
 
   const trialFirst = lesson.stages[3];
@@ -467,27 +520,15 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Trial 1 is checked for real cognitive effort, no teaching content and explicit Guide Guardrails; natural guardrail wording is accepted.",
+    "Trial 1 is checked for real cognitive effort before normal full teaching begins.",
   );
 
   const illumination = lesson.stages[4];
-  if (illumination.teachingContent.length < 80) {
-    fail(
-      "full_illumination",
-      "full_illumination_insufficient",
-      "Full Illumination must contain enough targeted teaching content to produce clarity after effort.",
+  if (illumination.teachingContent.trim()) {
+    evidence.push(
+      "Full Illumination contains teaching content and is intentionally exempt from HQLS teaching-style validation; normal conventional teaching is allowed without prompt-count, learner-ownership, anti-lecture, anti-note or Trial-1-response constraints.",
     );
   }
-  if (illumination.respondsToFirstAttempt.length < 25) {
-    fail(
-      "full_illumination",
-      "full_illumination_ignores_revealed_gaps",
-      "Full Illumination must explicitly connect its teaching to gaps exposed by Trial 1.",
-    );
-  }
-  evidence.push(
-    "Full Illumination is checked for adequate targeted teaching and an explicit Trial 1 gap connection.",
-  );
 
   const trialSecond = lesson.stages[5];
   if (trialSecond.learnerActions.length === 0 || trialSecond.evidenceToNotice.length === 0) {
@@ -498,7 +539,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Trial 2 is checked for learner re-application, observable evidence and return of cognitive ownership after illumination.",
+    "Trial 2 is checked for learner re-application after Full Illumination.",
   );
 
   const integration = lesson.stages[6];
@@ -517,7 +558,7 @@ export function validateHqlsLesson(
     );
   }
   evidence.push(
-    "Integration is checked through dedicated reflectionPrompt and transferTask fields, avoiding fragile keyword guessing.",
+    "Integration is checked through dedicated reflectionPrompt and transferTask fields.",
   );
 
   const stageValidation = Object.fromEntries(

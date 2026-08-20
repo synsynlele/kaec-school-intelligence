@@ -37,6 +37,12 @@ assert(
   hqls.includes('"integration_missing"'),
   "HQLS automatic-failure rule for missing reflection/integration is missing.",
 );
+assert(
+  hqls.includes("normal teaching is unrestricted") &&
+    hqls.includes("conventional style best suited to the subject and class") &&
+    !hqls.includes("Teaching is targeted, concise and connected directly"),
+  "Full Illumination domain rule must allow unrestricted normal teaching after Trial 1.",
+);
 
 const migrationFiles = (await readdir(join(ROOT, "supabase/migrations")))
   .filter((name) => name.endsWith(".sql"))
@@ -181,21 +187,29 @@ for (const brandedSurface of [
 
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
-  "HQLS_ENGINE_v1.0",
-  "HQLS_PROMPT_v1.1",
+  "HQLS_ENGINE_v1.2",
+  "HQLS_PROMPT_v1.3",
   "validateHqlsLesson",
-  "full_illumination_ignores_revealed_gaps",
+  "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
   "integration_reflection_missing",
   "reflectionPrompt",
   "readOptionalString",
   "teaching_content_outside_full_illumination",
+  "NORMAL LESSON MODE",
+  "normal conventional teaching is allowed",
+  "without needing a separate lesson note",
 ]) {
   assert(
     stage2Engine.includes(required),
     `Stage 2 HQLS engine is missing ${required}.`,
   );
 }
+assert(
+  !stage2Engine.includes("full_illumination_delivery_prompts_missing") &&
+    !stage2Engine.includes("full_illumination_ignores_revealed_gaps"),
+  "Full Illumination must not retain old prompt-count or Trial-1-response restrictions.",
+);
 
 const stage2Route = await text("app/api/hqls/route.ts");
 assert(
@@ -301,5 +315,5 @@ assert(
 );
 
 console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine with unrestricted normal-lesson Full Illumination, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
 );

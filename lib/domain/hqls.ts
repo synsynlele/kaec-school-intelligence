@@ -55,9 +55,9 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 5,
     key: "full_illumination",
     title: "Full Illumination",
-    purpose: "Teach after effort.",
+    purpose: "Teach the concept fully in normal lesson style.",
     nonNegotiable:
-      "Teaching is targeted, concise and connected directly to misconceptions or gaps revealed by the first attempt.",
+      "Full Illumination must occur after Trial — First Attempt. Inside Stage 5, normal teaching is unrestricted: the teacher may explain, lecture, define, give notes, write on the board, demonstrate, solve examples, use formulas/rules/laws and teach in the conventional style best suited to the subject and class.",
   },
   {
     index: 6,
@@ -83,10 +83,8 @@ export const HQLS_AUTOMATIC_FAILURES = [
   "exploration_corrects_too_early",
   "micro_illumination_becomes_full_solution",
   "trial_first_is_rescued",
-  "full_illumination_ignores_revealed_gaps",
   "trial_second_has_no_genuine_reattempt",
   "integration_missing",
-  "teacher_carries_cognitive_load",
 ] as const;
 
 export type HqlsAutomaticFailure =

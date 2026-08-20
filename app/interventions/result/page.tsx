@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { InterventionDownloadButton } from "@/components/interventions/intervention-download-button";
 import { InterventionResultClient } from "@/components/interventions/intervention-result-client";
 
 export default async function InterventionResultPage({
@@ -15,7 +16,8 @@ export default async function InterventionResultPage({
       <div className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:px-8 md:flex-row md:items-center md:justify-between">
           <KaecBrand compact />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-start gap-2">
+            {intervention ? <InterventionDownloadButton interventionId={intervention} /> : null}
             <Link href="/interventions" className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800">Intervention Workspace</Link>
             <Link href="/diagnosis" className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800">Diagnosis</Link>
           </div>
