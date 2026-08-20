@@ -99,6 +99,10 @@ for (const required of [
   "Learning intelligence",
   "School administration",
   'workspace?.workspace_type === "school"',
+  "platform_access_admins",
+  'href: "/admin/schools"',
+  'label: "Super Admin"',
+  'label: "KAEC platform"',
 ]) {
   assert(nav.includes(required), `Responsive structured navigation is missing: ${required}`);
 }
