@@ -24,6 +24,12 @@ function isUngated(pathname: string) {
 }
 
 type GateState = "checking" | "ready" | "needs-school";
+type RuntimeWorkspace = {
+  id: string;
+  name: string;
+  workspace_type: string;
+  access_status?: string | null;
+};
 
 export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -53,11 +59,7 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
 
       const [{ data: profile, error: profileError }, { data: memberships, error: membershipError }] =
         await Promise.all([
-          supabase
-            .from("profiles")
-            .select("default_workspace_id")
-            .eq("id", user.id)
-            .single(),
+          supabase.from("profiles").select("default_workspace_id").eq("id", user.id).single(),
           supabase
             .from("workspace_members")
             .select("workspace_id,role,status")
@@ -73,14 +75,17 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data: workspaces, error: workspaceError } = await supabase
+      const { data: workspaceRows, error: workspaceError } = await supabase
         .from("workspaces")
-        .select("id,name,workspace_type,access_status")
+        .select("*")
         .in("id", memberWorkspaceIds);
       if (workspaceError) throw workspaceError;
 
-      const activeSchools = (workspaces ?? []).filter(
-        (workspace) => workspace.workspace_type === "school" && workspace.access_status === "active",
+      const workspaces = (workspaceRows ?? []) as unknown as RuntimeWorkspace[];
+      const activeSchools = workspaces.filter(
+        (workspace) =>
+          workspace.workspace_type === "school" &&
+          (workspace.access_status === undefined || workspace.access_status === "active"),
       );
       if (!activeSchools.length) {
         if (!cancelled) setState("needs-school");
@@ -109,7 +114,7 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router, ungated]);
+  }, [router, ungated]);
 
   if (ungated) return <>{children}</>;
 
@@ -137,12 +142,8 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
               Personal workspaces do not carry School Owner, Admin, Leader or Teacher authority. Join the school that invited you, or use the School Owner path if your school is being provisioned on KSI.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <Link href="/teacher/join" className="rounded-2xl bg-emerald-950 px-5 py-4 text-center text-sm font-bold text-white hover:bg-emerald-900">
-                Join with Staff Access Code
-              </Link>
-              <Link href="/owner/access" className="rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-center text-sm font-bold text-zinc-900 hover:bg-stone-50">
-                School Owner Access
-              </Link>
+              <Link href="/teacher/join" className="rounded-2xl bg-emerald-950 px-5 py-4 text-center text-sm font-bold text-white hover:bg-emerald-900">Join with Staff Access Code</Link>
+              <Link href="/owner/access" className="rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-center text-sm font-bold text-zinc-900 hover:bg-stone-50">School Owner Access</Link>
             </div>
           </section>
         </div>
