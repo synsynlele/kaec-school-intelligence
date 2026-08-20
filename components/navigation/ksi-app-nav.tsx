@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -51,7 +52,7 @@ export function KsiAppNav() {
   useEffect(() => {
     if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix)) || pathname === "/") return;
     let cancelled = false;
-    const supabase = getBrowserSupabaseClient();
+    const supabase: SupabaseClient = getBrowserSupabaseClient();
 
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
