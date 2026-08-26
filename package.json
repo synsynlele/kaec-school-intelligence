@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs && node scripts/verify-stage5.mjs && node scripts/verify-stage6.mjs && node scripts/verify-ksi2.mjs && node scripts/verify-ksi2-completion.mjs && node scripts/verify-stage12.mjs && node scripts/verify-stage14.mjs && node scripts/verify-stage15.mjs && node scripts/verify-stage16.mjs && node scripts/verify-v1-stability.mjs && node scripts/verify-prerelease-2026-08-20.mjs",
+    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs && node scripts/verify-stage5.mjs && node scripts/verify-stage6.mjs && node scripts/verify-ksi2.mjs && node scripts/verify-ksi2-completion.mjs && node scripts/verify-stage12.mjs && node scripts/verify-stage14.mjs && node scripts/verify-stage15.mjs && node scripts/verify-stage16.mjs && node scripts/verify-v1-stability.mjs && node scripts/verify-prerelease-2026-08-20.mjs && node scripts/verify-ai-generation-transport.mjs",
     "validate": "npm run lint && npm run typecheck && npm run verify:structure && npm run build"
   },
   "dependencies": {
