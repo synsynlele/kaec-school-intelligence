@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { KsiAiTransport } from "@/components/network/ksi-ai-transport";
 import { KsiAppNav } from "@/components/navigation/ksi-app-nav";
 import { KsiSchoolShell } from "@/components/navigation/ksi-school-shell";
 import "./globals.css";
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="ksi-app-shell flex min-h-full min-w-0 max-w-full flex-col">
+        <KsiAiTransport />
         <KsiSchoolShell>{children}</KsiSchoolShell>
         <KsiAppNav />
       </body>
