@@ -28,6 +28,12 @@ The keystore and its passwords must never be committed. The release workflow exp
 
 Future Android wrapper releases must use the exact same production key. Increment `appVersionCode` and `appVersion`, then run the protected release workflow.
 
+## Stage 17 pre-merge release gate
+
+The release workflow also runs when Android distribution files change on the `stage17-ksi-lite-distribution` branch. Until the three protected signing secrets exist, that branch run is expected to stop at the signing-secret gate. Once the secrets are stored, rerun the failed job; it will verify the permanent certificate, build the signed APK/AAB and publish `KSI-Lite.apk` before the web landing-page download is allowed into production.
+
+After Stage 17 is merged, normal wrapper releases are manual via `workflow_dispatch` and only needed when the Android wrapper itself changes.
+
 ## Release model
 
 `.github/workflows/android-lite-release.yml` builds a signed APK and AAB with Bubblewrap and publishes a GitHub Release. The APK asset is always named `KSI-Lite.apk`, allowing the public landing page to use GitHub's stable `releases/latest/download` URL without a KSI web deployment for every wrapper version.
