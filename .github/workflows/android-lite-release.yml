@@ -2,6 +2,13 @@ name: KSI Lite Production Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - stage17-ksi-lite-distribution
+    paths:
+      - .github/workflows/android-lite-release.yml
+      - android-lite/**
+      - public/.well-known/assetlinks.json
 
 permissions:
   contents: write
