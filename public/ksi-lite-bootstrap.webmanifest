@@ -1,0 +1,20 @@
+{
+  "id": "https://www.ksi.name.ng/ksi",
+  "name": "KAEC School Intelligence",
+  "short_name": "KSI",
+  "start_url": "https://www.ksi.name.ng/sign-in",
+  "scope": "https://www.ksi.name.ng/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#064e3b",
+  "orientation": "any",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
