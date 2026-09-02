@@ -13,8 +13,8 @@
   "backgroundColor": "#fafaf9",
   "enableNotifications": false,
   "startUrl": "/sign-in",
-  "iconUrl": "https://www.ksi.name.ng/pwa/icon-512",
-  "maskableIconUrl": "https://www.ksi.name.ng/pwa/icon-512",
+  "iconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
+  "maskableIconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
   "splashScreenFadeOutDuration": 250,
   "signingKey": {
     "path": "./ksi-lite-production.keystore",
