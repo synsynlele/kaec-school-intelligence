@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { LandingDistributionButton } from "@/components/pwa/landing-distribution-button";
 
 const engines = [
   {
@@ -24,14 +25,17 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-stone-50 text-zinc-950">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-        <nav className="flex items-center justify-between border-b border-zinc-200 pb-6">
+        <nav className="flex flex-col items-start gap-4 border-b border-zinc-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <KaecBrand />
-          <Link
-            href="/sign-in"
-            className="rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-          >
-            Open workspace
-          </Link>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <LandingDistributionButton />
+            <Link
+              href="/sign-in"
+              className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 sm:flex-none"
+            >
+              Open workspace
+            </Link>
+          </div>
         </nav>
 
         <section className="grid gap-10 py-16 sm:py-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
