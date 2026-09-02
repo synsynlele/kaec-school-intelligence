@@ -1,0 +1,46 @@
+{
+  "packageId": "ng.name.ksi.lite",
+  "host": "www.ksi.name.ng",
+  "name": "KSI Lite",
+  "launcherName": "KSI Lite",
+  "display": "standalone",
+  "themeColor": "#064e3b",
+  "themeColorDark": "#052e2b",
+  "navigationColor": "#064e3b",
+  "navigationColorDark": "#052e2b",
+  "navigationDividerColor": "#064e3b",
+  "navigationDividerColorDark": "#052e2b",
+  "backgroundColor": "#fafaf9",
+  "enableNotifications": false,
+  "startUrl": "/sign-in",
+  "iconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
+  "maskableIconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
+  "splashScreenFadeOutDuration": 250,
+  "signingKey": {
+    "path": "./ksi-lite-production.keystore",
+    "alias": "ksi-lite"
+  },
+  "appVersionCode": 1,
+  "appVersion": "1.0.0",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/fa893005c7356fcb3d2e82a5b714993164df1345/public/ksi-lite-bootstrap.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 21,
+  "orientation": "any",
+  "fingerprints": [
+    {
+      "name": "KSI Lite production key",
+      "value": "10:5B:EB:D5:27:D9:85:73:43:BF:10:A5:AA:9D:E0:0A:3E:7D:0A:E2:BC:9C:20:2C:2C:59:6C:B4:66:B6:85:DD"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}
