@@ -32,12 +32,10 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KSI_ANDROID_KEYSTORE_B64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KSI_ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KSI_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_B64" || { echo "Missing KSI_ANDROID_KEYSTORE_B64"; exit 1; }
           test -n "$KEYSTORE_PASSWORD" || { echo "Missing KSI_ANDROID_KEYSTORE_PASSWORD"; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "Missing KSI_ANDROID_KEY_PASSWORD"; exit 1; }
 
       - name: Prepare production Android project and signing key
         shell: bash
@@ -85,7 +83,7 @@ jobs:
         shell: bash
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KSI_ANDROID_KEYSTORE_PASSWORD }}
-          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KSI_ANDROID_KEY_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KSI_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           docker run --rm \
