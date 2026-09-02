@@ -20,17 +20,18 @@ Normal KSI product, backend and AI changes remain web-first. The TWA loads the l
 
 The production certificate SHA-256 fingerprint is pinned in `twa-manifest.production.json` and `public/.well-known/assetlinks.json`.
 
-The keystore and its passwords must never be committed. The release workflow expects three GitHub Actions secrets:
+The keystore and its password must never be committed. The production keystore is PKCS#12, so Bubblewrap uses the keystore password for both store and private-key access. The release workflow expects two GitHub Actions secrets:
 
 - `KSI_ANDROID_KEYSTORE_B64`
 - `KSI_ANDROID_KEYSTORE_PASSWORD`
-- `KSI_ANDROID_KEY_PASSWORD`
+
+A previously created `KSI_ANDROID_KEY_PASSWORD` repository secret may remain in GitHub, but the production workflow does not consume it.
 
 Future Android wrapper releases must use the exact same production key. Increment `appVersionCode` and `appVersion`, then run the protected release workflow.
 
 ## Stage 17 pre-merge release gate
 
-The release workflow also runs when Android distribution files change on the `stage17-ksi-lite-distribution` branch. Until the three protected signing secrets exist, that branch run is expected to stop at the signing-secret gate. Once the secrets are stored, rerun the failed job; it will verify the permanent certificate, build the signed APK/AAB and publish `KSI-Lite.apk` before the web landing-page download is allowed into production.
+The release workflow also runs when Android distribution files change on the `stage17-ksi-lite-distribution` branch. Until the protected signing secrets exist, that branch run is expected to stop at the signing-secret gate. Once the secrets are stored, rerun the failed job; it will verify the permanent certificate, build the signed APK/AAB and publish `KSI-Lite.apk` before the web landing-page download is allowed into production.
 
 After Stage 17 is merged, normal wrapper releases are manual via `workflow_dispatch` and only needed when the Android wrapper itself changes.
 
