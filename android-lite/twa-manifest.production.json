@@ -24,7 +24,7 @@
   "appVersion": "1.0.1",
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/fa893005c7356fcb3d2e82a5b714993164df1345/public/ksi-lite-bootstrap.webmanifest",
+  "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/a4c56c86f87f35f0c048a75fe91f219258db95f0/public/ksi-lite-bootstrap.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
