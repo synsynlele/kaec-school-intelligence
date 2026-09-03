@@ -6,15 +6,34 @@ const text = (path) => readFile(join(ROOT, path), "utf8");
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
+const usesCanonicalIcon = (url) => {
+  try {
+    return new URL(url).pathname.endsWith("/app/icon.png");
+  } catch {
+    return false;
+  }
+};
 
-const [layout, landing, distribution, manifest, twa, assetlinks] = await Promise.all([
+const [
+  layout,
+  landing,
+  distribution,
+  manifest,
+  twaText,
+  bootstrapText,
+  assetlinks,
+] = await Promise.all([
   text("app/layout.tsx"),
   text("app/page.tsx"),
   text("components/pwa/landing-distribution-button.tsx"),
   text("app/manifest.ts"),
   text("android-lite/twa-manifest.production.json"),
+  text("public/ksi-lite-bootstrap.webmanifest"),
   text("public/.well-known/assetlinks.json"),
 ]);
+
+const twa = JSON.parse(twaText);
+const bootstrap = JSON.parse(bootstrapText);
 
 for (const required of [
   'manifest: "/manifest.webmanifest"',
@@ -52,15 +71,33 @@ for (const required of [
   assert(manifest.includes(required), `KSI PWA manifest is missing: ${required}`);
 }
 
-for (const required of [
-  '"packageId": "ng.name.ksi.lite"',
-  '"host": "www.ksi.name.ng"',
-  '"startUrl": "/sign-in"',
-  '"appVersion": "1.0.0"',
-  '"value": "10:5B:EB:D5:27:D9:85:73:43:BF:10:A5:AA:9D:E0:0A:3E:7D:0A:E2:BC:9C:20:2C:2C:59:6C:B4:66:B6:85:DD"',
-]) {
-  assert(twa.includes(required), `KSI Lite production identity is missing: ${required}`);
-}
+assert(twa.packageId === "ng.name.ksi.lite", "KSI Lite package identity changed.");
+assert(twa.host === "www.ksi.name.ng", "KSI Lite production host changed.");
+assert(twa.startUrl === "/sign-in", "KSI Lite start route changed.");
+assert(
+  typeof twa.appVersion === "string" && /^\d+\.\d+\.\d+$/.test(twa.appVersion),
+  "KSI Lite appVersion must be semantic versioning.",
+);
+assert(
+  Number.isInteger(twa.appVersionCode) && twa.appVersionCode >= 1,
+  "KSI Lite appVersionCode must be a positive integer.",
+);
+assert(
+  twa.fingerprints?.some(
+    ({ value }) =>
+      value ===
+      "10:5B:EB:D5:27:D9:85:73:43:BF:10:A5:AA:9D:E0:0A:3E:7D:0A:E2:BC:9C:20:2C:2C:59:6C:B4:66:B6:85:DD",
+  ),
+  "KSI Lite permanent production signing certificate changed.",
+);
+assert(
+  usesCanonicalIcon(twa.iconUrl) && usesCanonicalIcon(twa.maskableIconUrl),
+  "KSI Lite launcher and maskable icons must use the canonical KSI app/favicon asset (app/icon.png).",
+);
+assert(
+  bootstrap.icons?.some(({ src }) => usesCanonicalIcon(src)),
+  "KSI Lite bootstrap manifest must use the canonical KSI app/favicon asset (app/icon.png).",
+);
 
 assert(
   assetlinks.includes('"package_name": "ng.name.ksi.lite"'),
