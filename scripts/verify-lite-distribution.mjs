@@ -19,6 +19,7 @@ const [
   landing,
   distribution,
   manifest,
+  pwaIconRenderer,
   twaText,
   bootstrapText,
   assetlinks,
@@ -27,6 +28,7 @@ const [
   text("app/page.tsx"),
   text("components/pwa/landing-distribution-button.tsx"),
   text("app/manifest.ts"),
+  text("lib/pwa/render-icon.ts"),
   text("android-lite/twa-manifest.production.json"),
   text("public/ksi-lite-bootstrap.webmanifest"),
   text("public/.well-known/assetlinks.json"),
@@ -70,6 +72,11 @@ for (const required of [
 ]) {
   assert(manifest.includes(required), `KSI PWA manifest is missing: ${required}`);
 }
+
+assert(
+  pwaIconRenderer.includes('"https://www.ksi.name.ng/icon.png"'),
+  "KSI PWA icons must render from the canonical KSI favicon asset (/icon.png).",
+);
 
 assert(twa.packageId === "ng.name.ksi.lite", "KSI Lite package identity changed.");
 assert(twa.host === "www.ksi.name.ng", "KSI Lite production host changed.");
