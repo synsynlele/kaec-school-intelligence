@@ -81,6 +81,8 @@ assert(
 assert(twa.packageId === "ng.name.ksi.lite", "KSI Lite package identity changed.");
 assert(twa.host === "www.ksi.name.ng", "KSI Lite production host changed.");
 assert(twa.startUrl === "/sign-in", "KSI Lite start route changed.");
+assert(twa.name === "KSI", "The installed Android app name must be KSI.");
+assert(twa.launcherName === "KSI", "The Android launcher label must be KSI.");
 assert(
   typeof twa.appVersion === "string" && /^\d+\.\d+\.\d+$/.test(twa.appVersion),
   "KSI Lite appVersion must be semantic versioning.",

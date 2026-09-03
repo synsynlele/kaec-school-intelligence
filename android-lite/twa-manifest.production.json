@@ -1,8 +1,8 @@
 {
   "packageId": "ng.name.ksi.lite",
   "host": "www.ksi.name.ng",
-  "name": "KSI Lite",
-  "launcherName": "KSI Lite",
+  "name": "KSI",
+  "launcherName": "KSI",
   "display": "standalone",
   "themeColor": "#064e3b",
   "themeColorDark": "#052e2b",
@@ -20,8 +20,8 @@
     "path": "./ksi-lite-production.keystore",
     "alias": "ksi-lite"
   },
-  "appVersionCode": 2,
-  "appVersion": "1.0.1",
+  "appVersionCode": 3,
+  "appVersion": "1.0.2",
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/a4c56c86f87f35f0c048a75fe91f219258db95f0/public/ksi-lite-bootstrap.webmanifest",
