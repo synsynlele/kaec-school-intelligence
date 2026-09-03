@@ -13,18 +13,18 @@
   "backgroundColor": "#fafaf9",
   "enableNotifications": false,
   "startUrl": "/sign-in",
-  "iconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
-  "maskableIconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/7d3149f05b4572e6f997e6913035713ab543738f/public/ksi-lite-icon.svg",
+  "iconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/c9938f50d6ac988532a41f3968dc33d098daabe0/app/icon.png",
+  "maskableIconUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/c9938f50d6ac988532a41f3968dc33d098daabe0/app/icon.png",
   "splashScreenFadeOutDuration": 250,
   "signingKey": {
     "path": "./ksi-lite-production.keystore",
     "alias": "ksi-lite"
   },
-  "appVersionCode": 1,
-  "appVersion": "1.0.0",
+  "appVersionCode": 2,
+  "appVersion": "1.0.1",
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/fa893005c7356fcb3d2e82a5b714993164df1345/public/ksi-lite-bootstrap.webmanifest",
+  "webManifestUrl": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/a4c56c86f87f35f0c048a75fe91f219258db95f0/public/ksi-lite-bootstrap.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
