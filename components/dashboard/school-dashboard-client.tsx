@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -123,7 +122,13 @@ export function SchoolDashboardClient() {
   }, [router]);
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void load();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   const activeSchool = useMemo(() => state?.schools.find((school) => school.id === state.activeWorkspaceId) ?? null, [state]);
