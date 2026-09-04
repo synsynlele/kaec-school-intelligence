@@ -19,6 +19,7 @@ const [
   landing,
   distribution,
   manifest,
+  authResolver,
   pwaIconRenderer,
   twaText,
   bootstrapText,
@@ -28,6 +29,7 @@ const [
   text("app/page.tsx"),
   text("components/pwa/landing-distribution-button.tsx"),
   text("app/manifest.ts"),
+  text("components/auth/auth-resolver-client.tsx"),
   text("lib/pwa/render-icon.ts"),
   text("android-lite/twa-manifest.production.json"),
   text("public/ksi-lite-bootstrap.webmanifest"),
@@ -64,13 +66,22 @@ for (const required of [
 }
 
 for (const required of [
-  'start_url: "/sign-in"',
+  'start_url: "/auth/resolve"',
   'scope: "/"',
   'display: "standalone"',
   'sizes: "192x192"',
   'sizes: "512x512"',
 ]) {
   assert(manifest.includes(required), `KSI PWA manifest is missing: ${required}`);
+}
+
+for (const required of [
+  "resolveKsiRuntimeAccess",
+  'window.location.replace("/dashboard")',
+  'window.location.replace("/teacher/join")',
+  'window.location.replace("/owner/access")',
+]) {
+  assert(authResolver.includes(required), `KSI installed-app resolver is missing: ${required}`);
 }
 
 assert(
@@ -80,7 +91,7 @@ assert(
 
 assert(twa.packageId === "ng.name.ksi.lite", "KSI Lite package identity changed.");
 assert(twa.host === "www.ksi.name.ng", "KSI Lite production host changed.");
-assert(twa.startUrl === "/sign-in", "KSI Lite start route changed.");
+assert(twa.startUrl === "/auth/resolve", "KSI Lite must restart through the canonical access resolver.");
 assert(twa.name === "KSI", "The installed Android app name must be KSI.");
 assert(twa.launcherName === "KSI", "The Android launcher label must be KSI.");
 assert(
@@ -88,8 +99,12 @@ assert(
   "KSI Lite appVersion must be semantic versioning.",
 );
 assert(
-  Number.isInteger(twa.appVersionCode) && twa.appVersionCode >= 1,
-  "KSI Lite appVersionCode must be a positive integer.",
+  Number.isInteger(twa.appVersionCode) && twa.appVersionCode >= 4,
+  "KSI Lite resilient-restart release must use appVersionCode 4 or newer.",
+);
+assert(
+  bootstrap.start_url === "https://www.ksi.name.ng/auth/resolve",
+  "KSI Lite bootstrap manifest must restore sessions through the canonical access resolver.",
 );
 assert(
   twa.fingerprints?.some(
@@ -117,4 +132,4 @@ assert(
   "KSI Lite must never create an HQLS Lite methodology or product pathway.",
 );
 
-console.log("KSI Lite distribution verification passed.");
+console.log("KSI Lite distribution verification passed with resolver-based restart recovery.");
