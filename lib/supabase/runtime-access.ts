@@ -33,6 +33,7 @@ const CACHE_MS = 4_000;
 
 let cached:
   | {
+      sessionKey: string;
       expiresAt: number;
       promise: Promise<KsiRuntimeAccess | null>;
     }
@@ -75,6 +76,17 @@ export function announceKsiWorkspaceChange() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ksi-workspace-change"));
   }
+}
+
+async function sessionCacheKey(supabase: SupabaseClient) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session) return "signed-out";
+
+  return `${session.user.id}:${session.access_token.slice(-24)}`;
 }
 
 async function loadRuntimeAccess(supabase: SupabaseClient): Promise<KsiRuntimeAccess | null> {
@@ -134,15 +146,21 @@ export async function resolveKsiRuntimeAccess(
   supabase: SupabaseClient,
   options: { force?: boolean } = {},
 ) {
+  const sessionKey = await sessionCacheKey(supabase);
   const now = Date.now();
-  if (!options.force && cached && cached.expiresAt > now) {
+  if (
+    !options.force &&
+    cached &&
+    cached.sessionKey === sessionKey &&
+    cached.expiresAt > now
+  ) {
     return cached.promise;
   }
 
   const promise = loadRuntimeAccess(supabase).catch((error) => {
-    cached = null;
+    if (cached?.sessionKey === sessionKey) cached = null;
     throw error;
   });
-  cached = { expiresAt: now + CACHE_MS, promise };
+  cached = { sessionKey, expiresAt: now + CACHE_MS, promise };
   return promise;
 }
