@@ -113,9 +113,11 @@ export function KsiAppNav() {
     void load();
     const reload = () => void load();
     window.addEventListener("ksi-workspace-change", reload);
+    window.addEventListener("ksi:app-resume", reload);
     return () => {
       cancelled = true;
       window.removeEventListener("ksi-workspace-change", reload);
+      window.removeEventListener("ksi:app-resume", reload);
     };
   }, [pathname]);
 

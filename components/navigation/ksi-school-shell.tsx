@@ -65,6 +65,13 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
     };
   }, [resolveAccess, ungated]);
 
+  useEffect(() => {
+    if (ungated) return;
+    const handleResume = () => void resolveAccess();
+    window.addEventListener("ksi:app-resume", handleResume);
+    return () => window.removeEventListener("ksi:app-resume", handleResume);
+  }, [resolveAccess, ungated]);
+
   if (ungated) return <>{children}</>;
 
   if (state === "checking") {

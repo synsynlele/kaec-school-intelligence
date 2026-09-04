@@ -20,20 +20,28 @@ const [
   distribution,
   manifest,
   authResolver,
+  appLifecycle,
+  schoolShell,
   pwaIconRenderer,
   twaText,
   bootstrapText,
   assetlinks,
+  launcherPatch,
+  androidWorkflow,
 ] = await Promise.all([
   text("app/layout.tsx"),
   text("app/page.tsx"),
   text("components/pwa/landing-distribution-button.tsx"),
   text("app/manifest.ts"),
   text("components/auth/auth-resolver-client.tsx"),
+  text("components/pwa/ksi-app-lifecycle.tsx"),
+  text("components/navigation/ksi-school-shell.tsx"),
   text("lib/pwa/render-icon.ts"),
   text("android-lite/twa-manifest.production.json"),
   text("public/ksi-lite-bootstrap.webmanifest"),
   text("public/.well-known/assetlinks.json"),
+  text("scripts/patch-android-lite-launcher.mjs"),
+  text(".github/workflows/android-lite-release.yml"),
 ]);
 
 const twa = JSON.parse(twaText);
@@ -44,9 +52,26 @@ for (const required of [
   "beforeinstallprompt",
   'document.referrer.startsWith("android-app://")',
   'new Event("ksi:install-state")',
+  "<KsiAppLifecycle />",
 ]) {
   assert(layout.includes(required), `KSI install capture is missing: ${required}`);
 }
+
+for (const required of [
+  'document.addEventListener("visibilitychange"',
+  'window.addEventListener("pageshow"',
+  'window.addEventListener("online"',
+  "auth.getSession()",
+  "invalidateKsiRuntimeAccess()",
+  'new Event(APP_RESUME_EVENT)',
+]) {
+  assert(appLifecycle.includes(required), `KSI app resume recovery is missing: ${required}`);
+}
+
+assert(
+  schoolShell.includes('window.addEventListener("ksi:app-resume"'),
+  "The protected school shell must revalidate access after app resume.",
+);
 
 assert(
   landing.includes("LandingDistributionButton"),
@@ -95,6 +120,10 @@ assert(twa.startUrl === "/auth/resolve", "KSI Lite must restart through the cano
 assert(twa.name === "KSI", "The installed Android app name must be KSI.");
 assert(twa.launcherName === "KSI", "The Android launcher label must be KSI.");
 assert(
+  twa.fallbackType === "webview",
+  "KSI Lite must use the renderer-recovering WebView when no TWA provider is available.",
+);
+assert(
   typeof twa.appVersion === "string" && /^\d+\.\d+\.\d+$/.test(twa.appVersion),
   "KSI Lite appVersion must be semantic versioning.",
 );
@@ -123,6 +152,18 @@ assert(
   "KSI Lite bootstrap manifest must use the canonical KSI app/favicon asset (app/icon.png).",
 );
 
+for (const required of [
+  'getPackageInfo("com.android.chrome", 0)',
+  'this, "com.android.chrome"',
+  "return super.createTwaLauncher()",
+]) {
+  assert(launcherPatch.includes(required), `KSI Android launcher recovery is missing: ${required}`);
+}
+assert(
+  androidWorkflow.includes("node scripts/patch-android-lite-launcher.mjs"),
+  "The Android release workflow must apply the Chrome TWA reliability patch.",
+);
+
 assert(
   assetlinks.includes('"package_name": "ng.name.ksi.lite"'),
   "Digital Asset Links must bind the permanent KSI Lite package.",
@@ -132,4 +173,4 @@ assert(
   "KSI Lite must never create an HQLS Lite methodology or product pathway.",
 );
 
-console.log("KSI Lite distribution verification passed with resolver-based restart recovery.");
+console.log("KSI Lite distribution verification passed with restart and renderer recovery.");

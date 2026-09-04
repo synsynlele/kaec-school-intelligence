@@ -79,6 +79,14 @@ jobs:
             --skipVersionUpgrade \
             --manifest=/workspace/twa-manifest.json
 
+      - name: Prefer Chrome TWA with renderer-safe fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chown -R "$(id -u):$(id -g)" android-lite/generated-production
+          node scripts/patch-android-lite-launcher.mjs \
+            android-lite/generated-production/app/src/main/java/ng/name/ksi/lite/LauncherActivity.java
+
       - name: Build signed APK and Android App Bundle
         shell: bash
         env:
