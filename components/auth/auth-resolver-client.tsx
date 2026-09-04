@@ -34,6 +34,11 @@ function inferredEntryFromAccount(
   return null;
 }
 
+function clearTransientAuthIntent() {
+  window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+  window.sessionStorage.removeItem(AUTH_ENTRY_KEY);
+}
+
 export function AuthResolverClient() {
   const [error, setError] = useState<string | null>(null);
 
@@ -42,12 +47,13 @@ export function AuthResolverClient() {
     try {
       const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient(), { force: true });
       if (!access) {
+        clearTransientAuthIntent();
         window.location.replace("/sign-in");
         return;
       }
 
       if (access.activeSchool) {
-        window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+        clearTransientAuthIntent();
         window.location.replace("/dashboard");
         return;
       }
@@ -56,7 +62,7 @@ export function AuthResolverClient() {
         requestedEntry() ??
         inferredEntryFromAccount(access.memberships, access.user.user_metadata?.ksi_entry_role);
 
-      window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+      clearTransientAuthIntent();
       if (entry === "owner") {
         window.location.replace("/owner/access");
         return;
