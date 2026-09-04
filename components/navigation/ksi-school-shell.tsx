@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
+import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 
 const UNGATED_PREFIXES = [
   "/sign-in",
@@ -23,98 +24,40 @@ function isUngated(pathname: string) {
   return pathname === "/" || UNGATED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-type GateState = "checking" | "ready" | "needs-school";
-type RuntimeWorkspace = {
-  id: string;
-  name: string;
-  workspace_type: string;
-  access_status?: string | null;
-};
+type GateState = "checking" | "ready" | "needs-school" | "error";
 
 export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const ungated = isUngated(pathname);
   const [state, setState] = useState<GateState>("checking");
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (ungated) return;
+  const resolveAccess = useCallback(async () => {
+    setState("checking");
+    setError(null);
 
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) setState("checking");
-    });
-
-    void (async () => {
-      const supabase = getBrowserSupabaseClient();
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
+    try {
+      const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient(), { force: true });
+      if (!access) {
         router.replace("/sign-in");
         return;
       }
-
-      const [{ data: profile, error: profileError }, { data: memberships, error: membershipError }] =
-        await Promise.all([
-          supabase.from("profiles").select("default_workspace_id").eq("id", user.id).single(),
-          supabase
-            .from("workspace_members")
-            .select("workspace_id,role,status")
-            .eq("user_id", user.id)
-            .eq("status", "active"),
-        ]);
-      if (profileError) throw profileError;
-      if (membershipError) throw membershipError;
-
-      const memberWorkspaceIds = [...new Set((memberships ?? []).map((row) => row.workspace_id))];
-      if (!memberWorkspaceIds.length) {
-        if (!cancelled) setState("needs-school");
-        return;
-      }
-
-      const { data: workspaceRows, error: workspaceError } = await supabase
-        .from("workspaces")
-        .select("*")
-        .in("id", memberWorkspaceIds);
-      if (workspaceError) throw workspaceError;
-
-      const workspaces = (workspaceRows ?? []) as unknown as RuntimeWorkspace[];
-      const activeSchools = workspaces.filter(
-        (workspace) =>
-          workspace.workspace_type === "school" &&
-          (workspace.access_status === undefined || workspace.access_status === "active"),
+      setState(access.activeSchool ? "ready" : "needs-school");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "KSI could not confirm your school access. Retry the access check.",
       );
-      if (!activeSchools.length) {
-        if (!cancelled) setState("needs-school");
-        return;
-      }
+      setState("error");
+    }
+  }, [router]);
 
-      const currentIsSchool = activeSchools.some(
-        (workspace) => workspace.id === profile.default_workspace_id,
-      );
-      if (!currentIsSchool) {
-        const preferred = activeSchools[0];
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({ default_workspace_id: preferred.id })
-          .eq("id", user.id);
-        if (updateError) throw updateError;
-        window.dispatchEvent(new Event("ksi-workspace-change"));
-        router.refresh();
-      }
-
-      if (!cancelled) setState("ready");
-    })().catch(() => {
-      if (!cancelled) setState("needs-school");
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router, ungated]);
+  useEffect(() => {
+    if (ungated) return;
+    void resolveAccess();
+  }, [resolveAccess, ungated]);
 
   if (ungated) return <>{children}</>;
 
@@ -124,9 +67,30 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
         <div>
           <div className="mx-auto mb-5 w-fit"><KaecBrand compact /></div>
           <p className="text-sm font-semibold text-zinc-700">Opening your school workspace…</p>
-          <p className="mt-2 text-xs text-zinc-500">KSI permissions are resolved from your active school membership.</p>
+          <p className="mt-2 text-xs text-zinc-500">KSI permissions are resolved from your governed school membership.</p>
         </div>
       </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <main className="min-h-screen bg-stone-50 px-5 py-12 sm:px-8">
+        <div className="mx-auto max-w-3xl">
+          <KaecBrand />
+          <section className="mt-10 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm sm:p-9">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">Access check interrupted</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">Your school membership has not been removed.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
+              KSI could not verify access on this attempt. A network, session or platform error is never treated as “join a school” and will never send an existing teacher back to an access code.
+            </p>
+            {error ? <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
+            <button type="button" onClick={() => void resolveAccess()} className="mt-6 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">
+              Retry access check
+            </button>
+          </section>
+        </div>
+      </main>
     );
   }
 
@@ -137,9 +101,9 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
           <KaecBrand />
           <section className="mt-10 rounded-3xl border border-emerald-950/10 bg-white p-6 shadow-sm sm:p-9">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">School access required</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">KSI now operates inside governed school workspaces.</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950">This account is not yet linked to an active KSI school.</h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
-              Personal workspaces do not carry School Owner, Admin, Leader or Teacher authority. Join the school that invited you, or use the School Owner path if your school is being provisioned on KSI.
+              This screen appears only after KSI successfully confirms that no active governed school membership exists. Staff can join the school that invited them; school owners can continue the KAEC approval flow.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <Link href="/teacher/join" className="rounded-2xl bg-emerald-950 px-5 py-4 text-center text-sm font-bold text-white hover:bg-emerald-900">Join with Staff Access Code</Link>
