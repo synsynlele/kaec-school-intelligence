@@ -152,7 +152,7 @@ assert(
   teacherJoin.includes('membershipState === "error"') &&
     teacherJoin.includes('membershipState !== "ready" || !activeSchoolMembership') &&
     teacherJoin.includes("getUser()"),
-  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward active school members.",
+  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward any active school member.",
 );
 
 for (const required of [
