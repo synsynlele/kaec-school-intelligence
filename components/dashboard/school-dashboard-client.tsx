@@ -69,7 +69,7 @@ export function SchoolDashboardClient() {
     setError(null);
     try {
       const supabase = getBrowserSupabaseClient();
-      const access = await resolveKsiRuntimeAccess(supabase, { force: true });
+      const access = await resolveKsiRuntimeAccess(supabase);
       if (!access) {
         router.replace("/sign-in");
         return;
