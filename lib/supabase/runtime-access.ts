@@ -147,6 +147,11 @@ export async function resolveKsiRuntimeAccess(
   options: { force?: boolean } = {},
 ) {
   const sessionKey = await sessionCacheKey(supabase);
+  if (sessionKey === "signed-out") {
+    cached = null;
+    return null;
+  }
+
   const now = Date.now();
   if (
     !options.force &&

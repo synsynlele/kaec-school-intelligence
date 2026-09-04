@@ -20,6 +20,7 @@ const [
   distribution,
   manifest,
   authResolver,
+  runtimeAccess,
   appLifecycle,
   schoolShell,
   pwaIconRenderer,
@@ -34,6 +35,7 @@ const [
   text("components/pwa/landing-distribution-button.tsx"),
   text("app/manifest.ts"),
   text("components/auth/auth-resolver-client.tsx"),
+  text("lib/supabase/runtime-access.ts"),
   text("components/pwa/ksi-app-lifecycle.tsx"),
   text("components/navigation/ksi-school-shell.tsx"),
   text("lib/pwa/render-icon.ts"),
@@ -108,6 +110,10 @@ for (const required of [
 ]) {
   assert(authResolver.includes(required), `KSI installed-app resolver is missing: ${required}`);
 }
+assert(
+  runtimeAccess.includes('sessionKey === "signed-out"') && runtimeAccess.includes("return null"),
+  "The KSI resolver must treat a missing local session as signed out, not as a retry error.",
+);
 
 assert(
   pwaIconRenderer.includes('"https://www.ksi.name.ng/icon.png"'),
