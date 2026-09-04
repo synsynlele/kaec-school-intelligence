@@ -38,7 +38,7 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient(), { force: true });
+      const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient());
       if (!access) {
         router.replace("/sign-in");
         return;
