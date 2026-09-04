@@ -107,15 +107,26 @@ export function TeacherJoinClient() {
     [memberships],
   );
 
+  const activeOwner = useMemo(
+    () =>
+      memberships.find(
+        (membership) =>
+          membership.member_role === "owner" &&
+          membership.member_status === "active" &&
+          membership.access_status === "active",
+      ) ?? null,
+    [memberships],
+  );
   const ownerMembership = memberships.find((membership) => membership.member_role === "owner") ?? null;
   const studentMembership = memberships.find((membership) => membership.member_role === "student") ?? null;
+  const activeSchoolMembership = activeStaff ?? activeOwner;
 
   useEffect(() => {
-    if (membershipState !== "ready" || !activeStaff) return;
+    if (membershipState !== "ready" || !activeSchoolMembership) return;
 
     window.sessionStorage.removeItem(AUTH_RETURN_KEY);
     window.location.replace("/dashboard");
-  }, [activeStaff, membershipState]);
+  }, [activeSchoolMembership, membershipState]);
 
   async function redeem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,11 +168,11 @@ export function TeacherJoinClient() {
     }
   }
 
-  if (membershipState === "checking" || (membershipState === "ready" && activeStaff)) {
+  if (membershipState === "checking" || (membershipState === "ready" && activeSchoolMembership)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5">
         <p className="text-sm font-semibold text-zinc-600">
-          {activeStaff ? "Access confirmed. Opening your KSI workspace…" : "Checking Teacher / Staff access…"}
+          {activeSchoolMembership ? "Access confirmed. Opening your KSI workspace…" : "Checking Teacher / Staff access…"}
         </p>
       </main>
     );
