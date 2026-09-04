@@ -150,9 +150,9 @@ for (const required of [
 
 assert(
   teacherJoin.includes('membershipState === "error"') &&
-    teacherJoin.includes('membershipState !== "ready" || !activeStaff') &&
+    teacherJoin.includes('membershipState !== "ready" || !activeSchoolMembership') &&
     teacherJoin.includes("getUser()"),
-  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward active staff.",
+  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward active school members.",
 );
 
 for (const required of [
@@ -185,5 +185,5 @@ assert(
 );
 
 console.log(
-  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, active staff onboarding is terminal and auto-routes to the dashboard, Student KSI entry is retired, and no role selection can grant school authority.",
+  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, active school onboarding is terminal and auto-routes to the dashboard, Student KSI entry is retired, and no role selection can grant school authority.",
 );
