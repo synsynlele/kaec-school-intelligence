@@ -56,7 +56,13 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (ungated) return;
-    void resolveAccess();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void resolveAccess();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [resolveAccess, ungated]);
 
   if (ungated) return <>{children}</>;
