@@ -138,6 +138,24 @@ for (const required of [
 }
 
 for (const required of [
+  'type MembershipCheckState = "checking" | "ready" | "error"',
+  "Do not enter another access code yet.",
+  "Retry access check",
+  'window.location.replace("/dashboard")',
+  "Access confirmed. Opening your KSI workspace",
+  "Another access code cannot bypass that governance state",
+]) {
+  assert(teacherJoin.includes(required), `Teacher access-loop regression protection is missing: ${required}`);
+}
+
+assert(
+  teacherJoin.includes('membershipState === "error"') &&
+    teacherJoin.includes('membershipState !== "ready" || !activeStaff') &&
+    teacherJoin.includes("getUser()"),
+  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward active staff.",
+);
+
+for (const required of [
   "issue_staff_access_code",
   "get_staff_access_invites",
   "revoke_staff_access_invite",
@@ -167,5 +185,5 @@ assert(
 );
 
 console.log(
-  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, Student KSI entry is retired, and no role selection can grant school authority.",
+  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, active staff onboarding is terminal and auto-routes to the dashboard, Student KSI entry is retired, and no role selection can grant school authority.",
 );
