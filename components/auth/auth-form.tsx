@@ -8,6 +8,7 @@ type Mode = "sign_in" | "sign_up";
 type EntryRole = "owner" | "teacher";
 
 const AUTH_RETURN_KEY = "ksi:auth:returnTo";
+const AUTH_ENTRY_KEY = "ksi:auth:entryRole";
 
 const ROLE_CONFIG: Record<
   EntryRole,
@@ -29,7 +30,7 @@ const ROLE_CONFIG: Record<
       "Create your KSI identity, then request school access. KAEC reviews and activates the school before school-level KSI opens.",
     signInHelp:
       "Sign in to your school leadership workspace or continue a school-access request already under review.",
-    destination: "/owner/access",
+    destination: "/auth/resolve?entry=owner",
     icon: "🏫",
   },
   teacher: {
@@ -40,13 +41,13 @@ const ROLE_CONFIG: Record<
       "Create your KSI identity, then enter the Staff Access Code sent to your school email by the owner or administrator.",
     signInHelp:
       "Sign in to your existing Teacher or Leadership workspace, or connect your account with a Staff Access Code.",
-    destination: "/teacher/join",
+    destination: "/auth/resolve?entry=teacher",
     icon: "🧑🏾‍🏫",
   },
 };
 
 function safePath(path: string) {
-  return path.startsWith("/") && !path.startsWith("//") ? path : "/dashboard";
+  return path.startsWith("/") && !path.startsWith("//") ? path : "/auth/resolve";
 }
 
 export function AuthForm() {
@@ -62,17 +63,22 @@ export function AuthForm() {
 
   const roleConfig = role ? ROLE_CONFIG[role] : null;
   const destination = useMemo(
-    () => safePath(roleConfig?.destination ?? "/dashboard"),
+    () => safePath(roleConfig?.destination ?? "/auth/resolve"),
     [roleConfig?.destination],
   );
 
-  function prepareReturnPath() {
+  function storeEntryIntent() {
+    if (role) window.sessionStorage.setItem(AUTH_ENTRY_KEY, role);
     window.sessionStorage.setItem(AUTH_RETURN_KEY, destination);
+  }
+
+  function prepareReturnPath() {
+    storeEntryIntent();
     return `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`;
   }
 
   async function handleGoogleSignIn() {
-    if (!roleConfig) {
+    if (!roleConfig || !role) {
       setError("Choose School Owner or Teacher / Staff first.");
       return;
     }
@@ -110,7 +116,7 @@ export function AuthForm() {
 
     try {
       const supabase = getBrowserSupabaseClient();
-      window.sessionStorage.setItem(AUTH_RETURN_KEY, destination);
+      storeEntryIntent();
 
       if (mode === "sign_in") {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -119,7 +125,7 @@ export function AuthForm() {
         });
         if (signInError) throw signInError;
 
-        window.location.assign(destination);
+        window.location.replace(destination);
         return;
       }
 
@@ -138,10 +144,10 @@ export function AuthForm() {
       if (signUpError) throw signUpError;
 
       if (data.session) {
-        window.location.assign(destination);
+        window.location.replace(destination);
       } else {
         setMessage(
-          `Account created. Check your email to confirm it. After confirmation, KSI will continue with the ${roleConfig.label} access flow.`,
+          `Account created. Check your email to confirm it. After confirmation, KSI will verify existing school access before continuing with the ${roleConfig.label} flow.`,
         );
       }
     } catch (caught) {
@@ -173,7 +179,7 @@ export function AuthForm() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Enter KSI</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">Choose your workspace</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          KSI is built for teachers and school leadership. Your school-issued access determines what you can actually do after sign-in.
+          KSI is built for teachers and school leadership. Your governed school membership—not the button you choose here—determines what opens after sign-in.
         </p>
       </div>
 
