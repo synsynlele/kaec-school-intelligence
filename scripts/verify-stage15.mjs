@@ -11,6 +11,7 @@ const [
   foundation,
   provisioning,
   hardening,
+  staffProfileInvariant,
   simplification,
   authForm,
   authCallback,
@@ -29,6 +30,7 @@ const [
   text("supabase/migrations/065_stage15_role_aware_onboarding.sql"),
   text("supabase/migrations/064_stage14_school_provisioning_access_lock.sql"),
   text("supabase/migrations/066_stage15_staff_redeem_hardening.sql"),
+  text("supabase/migrations/070_staff_profile_redemption_invariant.sql"),
   text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("components/auth/auth-form.tsx"),
   text("app/auth/callback/page.tsx"),
@@ -77,6 +79,24 @@ assert(
     hardening.includes("an old access code cannot reactivate it") &&
     hardening.includes("v_existing.status = 'suspended'"),
   "Staff Access redemption must not reactivate suspended school membership.",
+);
+
+for (const required of [
+  "insert into public.profiles as p",
+  "on conflict (id) do update",
+  "default_workspace_id = excluded.default_workspace_id",
+  "The access code was not consumed.",
+  "p.default_workspace_id is null",
+]) {
+  assert(
+    staffProfileInvariant.includes(required),
+    `Staff profile redemption invariant is missing: ${required}`,
+  );
+}
+assert(
+  staffProfileInvariant.indexOf("insert into public.profiles as p") <
+    staffProfileInvariant.lastIndexOf("update public.staff_access_invites"),
+  "Staff Access Codes must be consumed only after the account profile invariant is established.",
 );
 
 for (const required of [
