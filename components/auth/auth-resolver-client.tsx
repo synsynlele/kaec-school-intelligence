@@ -83,7 +83,13 @@ export function AuthResolverClient() {
   }, []);
 
   useEffect(() => {
-    void resolve();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void resolve();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [resolve]);
 
   return (
