@@ -14,6 +14,10 @@ const [
   simplification,
   authForm,
   authCallback,
+  authResolver,
+  runtimeAccess,
+  schoolShell,
+  dashboard,
   signInPage,
   ownerAccess,
   teacherJoin,
@@ -28,6 +32,10 @@ const [
   text("docs/KSI_2_2_SIMPLIFICATION_AMENDMENT.md"),
   text("components/auth/auth-form.tsx"),
   text("app/auth/callback/page.tsx"),
+  text("components/auth/auth-resolver-client.tsx"),
+  text("lib/supabase/runtime-access.ts"),
+  text("components/navigation/ksi-school-shell.tsx"),
+  text("components/dashboard/school-dashboard-client.tsx"),
   text("app/sign-in/page.tsx"),
   text("components/auth/owner-access-client.tsx"),
   text("components/auth/teacher-join-client.tsx"),
@@ -83,21 +91,21 @@ for (const required of [
   'type EntryRole = "owner" | "teacher"',
   "School Owner",
   "Teacher / Staff",
-  'destination: "/owner/access"',
-  'destination: "/teacher/join"',
+  'destination: "/auth/resolve?entry=owner"',
+  'destination: "/auth/resolve?entry=teacher"',
+  'const AUTH_ENTRY_KEY = "ksi:auth:entryRole"',
   "Choosing an entry path never grants authority",
 ]) {
-  assert(authForm.includes(required), `Simplified role-aware authentication UX is missing: ${required}`);
+  assert(authForm.includes(required), `Unified role-aware authentication UX is missing: ${required}`);
 }
 assert(!authForm.includes('destination: "/student/join"'), "Student KSI must not remain an active sign-in destination after KSI 2.2.");
 assert(!authForm.includes('type EntryRole = "owner" | "teacher" | "student"'), "Student must not remain an active entry role after KSI 2.2.");
-
 assert(
   !authForm.includes('.from("workspace_members")') &&
     !authForm.includes("provision_school_workspace") &&
     !authForm.includes("redeem_staff_access_code") &&
     !authForm.includes("redeem_student_access_code"),
-  "Public role selection must remain navigation intent and must not grant school authority.",
+  "Public role selection must remain routing intent and must not grant school authority.",
 );
 
 assert(
@@ -105,7 +113,61 @@ assert(
     authCallback.includes("safeInternalPath") &&
     authCallback.includes('path.startsWith("/student/")') &&
     authCallback.includes("Opening the right KSI access path"),
-  "Auth callback must preserve safe staff/owner destinations and neutralise retired Student KSI destinations.",
+  "Auth callback must preserve safe resolver destinations and neutralise retired Student KSI destinations.",
+);
+
+for (const required of [
+  "resolveKsiRuntimeAccess",
+  'window.location.replace("/dashboard")',
+  'window.location.replace("/teacher/join")',
+  'window.location.replace("/owner/access")',
+  "if (access.activeSchool)",
+  "Your account is still signed in.",
+]) {
+  assert(authResolver.includes(required), `Canonical post-auth resolver is missing: ${required}`);
+}
+
+for (const required of [
+  "get_my_school_memberships",
+  "chooseActiveSchool",
+  "default_workspace_id",
+  "activeSchool",
+  "inactiveSchool",
+  "invalidateKsiRuntimeAccess",
+  "announceKsiWorkspaceChange",
+]) {
+  assert(runtimeAccess.includes(required), `Canonical runtime access resolver is missing: ${required}`);
+}
+assert(
+  runtimeAccess.includes("auth.getUser()") && runtimeAccess.includes('.from("profiles")'),
+  "Runtime access must authenticate the user and resolve the user's own profile before governing school access.",
+);
+
+for (const required of [
+  'type GateState = "checking" | "ready" | "needs-school" | "error"',
+  "resolveKsiRuntimeAccess",
+  "Access check interrupted",
+  "Your school membership has not been removed.",
+  "Retry access check",
+]) {
+  assert(schoolShell.includes(required), `Protected school gate hardening is missing: ${required}`);
+}
+assert(
+  !schoolShell.includes('catch(() => {\n      if (!cancelled) setState("needs-school")'),
+  "A protected-route technical error must never be converted into missing school membership.",
+);
+
+for (const required of [
+  "resolveKsiRuntimeAccess",
+  'router.replace("/auth/resolve")',
+  "Dashboard check interrupted",
+  "will not interpret a dashboard-loading error as missing school membership",
+]) {
+  assert(dashboard.includes(required), `Dashboard access hardening is missing: ${required}`);
+}
+assert(
+  !dashboard.includes('Link href="/teacher/join"') && !dashboard.includes("Join a school"),
+  "Dashboard technical failures must not send an existing user into staff-code onboarding.",
 );
 
 for (const required of [
@@ -120,39 +182,33 @@ assert(!signInPage.includes("Student Access Code"), "Student Access must not rem
 
 for (const required of [
   "request_school_access",
-  "get_my_school_memberships",
   "get_my_school_access_requests",
+  "resolveKsiRuntimeAccess",
+  'type LoadState = "checking" | "ready" | "error"',
   "School access is approved, not self-created",
   "Awaiting KAEC review",
+  "KSI will not create another school request from an uncertain state",
 ]) {
   assert(ownerAccess.includes(required), `Owner onboarding flow is missing: ${required}`);
 }
 
 for (const required of [
   "redeem_staff_access_code",
-  "get_my_school_memberships",
-  "This account is already a School Owner",
-  "Staff Access Code",
-]) {
-  assert(teacherJoin.includes(required), `Teacher/Leadership onboarding flow is missing: ${required}`);
-}
-
-for (const required of [
-  'type MembershipCheckState = "checking" | "ready" | "error"',
-  "Do not enter another access code yet.",
+  "resolveKsiRuntimeAccess",
+  "verifyRedeemedMembership",
+  "setRedeemed(linked)",
+  "Access code already accepted",
+  "Do not enter another access code",
   "Retry access check",
   'window.location.replace("/dashboard")',
-  "Access confirmed. Opening your KSI workspace",
   "Another access code cannot bypass that governance state",
 ]) {
   assert(teacherJoin.includes(required), `Teacher access-loop regression protection is missing: ${required}`);
 }
-
 assert(
   teacherJoin.includes('membershipState === "error"') &&
-    teacherJoin.includes('membershipState !== "ready" || !activeSchoolMembership') &&
-    teacherJoin.includes("getUser()"),
-  "Teacher onboarding must distinguish access-check failure from confirmed absence of membership and auto-forward any active school member.",
+    teacherJoin.includes("redeemed ? verifyRedeemedMembership(redeemed) : loadAccess()"),
+  "A redeemed one-time Staff Access Code must remain terminal while membership confirmation is retried.",
 );
 
 for (const required of [
@@ -178,12 +234,22 @@ assert(
   "Retired Student Access setup must return owners to the active school setup experience.",
 );
 
-const browserSurface = [authForm, ownerAccess, teacherJoin, staffAccess, adminRequests].join("\n");
+const browserSurface = [
+  authForm,
+  authResolver,
+  runtimeAccess,
+  schoolShell,
+  dashboard,
+  ownerAccess,
+  teacherJoin,
+  staffAccess,
+  adminRequests,
+].join("\n");
 assert(
   !browserSurface.includes("SUPABASE_SERVICE_ROLE_KEY") && !browserSurface.includes("service_role"),
-  "Stage 15/16 browser surfaces must not expose a Supabase service-role credential.",
+  "Browser access surfaces must not expose a Supabase service-role credential.",
 );
 
 console.log(
-  "Stage 15 compatibility verification passed under KSI 2.2: governed owner/staff onboarding remains intact, active school onboarding is terminal and auto-routes to the dashboard, Student KSI entry is retired, and no role selection can grant school authority.",
+  "Stage 15 compatibility verification passed under KSI 2.2: every authenticated entry resolves governed membership first, staff-code redemption is terminal, owner onboarding is error-safe, technical failures never masquerade as missing school access, Student KSI entry is retired, and no role selection can grant school authority.",
 );
