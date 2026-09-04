@@ -2,7 +2,7 @@
   "id": "https://www.ksi.name.ng/ksi",
   "name": "KAEC School Intelligence",
   "short_name": "KSI",
-  "start_url": "https://www.ksi.name.ng/sign-in",
+  "start_url": "https://www.ksi.name.ng/auth/resolve",
   "scope": "https://www.ksi.name.ng/",
   "display": "standalone",
   "background_color": "#fafaf9",

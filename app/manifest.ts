@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "KSI",
     description:
       "Teacher and leadership intelligence for better learning decisions, evidence and next steps.",
-    start_url: "/sign-in",
+    start_url: "/auth/resolve",
     scope: "/",
     display: "standalone",
     background_color: "#fafaf9",
@@ -44,7 +44,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Open KSI",
         short_name: "Open KSI",
-        url: "/sign-in",
+        url: "/auth/resolve",
       },
       {
         name: "HQLS Lessons",

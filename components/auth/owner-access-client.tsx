@@ -1,20 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
-
-type SchoolMembership = {
-  workspace_id: string;
-  workspace_name: string;
-  access_status: "active" | "paused" | "blocked" | "disabled";
-  member_role: string;
-  member_status: string;
-};
+import {
+  type KsiSchoolMembership,
+  resolveKsiRuntimeAccess,
+} from "@/lib/supabase/runtime-access";
 
 type AccessRequest = {
   request_id: string;
@@ -30,9 +26,11 @@ type AccessRequest = {
 };
 
 type OwnerState = {
-  memberships: SchoolMembership[];
+  memberships: KsiSchoolMembership[];
   requests: AccessRequest[];
 };
+
+type LoadState = "checking" | "ready" | "error";
 
 function messageFrom(caught: unknown, fallback: string) {
   if (caught instanceof Error && caught.message) return caught.message;
@@ -48,30 +46,22 @@ function messageFrom(caught: unknown, fallback: string) {
 }
 
 async function loadOwnerState(supabase: SupabaseClient): Promise<OwnerState | null> {
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
-  if (!session?.user) return null;
+  const access = await resolveKsiRuntimeAccess(supabase, { force: true });
+  if (!access) return null;
 
-  const [membershipResult, requestResult] = await Promise.all([
-    supabase.rpc("get_my_school_memberships"),
-    supabase.rpc("get_my_school_access_requests"),
-  ]);
-  if (membershipResult.error) throw membershipResult.error;
-  if (requestResult.error) throw requestResult.error;
+  const { data, error } = await supabase.rpc("get_my_school_access_requests");
+  if (error) throw error;
 
   return {
-    memberships: (membershipResult.data ?? []) as SchoolMembership[],
-    requests: (requestResult.data ?? []) as AccessRequest[],
+    memberships: access.memberships,
+    requests: (data ?? []) as AccessRequest[],
   };
 }
 
 export function OwnerAccessClient() {
   const router = useRouter();
   const [state, setState] = useState<OwnerState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<LoadState>("checking");
   const [busy, setBusy] = useState(false);
   const [schoolName, setSchoolName] = useState("");
   const [schoolLocation, setSchoolLocation] = useState("");
@@ -79,37 +69,32 @@ export function OwnerAccessClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  async function refresh() {
-    const next = await loadOwnerState(getBrowserSupabaseClient());
-    if (!next) {
-      router.replace("/sign-in");
-      return;
+  const refresh = useCallback(async () => {
+    setLoadState("checking");
+    setError(null);
+    try {
+      const next = await loadOwnerState(getBrowserSupabaseClient());
+      if (!next) {
+        router.replace("/sign-in");
+        return;
+      }
+      setState(next);
+      setLoadState("ready");
+    } catch (caught) {
+      setError(messageFrom(caught, "Owner access could not be loaded."));
+      setLoadState("error");
     }
-    setState(next);
-  }
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
-    const supabase = getBrowserSupabaseClient();
-    void loadOwnerState(supabase)
-      .then((next) => {
-        if (cancelled) return;
-        if (!next) {
-          router.replace("/sign-in");
-          return;
-        }
-        setState(next);
-      })
-      .catch((caught) => {
-        if (!cancelled) setError(messageFrom(caught, "Owner access could not be loaded."));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    queueMicrotask(() => {
+      if (!cancelled) void refresh();
+    });
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [refresh]);
 
   const ownerSchools = useMemo(
     () => state?.memberships.filter((membership) => membership.member_role === "owner") ?? [],
@@ -120,6 +105,11 @@ export function OwnerAccessClient() {
   );
   const latestRequest = state?.requests[0] ?? null;
   const pendingRequest = state?.requests.find((request) => request.status === "pending") ?? null;
+
+  useEffect(() => {
+    if (loadState !== "ready" || !activeOwnerSchool) return;
+    window.location.replace("/dashboard");
+  }, [activeOwnerSchool, loadState]);
 
   async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,8 +136,25 @@ export function OwnerAccessClient() {
     }
   }
 
-  if (loading) {
-    return <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5"><p className="text-sm font-semibold text-zinc-600">Checking School Owner access…</p></main>;
+  if (loadState === "checking" || (loadState === "ready" && activeOwnerSchool)) {
+    return <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5"><p className="text-sm font-semibold text-zinc-600">{activeOwnerSchool ? "Owner access confirmed. Opening your dashboard…" : "Checking School Owner access…"}</p></main>;
+  }
+
+  if (loadState === "error") {
+    return (
+      <main className="min-h-screen bg-stone-50 px-5 py-10 sm:px-8">
+        <div className="mx-auto max-w-3xl">
+          <KaecBrand />
+          <section className="mt-8 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Owner access check interrupted</p>
+            <h1 className="mt-2 text-2xl font-bold text-zinc-950">KSI will not create another school request from an uncertain state.</h1>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">A temporary session or network failure is not treated as “no school.” Retry the existing account check first.</p>
+            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error ?? "Owner access could not be loaded."}</p>
+            <button type="button" onClick={() => void refresh()} className="mt-5 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Retry access check</button>
+          </section>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -169,14 +176,7 @@ export function OwnerAccessClient() {
         {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">{error}</div> : null}
         {success ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">{success}</div> : null}
 
-        {activeOwnerSchool ? (
-          <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-7 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Access active</p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">{activeOwnerSchool.workspace_name}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">Your school is active. Continue to the role-aware KSI dashboard.</p>
-            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open school dashboard</a>
-          </section>
-        ) : ownerSchools.length > 0 ? (
+        {ownerSchools.length > 0 ? (
           <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">School not active</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{ownerSchools[0].workspace_name}</h2>
@@ -196,7 +196,7 @@ export function OwnerAccessClient() {
           <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm sm:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Request school access</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">Tell KAEC which school this account represents.</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">Submitting this form does not activate a school. It creates a governed approval request for KAEC.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">This form appears only after KSI successfully loads your current memberships and confirms there is no existing owner school or pending request.</p>
 
             {latestRequest?.status === "rejected" ? (
               <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -226,7 +226,7 @@ export function OwnerAccessClient() {
 
         <section className="mt-6 rounded-3xl border border-zinc-200 bg-zinc-50 p-6">
           <h2 className="font-bold text-zinc-950">Already part of a school in another role?</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">Your same KSI identity can hold governed roles, but choosing “School Owner” on the sign-in screen never upgrades an existing Teacher or Student account into an owner.</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">Choosing “School Owner” never upgrades an existing Teacher account into an owner. School authority still comes only from the governed KAEC approval process.</p>
         </section>
       </div>
     </main>

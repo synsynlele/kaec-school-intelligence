@@ -2,19 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
+import {
+  announceKsiWorkspaceChange,
+  type KsiSchoolRole,
+  resolveKsiRuntimeAccess,
+} from "@/lib/supabase/runtime-access";
 
-type Role = "owner" | "admin" | "leader" | "teacher" | "student";
-type RuntimeWorkspace = {
-  id: string;
-  name: string;
-  workspace_type: string;
-  access_status?: string | null;
-};
-type SchoolWorkspace = RuntimeWorkspace & { role: Role };
+type Role = KsiSchoolRole;
+type SchoolWorkspace = { id: string; name: string; role: Role };
 type Metrics = { lessons: number; assessments: number; diagnoses: number; interventions: number };
 type State = {
   displayName: string;
@@ -30,6 +29,8 @@ type WorkspaceCard = {
   description: string;
   emphasis?: "primary" | "neutral" | "blue";
 };
+
+const OPERATIONAL_ROLES = new Set(["owner", "admin", "leader", "teacher"]);
 
 function roleLabel(role: Role) {
   if (role === "owner") return "School Owner";
@@ -63,50 +64,35 @@ export function SchoolDashboardClient() {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const supabase = getBrowserSupabaseClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
+      const access = await resolveKsiRuntimeAccess(supabase);
+      if (!access) {
         router.replace("/sign-in");
         return;
       }
-
-      const [{ data: profile, error: profileError }, { data: memberships, error: membershipError }] = await Promise.all([
-        supabase.from("profiles").select("display_name,email,default_workspace_id").eq("id", user.id).single(),
-        supabase.from("workspace_members").select("workspace_id,role,status").eq("user_id", user.id).eq("status", "active"),
-      ]);
-      if (profileError) throw profileError;
-      if (membershipError) throw membershipError;
-
-      const membershipByWorkspace = new Map((memberships ?? []).map((membership) => [membership.workspace_id, membership.role as Role]));
-      const ids = [...membershipByWorkspace.keys()];
-      if (!ids.length) throw new Error("No active school membership is available for this account.");
-
-      const { data: workspaceRows, error: workspaceError } = await supabase
-        .from("workspaces")
-        .select("*")
-        .in("id", ids)
-        .eq("workspace_type", "school")
-        .order("name");
-      if (workspaceError) throw workspaceError;
-
-      const runtimeRows = (workspaceRows ?? []) as unknown as RuntimeWorkspace[];
-      const schools: SchoolWorkspace[] = runtimeRows
-        .filter((workspace) => workspace.access_status === undefined || workspace.access_status === "active")
-        .map((workspace) => ({ ...workspace, role: membershipByWorkspace.get(workspace.id) ?? "teacher" }));
-      if (!schools.length) throw new Error("Your account is not linked to an active KSI school workspace.");
-
-      let activeWorkspaceId = profile.default_workspace_id ?? "";
-      if (!schools.some((school) => school.id === activeWorkspaceId)) {
-        activeWorkspaceId = schools[0].id;
-        const { error: defaultError } = await supabase.from("profiles").update({ default_workspace_id: activeWorkspaceId }).eq("id", user.id);
-        if (defaultError) throw defaultError;
-        window.dispatchEvent(new Event("ksi-workspace-change"));
+      if (!access.activeSchool) {
+        router.replace("/auth/resolve");
+        return;
       }
 
+      const schools: SchoolWorkspace[] = access.memberships
+        .filter(
+          (membership) =>
+            OPERATIONAL_ROLES.has(membership.member_role) &&
+            membership.member_status === "active" &&
+            membership.access_status === "active",
+        )
+        .map((membership) => ({
+          id: membership.workspace_id,
+          name: membership.workspace_name,
+          role: membership.member_role as Role,
+        }));
+
+      const activeWorkspaceId = access.activeSchool.workspace_id;
       const [lessonResult, assessmentResult, diagnosisResult, interventionResult] = await Promise.all([
         supabase.from("lessons").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("assessments").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
@@ -116,29 +102,34 @@ export function SchoolDashboardClient() {
       const metricError = lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error ?? interventionResult.error;
       if (metricError) throw metricError;
 
-      if (!cancelled) {
-        setState({
-          displayName: profile.display_name || "KSI User",
-          email: profile.email || user.email || "",
-          activeWorkspaceId,
-          schools,
-          metrics: {
-            lessons: lessonResult.count ?? 0,
-            assessments: assessmentResult.count ?? 0,
-            diagnoses: diagnosisResult.count ?? 0,
-            interventions: interventionResult.count ?? 0,
-          },
-        });
-      }
+      setState({
+        displayName: access.displayName,
+        email: access.email,
+        activeWorkspaceId,
+        schools,
+        metrics: {
+          lessons: lessonResult.count ?? 0,
+          assessments: assessmentResult.count ?? 0,
+          diagnoses: diagnosisResult.count ?? 0,
+          interventions: interventionResult.count ?? 0,
+        },
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The school dashboard could not be loaded.");
+    } finally {
+      setLoading(false);
     }
-
-    void load().catch((caught) => {
-      if (!cancelled) setError(caught instanceof Error ? caught.message : "The school dashboard could not be loaded.");
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
   }, [router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void load();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
 
   const activeSchool = useMemo(() => state?.schools.find((school) => school.id === state.activeWorkspaceId) ?? null, [state]);
 
@@ -148,11 +139,12 @@ export function SchoolDashboardClient() {
     setError(null);
     try {
       const supabase = getBrowserSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
       if (!user) throw new Error("Your session has expired. Sign in again.");
       const { error: updateError } = await supabase.from("profiles").update({ default_workspace_id: workspaceId }).eq("id", user.id);
       if (updateError) throw updateError;
-      window.dispatchEvent(new Event("ksi-workspace-change"));
+      announceKsiWorkspaceChange();
       window.location.reload();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "School workspace could not be changed.");
@@ -170,13 +162,14 @@ export function SchoolDashboardClient() {
   if (!state || !activeSchool) {
     return (
       <main className="min-h-screen bg-stone-50 px-5 py-10 sm:px-8">
-        <div className="mx-auto max-w-4xl rounded-3xl border border-red-200 bg-white p-7 shadow-sm">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
           <KaecBrand />
-          <h1 className="mt-7 text-2xl font-semibold text-zinc-950">School workspace unavailable</h1>
-          <p className="mt-3 text-sm leading-6 text-red-700">{error ?? "Your account is not linked to an active KSI school."}</p>
+          <h1 className="mt-7 text-2xl font-semibold text-zinc-950">Dashboard check interrupted</h1>
+          <p className="mt-3 text-sm leading-6 text-red-700">{error ?? "KSI could not finish loading this school workspace."}</p>
+          <p className="mt-3 text-sm leading-6 text-zinc-600">KSI will not interpret a dashboard-loading error as missing school membership or send you back to an access code.</p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link href="/teacher/join" className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Join a school</Link>
-            <Link href="/owner/access" className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-bold text-zinc-900">School Owner Access</Link>
+            <button type="button" onClick={() => void load()} className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Retry dashboard</button>
+            <button type="button" onClick={() => void signOut()} className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-bold text-zinc-900">Sign out</button>
           </div>
         </div>
       </main>

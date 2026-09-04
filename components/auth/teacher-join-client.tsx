@@ -1,26 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
-
-type SchoolMembership = {
-  workspace_id: string;
-  workspace_name: string;
-  access_status: "active" | "paused" | "blocked" | "disabled";
-  member_role: string;
-  member_status: string;
-};
+import {
+  announceKsiWorkspaceChange,
+  type KsiRuntimeAccess,
+  resolveKsiRuntimeAccess,
+} from "@/lib/supabase/runtime-access";
 
 type RedeemResult = {
   workspace_id: string;
   workspace_name: string;
   member_role: string;
 };
+
+type MembershipCheckState = "checking" | "ready" | "error";
+
+const AUTH_RETURN_KEY = "ksi:auth:returnTo";
+const STAFF_ROLES = new Set(["admin", "leader", "teacher"]);
 
 function messageFrom(caught: unknown, fallback: string) {
   if (caught instanceof Error && caught.message) return caught.message;
@@ -37,84 +39,105 @@ function messageFrom(caught: unknown, fallback: string) {
 
 export function TeacherJoinClient() {
   const router = useRouter();
-  const [memberships, setMemberships] = useState<SchoolMembership[]>([]);
+  const [access, setAccess] = useState<KsiRuntimeAccess | null>(null);
+  const [membershipState, setMembershipState] = useState<MembershipCheckState>("checking");
   const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [redeemed, setRedeemed] = useState<RedeemResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [linked, setLinked] = useState<RedeemResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const supabase: SupabaseClient = getBrowserSupabaseClient();
+  const loadAccess = useCallback(async () => {
+    setMembershipState("checking");
+    setError(null);
 
-    void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
-      if (cancelled) return;
-      if (sessionError) {
-        setError(sessionError.message);
-        setLoading(false);
-        return;
-      }
-      if (!data.session?.user) {
+    try {
+      const next = await resolveKsiRuntimeAccess(getBrowserSupabaseClient(), { force: true });
+      if (!next) {
         router.replace("/sign-in");
         return;
       }
+      setAccess(next);
+      setMembershipState("ready");
+    } catch (caught) {
+      setError(messageFrom(caught, "KSI could not verify your school membership."));
+      setMembershipState("error");
+    }
+  }, [router]);
 
-      const { data: membershipData, error: membershipError } = await supabase.rpc(
-        "get_my_school_memberships",
-      );
-      if (cancelled) return;
-      if (membershipError) setError(membershipError.message);
-      else setMemberships((membershipData ?? []) as SchoolMembership[]);
-      setLoading(false);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void loadAccess();
     });
-
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [loadAccess]);
 
-  const activeStaff = useMemo(
-    () =>
-      memberships.find(
-        (membership) =>
-          ["admin", "leader", "teacher"].includes(membership.member_role) &&
-          membership.member_status === "active" &&
-          membership.access_status === "active",
-      ) ?? null,
-    [memberships],
-  );
-
-  const inactiveStaff = useMemo(
-    () =>
-      memberships.find(
-        (membership) =>
-          ["admin", "leader", "teacher"].includes(membership.member_role) &&
-          membership.access_status !== "active",
-      ) ?? null,
-    [memberships],
-  );
-
+  const memberships = access?.memberships ?? [];
+  const activeSchoolMembership = access?.activeSchool ?? null;
+  const inactiveStaff =
+    memberships.find(
+      (membership) =>
+        STAFF_ROLES.has(membership.member_role) &&
+        (membership.member_status !== "active" || membership.access_status !== "active"),
+    ) ?? null;
   const ownerMembership = memberships.find((membership) => membership.member_role === "owner") ?? null;
   const studentMembership = memberships.find((membership) => membership.member_role === "student") ?? null;
+
+  useEffect(() => {
+    if (membershipState !== "ready" || !activeSchoolMembership) return;
+    window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+    window.location.replace("/dashboard");
+  }, [activeSchoolMembership, membershipState]);
+
+  const verifyRedeemedMembership = useCallback(async (linked: RedeemResult) => {
+    setMembershipState("checking");
+    setError(null);
+    try {
+      const next = await resolveKsiRuntimeAccess(getBrowserSupabaseClient(), { force: true });
+      if (!next?.activeSchool || next.activeSchool.workspace_id !== linked.workspace_id) {
+        throw new Error(
+          "Your Staff Access Code was accepted, but KSI has not finished confirming the new school membership yet. Retry this access check; do not request or enter another code.",
+        );
+      }
+      setAccess(next);
+      window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+      window.location.replace("/dashboard");
+    } catch (caught) {
+      setError(messageFrom(caught, "KSI accepted the code but could not confirm the new membership yet."));
+      setMembershipState("error");
+      setBusy(false);
+    }
+  }, []);
 
   async function redeem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!code.trim()) return;
     setBusy(true);
     setError(null);
+
     try {
       const supabase: SupabaseClient = getBrowserSupabaseClient();
       const { data, error: redeemError } = await supabase.rpc("redeem_staff_access_code", {
         raw_code: code.trim(),
       });
       if (redeemError) throw redeemError;
+
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) throw new Error("KSI could not complete the staff account link.");
-      setLinked(row as RedeemResult);
+
+      const linked = row as RedeemResult;
+      if (!linked.workspace_id || !linked.workspace_name || !linked.member_role) {
+        throw new Error("KSI linked the code but did not return a complete school membership.");
+      }
+
+      setRedeemed(linked);
+      setCode("");
+      announceKsiWorkspaceChange();
+      await verifyRedeemedMembership(linked);
     } catch (caught) {
       setError(messageFrom(caught, "The Staff Access Code could not be redeemed."));
-    } finally {
       setBusy(false);
     }
   }
@@ -129,8 +152,21 @@ export function TeacherJoinClient() {
     }
   }
 
-  if (loading) {
-    return <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5"><p className="text-sm font-semibold text-zinc-600">Checking Teacher / Staff access…</p></main>;
+  if (membershipState === "checking" || (membershipState === "ready" && activeSchoolMembership)) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-stone-50 px-5 text-center">
+        <div>
+          <p className="text-sm font-semibold text-zinc-600">
+            {redeemed
+              ? `Access code accepted for ${redeemed.workspace_name}. Confirming your school workspace…`
+              : activeSchoolMembership
+                ? "Access confirmed. Opening your KSI workspace…"
+                : "Checking Teacher / Staff access…"}
+          </p>
+          {redeemed ? <p className="mt-2 text-xs text-zinc-500">Do not enter or request another access code.</p> : null}
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -149,32 +185,39 @@ export function TeacherJoinClient() {
           </p>
         </section>
 
-        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">{error}</div> : null}
-
-        {linked ? (
-          <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-7 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Staff access connected</p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">{linked.workspace_name}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">Your governed role is <strong>{linked.member_role}</strong>. KSI has connected this account to the school without changing any other account identity.</p>
-            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</a>
-          </section>
-        ) : activeStaff ? (
-          <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-7 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Already connected</p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">{activeStaff.workspace_name}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">This account already has the <strong>{activeStaff.member_role}</strong> role in an active school.</p>
-            <a href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">Open KSI dashboard</a>
+        {membershipState === "error" ? (
+          <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">
+              {redeemed ? "Access code already accepted" : "Access check interrupted"}
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-zinc-950">Do not enter another access code.</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {redeemed
+                ? `KSI already accepted the one-time code for ${redeemed.workspace_name}. The only remaining step is to confirm the membership and open the dashboard.`
+                : "KSI could not verify whether this account is already connected to a school. A temporary network or session failure is never treated as no membership."}
+            </p>
+            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error ?? "KSI could not verify your school membership."}</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void (redeemed ? verifyRedeemedMembership(redeemed) : loadAccess())}
+              className="mt-5 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+            >
+              Retry access check
+            </button>
           </section>
         ) : inactiveStaff ? (
           <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">School access {inactiveStaff.access_status}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Existing staff membership</p>
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">{inactiveStaff.workspace_name}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">Your staff membership remains preserved, but protected school KSI is unavailable until KAEC reactivates the school.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Your staff membership already exists. Membership status is <strong>{inactiveStaff.member_status}</strong> and school access is <strong>{inactiveStaff.access_status}</strong>. Another access code cannot bypass that governance state; your school owner/admin or KAEC must restore the existing access instead.
+            </p>
           </section>
         ) : ownerMembership ? (
           <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-7">
             <p className="text-sm font-bold text-amber-950">This account is already a School Owner at {ownerMembership.workspace_name}.</p>
-            <p className="mt-2 text-sm leading-6 text-amber-900">Choosing “Teacher / Staff” on the entry screen does not downgrade or rewrite your owner role. Use your owner dashboard, or sign out and use the teacher&apos;s own account.</p>
+            <p className="mt-2 text-sm leading-6 text-amber-900">Choosing “Teacher / Staff” never downgrades or rewrites your owner role.</p>
             <div className="mt-5 flex flex-wrap gap-3">
               <a href="/dashboard" className="rounded-xl bg-amber-950 px-4 py-2.5 text-sm font-bold text-white">Open owner dashboard</a>
               <button type="button" disabled={busy} onClick={() => void signOutAndChangeAccount()} className="rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-bold text-amber-950">Use another account</button>
@@ -189,8 +232,9 @@ export function TeacherJoinClient() {
         ) : (
           <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm sm:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Staff Access Code</p>
-            <h2 className="mt-2 text-2xl font-bold text-zinc-950">Enter the code from your school.</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">The code is bound to the email address the school invited. If you signed in with a different email, KSI will refuse the connection.</p>
+            <h2 className="mt-2 text-2xl font-bold text-zinc-950">Enter the code from your school once.</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">This form appears only after KSI successfully confirms that this account has no active school membership. Once the code is accepted, KSI will never ask you to submit that one-time code again.</p>
+            {error ? <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">{error}</div> : null}
             <form onSubmit={redeem} className="mt-6 space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-semibold text-zinc-800">Staff Access Code</span>

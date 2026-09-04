@@ -10,6 +10,7 @@ const assert = (condition, message) => {
 const [
   migration,
   shell,
+  runtimeAccess,
   layout,
   nav,
   dashboardPage,
@@ -27,6 +28,7 @@ const [
 ] = await Promise.all([
   text("supabase/migrations/069_school_context_only_access.sql"),
   text("components/navigation/ksi-school-shell.tsx"),
+  text("lib/supabase/runtime-access.ts"),
   text("app/layout.tsx"),
   text("components/navigation/ksi-app-nav.tsx"),
   text("app/dashboard/page.tsx"),
@@ -64,20 +66,27 @@ assert(!/delete\s+from\s+public\.workspaces/i.test(migration), "Legacy personal 
 
 for (const required of [
   "KsiSchoolShell",
-  'workspace.workspace_type === "school"',
-  'workspace.access_status === "active"',
-  'default_workspace_id: preferred.id',
+  "resolveKsiRuntimeAccess",
   "School access required",
-  "Personal workspaces do not carry School Owner, Admin, Leader or Teacher authority",
+  "no active governed school membership exists",
 ]) {
   assert(shell.includes(required), `School context gate is missing: ${required}`);
+}
+for (const required of [
+  "get_my_school_memberships",
+  "OPERATIONAL_ROLES",
+  'membership.access_status === "active"',
+  "activeSchool.workspace_id",
+  "default_workspace_id",
+]) {
+  assert(runtimeAccess.includes(required), `Canonical school access resolution is missing: ${required}`);
 }
 assert(layout.includes("<KsiSchoolShell>{children}</KsiSchoolShell>"), "Protected KSI content must be mounted inside the school context gate.");
 
 assert(dashboardPage.includes("SchoolDashboardClient"), "Dashboard must mount the school-only dashboard.");
 for (const required of [
-  '.eq("workspace_type", "school")',
-  'workspace.access_status === "active"',
+  "resolveKsiRuntimeAccess",
+  'membership.access_status === "active"',
   'activeSchool.role === "owner" || activeSchool.role === "admin"',
   "Teacher workspace",
   "Leadership workspace",
