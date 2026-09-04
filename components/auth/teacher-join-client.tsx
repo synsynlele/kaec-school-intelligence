@@ -65,7 +65,13 @@ export function TeacherJoinClient() {
   }, [router]);
 
   useEffect(() => {
-    void loadAccess();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void loadAccess();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadAccess]);
 
   const memberships = access?.memberships ?? [];
