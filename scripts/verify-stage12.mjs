@@ -68,12 +68,17 @@ for (const required of [
   "Select this page",
   "Approve selected",
   "Reject selected",
-  "Promote selected…",
+  "Promote selected row…",
   "get_scheme_review_page",
   "update_scheme_entry",
+  "Required human review note",
 ]) {
   assert(reviewClient.includes(required), `Stage 12 review UX guard is missing: ${required}`);
 }
+assert(
+  !reviewClient.includes('supabase.rpc("promote_scheme_entries_bulk"'),
+  "The review console must expose only one-row curriculum promotion.",
+);
 
 assert(
   reviewPage.includes("SchemeReviewClient") &&

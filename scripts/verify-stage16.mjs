@@ -23,7 +23,7 @@ const [
   repairApi,
   repairClient,
   schemePage,
-  schemeIngestion,
+  schemeReview,
   databaseTypes,
   studentHome,
   studentJoin,
@@ -49,7 +49,7 @@ const [
   text("app/api/curriculum/scheme-repair/route.ts"),
   text("components/curriculum/scheme-source-repair-client.tsx"),
   text("app/setup/curriculum/schemes/page.tsx"),
-  text("components/workspace/scheme-ingestion-client.tsx"),
+  text("components/curriculum/scheme-review-client.tsx"),
   text("lib/supabase/database.ts"),
   text("app/student/page.tsx"),
   text("app/student/join/page.tsx"),
@@ -249,31 +249,32 @@ assert(
 );
 assert(
   schemePage.includes("SchemeSourceRepairClient") &&
-    schemePage.includes("SchemeIngestionClient"),
-  "Scheme governance page must combine source repair with the existing review console.",
+    schemePage.includes("SchemeReviewClient"),
+  "Scheme governance page must combine source repair with the full review console.",
 );
 
 for (const required of [
   "Required human review note",
-  "target_review_note: reviewNote",
+  "target_review_note: reviewNote.trim()",
   "Nothing was promoted automatically",
-  "Zero automatic promotion · bulk promotion disabled",
+  "Zero automatic promotion",
   'promotionText !== "PROMOTE"',
   'supabase.rpc("promote_scheme_entry"',
-  "Promote one reviewed row",
+  "Promote this approved row?",
+  "Edit source row",
 ]) {
   assert(
-    schemeIngestion.includes(required),
+    schemeReview.includes(required),
     `Active Scheme Ingestion governance UI is missing: ${required}`,
   );
 }
 assert(
-  !schemeIngestion.includes("target_review_note:null") &&
-    !schemeIngestion.includes("target_review_note: null"),
+  !schemeReview.includes("target_review_note:null") &&
+    !schemeReview.includes("target_review_note: null"),
   "Active Scheme Ingestion must never submit an empty review note.",
 );
 assert(
-  !schemeIngestion.includes("promote_scheme_entries_bulk"),
+  !schemeReview.includes('supabase.rpc("promote_scheme_entries_bulk"'),
   "Active Scheme Ingestion must expose only one-row curriculum promotion.",
 );
 
@@ -312,7 +313,7 @@ const browserSurface = [
   navigation,
   academicResources,
   repairClient,
-  schemeIngestion,
+  schemeReview,
   prefill,
 ].join("\n");
 assert(

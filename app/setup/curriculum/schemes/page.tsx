@@ -1,11 +1,11 @@
 import { SchemeSourceRepairClient } from "@/components/curriculum/scheme-source-repair-client";
-import { SchemeIngestionClient } from "@/components/workspace/scheme-ingestion-client";
+import { SchemeReviewClient } from "@/components/curriculum/scheme-review-client";
 
 export default function SchemeIngestionPage() {
   return (
     <>
       <SchemeSourceRepairClient />
-      <SchemeIngestionClient />
+      <SchemeReviewClient />
     </>
   );
 }

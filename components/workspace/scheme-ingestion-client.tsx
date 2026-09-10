@@ -276,7 +276,7 @@ export function SchemeIngestionClient() {
 
       <section className="mt-5 rounded-3xl bg-emerald-950 p-7 text-white shadow-sm sm:p-9">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
-          Stage 16 · Human-governed Lagos sequencing layer
+          Human-governed Lagos sequencing layer
         </p>
         <h1 className="mt-2 text-3xl font-bold">Scheme Ingestion</h1>
         <p className="mt-3 max-w-4xl text-sm leading-6 text-emerald-50/90">

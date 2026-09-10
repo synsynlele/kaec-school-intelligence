@@ -350,7 +350,7 @@ export function SchemeReviewClient() {
     };
   }, [router]);
 
-  const entries = pageData?.entries ?? [];
+  const entries = useMemo(() => pageData?.entries ?? [], [pageData]);
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selected.has(entry.id)),
     [entries, selected],
@@ -360,7 +360,7 @@ export function SchemeReviewClient() {
     selectableEntries.length > 0 &&
     selectableEntries.every((entry) => selected.has(entry.id));
   const selectedCanPromote =
-    selectedEntries.length > 0 &&
+    selectedEntries.length === 1 &&
     selectedEntries.every(
       (entry) => entry.review_status === "approved" && !entry.promoted_at,
     );
@@ -420,6 +420,12 @@ export function SchemeReviewClient() {
     reviewNote: string,
   ) {
     if (ids.length === 0) return;
+    if (!reviewNote.trim()) {
+      setError(
+        "A human review note is required before approving or rejecting a scheme entry.",
+      );
+      return;
+    }
     setAction(`${nextStatus}:${ids.length}`);
     setError(null);
     setNotice(null);
@@ -527,7 +533,10 @@ export function SchemeReviewClient() {
   }
 
   function requestPromotion(ids: string[]) {
-    if (ids.length === 0) return;
+    if (ids.length !== 1) {
+      setError("Promote one approved scheme row at a time.");
+      return;
+    }
     setPromotionIds(ids);
     setPromotionText("");
     setError(null);
@@ -544,19 +553,15 @@ export function SchemeReviewClient() {
     setNotice(null);
     try {
       const supabase = getBrowserSupabaseClient();
-      const result = ids.length === 1
-        ? await supabase.rpc("promote_scheme_entry", {
-            target_entry_id: ids[0],
-          })
-        : await supabase.rpc("promote_scheme_entries_bulk", {
-            target_entry_ids: ids,
-          });
+      const result = await supabase.rpc("promote_scheme_entry", {
+        target_entry_id: ids[0],
+      });
       if (result.error) throw result.error;
       setPromotionIds(null);
       setPromotionText("");
       setSelected(new Set());
       setNotice(
-        `${ids.length} approved scheme ${ids.length === 1 ? "entry was" : "entries were"} promoted into the canonical Lagos curriculum graph.`,
+        "The approved scheme entry was promoted into the canonical Lagos curriculum graph.",
       );
       await refreshAll();
     } catch (caught) {
@@ -619,7 +624,7 @@ export function SchemeReviewClient() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
-                Stage 12 · Human curriculum governance
+                Human curriculum governance
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 Scheme Review & Approval Console
@@ -762,12 +767,12 @@ export function SchemeReviewClient() {
                 <input
                   value={bulkNote}
                   onChange={(event) => setBulkNote(event.target.value)}
-                  placeholder="Optional review note for selected rows"
+                  placeholder="Required review note for selected rows"
                   className="min-w-0 flex-1 rounded-xl border border-emerald-700 bg-emerald-900 px-3 py-2 text-sm text-white outline-none placeholder:text-emerald-300 focus:border-emerald-300"
                 />
                 <button
                   type="button"
-                  disabled={Boolean(action)}
+                  disabled={Boolean(action) || !bulkNote.trim()}
                   onClick={() => void reviewEntries([...selected], "approved", bulkNote)}
                   className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-emerald-950 disabled:opacity-50"
                 >
@@ -775,7 +780,7 @@ export function SchemeReviewClient() {
                 </button>
                 <button
                   type="button"
-                  disabled={Boolean(action)}
+                  disabled={Boolean(action) || !bulkNote.trim()}
                   onClick={() => void reviewEntries([...selected], "rejected", bulkNote)}
                   className="rounded-xl border border-red-300/50 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
@@ -788,7 +793,7 @@ export function SchemeReviewClient() {
                     onClick={() => requestPromotion([...selected])}
                     className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-amber-950 disabled:opacity-50"
                   >
-                    Promote selected…
+                    Promote selected row…
                   </button>
                 ) : null}
               </div>
@@ -907,7 +912,7 @@ export function SchemeReviewClient() {
                                   [entry.id]: event.target.value,
                                 }))
                               }
-                              placeholder="Optional review note"
+                              placeholder="Required human review note"
                               className="min-w-0 flex-1 rounded-xl border border-zinc-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-700"
                             />
                             <div className="flex flex-wrap gap-2">
@@ -921,7 +926,7 @@ export function SchemeReviewClient() {
                               </button>
                               <button
                                 type="button"
-                                disabled={Boolean(action)}
+                                disabled={Boolean(action) || !rowNote.trim()}
                                 onClick={() => void reviewEntries([entry.id], "approved", rowNote)}
                                 className="rounded-xl bg-emerald-800 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50"
                               >
@@ -929,7 +934,7 @@ export function SchemeReviewClient() {
                               </button>
                               <button
                                 type="button"
-                                disabled={Boolean(action)}
+                                disabled={Boolean(action) || !rowNote.trim()}
                                 onClick={() => void reviewEntries([entry.id], "rejected", rowNote)}
                                 className="rounded-xl border border-red-300 px-3.5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                               >
@@ -1088,7 +1093,7 @@ export function SchemeReviewClient() {
               Explicit promotion gate
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              Promote {promotionIds.length} approved {promotionIds.length === 1 ? "row" : "rows"}?
+              Promote this approved row?
             </h2>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
               Promotion creates canonical curriculum nodes and makes the approved scheme content available to KSI&apos;s curriculum graph. This is separate from approval and is never automatic.
