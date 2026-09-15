@@ -8,14 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs && node scripts/verify-stage5.mjs && node scripts/verify-stage6.mjs && node scripts/verify-ksi2.mjs && node scripts/verify-ksi2-completion.mjs && node scripts/verify-stage12.mjs && node scripts/verify-stage14.mjs && node scripts/verify-stage15.mjs && node scripts/verify-stage16.mjs && node scripts/verify-v1-stability.mjs && node scripts/verify-prerelease-2026-08-20.mjs && node scripts/verify-ai-generation-transport.mjs && node scripts/verify-lite-distribution.mjs",
+    "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs && node scripts/verify-stage5.mjs && node scripts/verify-stage6.mjs && node scripts/verify-ksi2.mjs && node scripts/verify-ksi2-completion.mjs && node scripts/verify-stage12.mjs && node scripts/verify-stage14.mjs && node scripts/verify-stage15.mjs && node scripts/verify-stage16.mjs && node scripts/verify-v1-stability.mjs && node scripts/verify-prerelease-2026-08-20.mjs && node scripts/verify-ai-generation-transport.mjs && node scripts/verify-lite-distribution.mjs && node scripts/verify-teacher-artifact-isolation.mjs",
     "validate": "npm run lint && npm run typecheck && npm run verify:structure && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.0",
-    "next": "16.3.0",
+    "next": "16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.6.0",
@@ -27,12 +27,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   },
   "overrides": {
     "browserslist": "4.28.7",
-    "nanoid": "3.3.18"
+    "nanoid": "3.3.18",
+    "sharp": "0.35.4",
+    "js-yaml": "4.3.2"
   }
 }
