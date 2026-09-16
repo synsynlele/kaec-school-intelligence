@@ -31,7 +31,8 @@ export class OpenAIProviderError extends Error {
   }
 }
 
-export type OpenAIReasoningEffort = "minimal" | "low" | "medium" | "high";
+export type OpenAIReasoningEffort = "none" | "minimal" | "low" | "medium" | "high";
+export type OpenAITextVerbosity = "low" | "medium" | "high";
 
 export type GenerateOpenAIJsonInput = {
   systemInstruction: string;
@@ -41,6 +42,10 @@ export type GenerateOpenAIJsonInput = {
   temperature?: number;
   maxOutputTokens?: number;
   reasoningEffort?: OpenAIReasoningEffort;
+  model?: string;
+  promptCacheKey?: string;
+  promptCacheTtl?: "30m";
+  textVerbosity?: OpenAITextVerbosity;
 };
 
 export type GenerateOpenAIJsonResult<T> = {
@@ -186,10 +191,11 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // KSI uses GPT-5 mini for core educational generation. The existing
-  // environment override is retained so deployments can be changed deliberately
-  // without exposing model configuration to the browser.
+  // Callers may pin a feature-specific model so provenance and the provider
+  // request cannot drift. KSI keeps gpt-5-mini as the platform-wide cost-safe
+  // fallback for features that do not deliberately choose another model.
   const model =
+    input.model?.trim() ||
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
     "gpt-5-mini";
@@ -225,9 +231,18 @@ export async function generateOpenAIJson<T>(
             strict: true,
             schema: strictifySchema(input.responseSchema),
           },
+          ...(input.textVerbosity && model.startsWith("gpt-5")
+            ? { verbosity: input.textVerbosity }
+            : {}),
         },
         ...(supportsReasoningEffort(model)
           ? { reasoning: { effort: reasoningEffort } }
+          : {}),
+        ...(input.promptCacheKey
+          ? { prompt_cache_key: input.promptCacheKey }
+          : {}),
+        ...(input.promptCacheKey && model.startsWith("gpt-5.6")
+          ? { prompt_cache_options: { ttl: input.promptCacheTtl ?? "30m" } }
           : {}),
         max_output_tokens: input.maxOutputTokens ?? 12000,
       }),

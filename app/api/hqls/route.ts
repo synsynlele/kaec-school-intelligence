@@ -36,6 +36,8 @@ export const runtime = "nodejs";
 const MAX_SELECTED_RESOURCES = 3;
 const MAX_INLINE_RESOURCE_BYTES = 12 * 1024 * 1024;
 const AI_RUNS_PER_MINUTE = 6;
+const HQLS_MAX_OUTPUT_TOKENS = 8000;
+const HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS = 3500;
 
 const SUPPORTED_INLINE_MIME = new Set([
   "application/pdf",
@@ -602,10 +604,15 @@ async function saveLessonValidation(args: {
 
 function configuredOpenAIModel() {
   return (
+    process.env.KSI_HQLS_OPENAI_MODEL?.trim() ||
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
     "gpt-5.6-terra"
   );
+}
+
+function configuredHqlsReasoningEffort(model: string) {
+  return model.startsWith("gpt-5.6") ? ("none" as const) : ("low" as const);
 }
 
 async function handleGenerate(
@@ -616,8 +623,10 @@ async function handleGenerate(
   let runId: string | null = null;
   try {
     const validatedInput = validateGenerateInput(rawInput);
-    const workspace = await requireWorkspace(supabase, validatedInput.workspaceId);
-    const input = await resolveAcademicContext(supabase, validatedInput);
+    const [workspace, input] = await Promise.all([
+      requireWorkspace(supabase, validatedInput.workspaceId),
+      resolveAcademicContext(supabase, validatedInput),
+    ]);
     if (
       workspace.workspace_type === "school" &&
       (!input.subjectId || !input.classId)
@@ -626,12 +635,16 @@ async function handleGenerate(
         "Choose a subject and class registered in the active school before generating an HQLS lesson. KSI will accept normal variations such as SS 1/SS1 and common subject abbreviations when they resolve uniquely.",
       );
     }
-    await enforceAiRateLimit(supabase, userId, input.workspaceId);
-    const resources = await loadResourceContext(
-      supabase,
-      input.workspaceId,
-      input.resourceIds ?? [],
-    );
+    const [, resources] = await Promise.all([
+      enforceAiRateLimit(supabase, userId, input.workspaceId),
+      loadResourceContext(
+        supabase,
+        input.workspaceId,
+        input.resourceIds ?? [],
+      ),
+    ]);
+    const model = configuredOpenAIModel();
+    const generationStartedAt = Date.now();
 
     runId = await startAiRun(supabase, {
       workspaceId: input.workspaceId,
@@ -640,7 +653,7 @@ async function handleGenerate(
       engineVersion: HQLS_ENGINE_VERSION,
       promptVersion: HQLS_PROMPT_VERSION,
       provider: "openai",
-      model: configuredOpenAIModel(),
+      model,
       artifactType: "lesson",
       inputSummary: {
         subject: input.subject,
@@ -661,25 +674,91 @@ async function handleGenerate(
       ],
       responseSchema: HQLS_LESSON_JSON_SCHEMA,
       schemaName: "ksi_hqls_lesson",
-      maxOutputTokens: 14000,
+      model,
+      reasoningEffort: configuredHqlsReasoningEffort(model),
+      promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}`,
+      promptCacheTtl: "30m",
+      textVerbosity: "low",
+      maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
     });
 
     let lesson = parseGeneratedHqlsLesson(generated.data);
     let validation = validateHqlsLesson(lesson);
+    let repairMode: "none" | "single_stage" | "full_lesson" = "none";
+    let repairDurationMs = 0;
 
     if (!validation.passed) {
-      const repaired = await generateOpenAIJson<unknown>({
-        systemInstruction: buildHqlsGenerationSystemInstruction(),
-        parts: [
-          { text: buildHqlsRepairPrompt(input, lesson, validation) },
-          ...resources.parts,
-        ],
-        responseSchema: HQLS_LESSON_JSON_SCHEMA,
-        schemaName: "ksi_hqls_lesson_repair",
-        maxOutputTokens: 14000,
-      });
-      lesson = parseGeneratedHqlsLesson(repaired.data);
-      validation = validateHqlsLesson(lesson);
+      const failedStages = lesson.stages.filter(
+        (stage) => !validation.stageValidation[stage.stageKey]?.passed,
+      );
+
+      if (failedStages.length === 1) {
+        repairMode = "single_stage";
+        const targetStage = failedStages[0];
+        const targetViolations = validation.violations.filter(
+          (item) => item.stageKey === targetStage.stageKey,
+        );
+        const stageValidation = validation.stageValidation[targetStage.stageKey];
+        const repairPrompt = `${buildStageRegenerationPrompt({
+          lesson,
+          targetStage,
+          action: "improve",
+          lessonContext: lessonContextSummary(input),
+        })}
+
+Deterministic fidelity issues that must be fixed before returning this stage:
+${(
+          targetViolations.length
+            ? targetViolations.map((item) => `${item.code}: ${item.message}`)
+            : stageValidation.violations
+        )
+          .map((item) => `- ${item}`)
+          .join("\n")}`;
+        const repaired = await generateOpenAIJson<unknown>({
+          systemInstruction: buildHqlsGenerationSystemInstruction(),
+          parts: [{ text: repairPrompt }, ...resources.parts],
+          responseSchema: HQLS_STAGE_JSON_SCHEMA,
+          schemaName: "ksi_hqls_stage_repair",
+          model,
+          reasoningEffort: "low",
+          promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair`,
+          promptCacheTtl: "30m",
+          textVerbosity: "low",
+          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
+        });
+        repairDurationMs = repaired.durationMs;
+        const replacement = parseHqlsStageContent(
+          repaired.data,
+          targetStage.stageNumber,
+        );
+        lesson = {
+          ...lesson,
+          stages: lesson.stages.map((stage) =>
+            stage.stageNumber === replacement.stageNumber ? replacement : stage,
+          ),
+        };
+        validation = validateHqlsLesson(lesson);
+      } else {
+        repairMode = "full_lesson";
+        const repaired = await generateOpenAIJson<unknown>({
+          systemInstruction: buildHqlsGenerationSystemInstruction(),
+          parts: [
+            { text: buildHqlsRepairPrompt(input, lesson, validation) },
+            ...resources.parts,
+          ],
+          responseSchema: HQLS_LESSON_JSON_SCHEMA,
+          schemaName: "ksi_hqls_lesson_repair",
+          model,
+          reasoningEffort: "low",
+          promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
+          promptCacheTtl: "30m",
+          textVerbosity: "low",
+          maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
+        });
+        repairDurationMs = repaired.durationMs;
+        lesson = parseGeneratedHqlsLesson(repaired.data);
+        validation = validateHqlsLesson(lesson);
+      }
     }
 
     if (!validation.passed) {
@@ -717,22 +796,36 @@ async function handleGenerate(
 
     const savedLesson = persisted.lesson as LessonRow;
     await saveLessonValidation({ supabase, lesson: savedLesson, validation });
-    await attachAiRunArtifact(supabase, runId, savedLesson.id);
-    await persistFidelityCheck({
-      supabase,
-      lessonId: savedLesson.id,
-      validation,
-    });
-    await linkResources({
-      supabase,
-      workspaceId: input.workspaceId,
-      lessonId: savedLesson.id,
-      userId,
-      resources: resources.rows,
-    });
+    await Promise.all([
+      attachAiRunArtifact(supabase, runId, savedLesson.id),
+      persistFidelityCheck({
+        supabase,
+        lessonId: savedLesson.id,
+        validation,
+      }),
+      linkResources({
+        supabase,
+        workspaceId: input.workspaceId,
+        lessonId: savedLesson.id,
+        userId,
+        resources: resources.rows,
+      }),
+    ]);
     await completeAiRun(supabase, runId, "succeeded");
 
     const refreshed = await fetchLessonWithStages(supabase, savedLesson.id);
+    console.info(
+      "KSI_HQLS_TIMING",
+      JSON.stringify({
+        model,
+        firstPassMs: generated.durationMs,
+        repairMs: repairDurationMs,
+        repairMode,
+        providerMs: generated.durationMs + repairDurationMs,
+        totalFromGenerationStartMs: Date.now() - generationStartedAt,
+        resourceCount: resources.rows.length,
+      }),
+    );
     return json({
       lesson: refreshed.lesson,
       stages: refreshed.stages,

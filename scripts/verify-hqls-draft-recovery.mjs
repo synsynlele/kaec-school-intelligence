@@ -24,7 +24,7 @@ for (const required of [
 
 const schoolGuardIndex = route.indexOf('workspace.workspace_type === "school"');
 const rateLimitCallIndex = route.indexOf(
-  "await enforceAiRateLimit(supabase, userId, input.workspaceId);",
+  "enforceAiRateLimit(supabase, userId, input.workspaceId)",
   schoolGuardIndex,
 );
 assert(
