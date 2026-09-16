@@ -143,6 +143,50 @@ function requireString(value: unknown, label: string) {
   return value.trim();
 }
 
+function academicWords(value: string) {
+  return value.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+
+function compactAcademicLabel(value: string, omitGenericSubjectWords = false) {
+  const words = academicWords(value).filter(
+    (word) =>
+      !omitGenericSubjectWords ||
+      (word !== "language" && word !== "studies"),
+  );
+  return words.join("");
+}
+
+function academicAcronym(value: string) {
+  return academicWords(value)
+    .filter((word) => !["and", "of", "the"].includes(word))
+    .map((word) => word[0] ?? "")
+    .join("");
+}
+
+function findUniqueAcademicMatch<T extends { id: string; name: string }>(
+  rows: T[],
+  requested: string,
+  kind: "class" | "subject",
+) {
+  const compactRequested = compactAcademicLabel(requested);
+  const simplifiedRequested = compactAcademicLabel(
+    requested,
+    kind === "subject",
+  );
+  const matches = rows.filter((row) => {
+    if (compactAcademicLabel(row.name) === compactRequested) return true;
+    if (kind === "class") return false;
+    if (
+      simplifiedRequested &&
+      compactAcademicLabel(row.name, true) === simplifiedRequested
+    ) {
+      return true;
+    }
+    return academicAcronym(row.name) === compactRequested;
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
 function uniqueStrings(value: unknown) {
   if (!Array.isArray(value)) return [];
   return [
@@ -259,28 +303,42 @@ async function resolveAcademicContext(
   supabase: KsiSupabaseClient,
   input: HqlsLessonRequest,
 ) {
+  let subjectId = input.subjectId;
+  let classId = input.classId;
   let subject = input.subject;
   let classLevel = input.classLevel;
   let ageRange = input.ageRange;
 
-  if (input.subjectId) {
+  if (subjectId) {
     const { data, error } = await supabase
       .from("subjects")
       .select("id,name,active")
-      .eq("id", input.subjectId)
+      .eq("id", subjectId)
       .eq("workspace_id", input.workspaceId)
       .single();
     if (error || !data || !data.active) {
       throw new Error("The selected subject is not available in this workspace.");
     }
     subject = data.name;
+  } else {
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("id,name")
+      .eq("workspace_id", input.workspaceId)
+      .eq("active", true);
+    if (error) throw error;
+    const matched = findUniqueAcademicMatch(data ?? [], subject, "subject");
+    if (matched) {
+      subjectId = matched.id;
+      subject = matched.name;
+    }
   }
 
-  if (input.classId) {
+  if (classId) {
     const { data, error } = await supabase
       .from("classes")
       .select("id,name,age_range,active")
-      .eq("id", input.classId)
+      .eq("id", classId)
       .eq("workspace_id", input.workspaceId)
       .single();
     if (error || !data || !data.active) {
@@ -288,9 +346,22 @@ async function resolveAcademicContext(
     }
     classLevel = data.name;
     ageRange = input.ageRange || data.age_range || input.ageRange;
+  } else {
+    const { data, error } = await supabase
+      .from("classes")
+      .select("id,name,age_range")
+      .eq("workspace_id", input.workspaceId)
+      .eq("active", true);
+    if (error) throw error;
+    const matched = findUniqueAcademicMatch(data ?? [], classLevel, "class");
+    if (matched) {
+      classId = matched.id;
+      classLevel = matched.name;
+      ageRange = input.ageRange || matched.age_range || input.ageRange;
+    }
   }
 
-  return { ...input, subject, classLevel, ageRange };
+  return { ...input, subjectId, classId, subject, classLevel, ageRange };
 }
 
 async function enforceAiRateLimit(
@@ -512,7 +583,7 @@ async function saveLessonValidation(args: {
   lesson: LessonRow;
   validation: ReturnType<typeof validateHqlsLesson>;
 }) {
-  const { error } = await args.supabase
+  const { data, error } = await args.supabase
     .from("lessons")
     .update({
       status: args.validation.passed ? "validated" : "draft",
@@ -520,8 +591,13 @@ async function saveLessonValidation(args: {
       engine_version: HQLS_ENGINE_VERSION,
       prompt_version: HQLS_PROMPT_VERSION,
     })
-    .eq("id", args.lesson.id);
+    .eq("id", args.lesson.id)
+    .select("id,status,validation_summary")
+    .single();
   if (error) throw error;
+  if (!data) {
+    throw new Error("The HQLS lesson validation state was not saved.");
+  }
 }
 
 function configuredOpenAIModel() {
@@ -540,8 +616,16 @@ async function handleGenerate(
   let runId: string | null = null;
   try {
     const validatedInput = validateGenerateInput(rawInput);
-    await requireWorkspace(supabase, validatedInput.workspaceId);
+    const workspace = await requireWorkspace(supabase, validatedInput.workspaceId);
     const input = await resolveAcademicContext(supabase, validatedInput);
+    if (
+      workspace.workspace_type === "school" &&
+      (!input.subjectId || !input.classId)
+    ) {
+      throw new Error(
+        "Choose a subject and class registered in the active school before generating an HQLS lesson. KSI will accept normal variations such as SS 1/SS1 and common subject abbreviations when they resolve uniquely.",
+      );
+    }
     await enforceAiRateLimit(supabase, userId, input.workspaceId);
     const resources = await loadResourceContext(
       supabase,

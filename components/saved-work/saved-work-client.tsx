@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -298,15 +299,25 @@ export function SavedWorkClient() {
 
                   <div className="flex flex-wrap gap-2">
                     {view === "active" ? (
-                      <button
-                        type="button"
-                        disabled={!item.canManage || busyKey !== null}
-                        onClick={() => void manage(item, "archive")}
-                        className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {busyKey === archiveKey ? "Archiving…" : "Archive"}
-                      </button>
-                    ) : (
+            <>
+              {item.artifactType === "lesson" ? (
+                <Link
+                  href={`/hqls?lesson=${encodeURIComponent(item.artifactId)}`}
+                  className="min-h-10 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Open HQLS
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                disabled={!item.canManage || busyKey !== null}
+                onClick={() => void manage(item, "archive")}
+                className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busyKey === archiveKey ? "Archiving…" : "Archive"}
+              </button>
+            </>
+          ) : (
                       <>
                         <button
                           type="button"

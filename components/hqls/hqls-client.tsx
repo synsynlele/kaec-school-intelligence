@@ -257,7 +257,14 @@ export function HqlsClient() {
     [state?.classes, classLevel],
   );
 
-  const refreshLessons = useCallback(async () => {
+  const needsFinalValidation = Boolean(
+  selectedLesson?.status === "draft" &&
+    validation === null &&
+    selectedLesson.class_id &&
+    selectedLesson.subject_id,
+);
+
+const refreshLessons = useCallback(async () => {
     if (!state) return;
     const supabase = getBrowserSupabaseClient();
     const { data, error: lessonError } = await supabase
@@ -870,15 +877,30 @@ export function HqlsClient() {
                 <button
                   type="button"
                   onClick={() => void saveEdits()}
-                  disabled={saving || !dirty}
+                  disabled={saving || (!dirty && !needsFinalValidation)}
                   className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {saving ? "Saving + checking…" : dirty ? "Save edits" : "Saved"}
+                  {saving
+            ? "Saving + checking…"
+            : needsFinalValidation
+              ? "Finish validation"
+              : dirty
+                ? "Save edits"
+                : "Saved"}
                 </button>
               </div>
             </div>
 
-            {validation && !validation.passed ? (
+            {needsFinalValidation ? (
+    <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950">
+      <p className="font-semibold">This HQLS lesson is fully generated.</p>
+      <p className="mt-1 leading-6">
+        Its school class and subject are now linked. Finish validation to restore the fidelity record without regenerating the lesson or using more AI tokens.
+      </p>
+    </div>
+  ) : null}
+
+  {validation && !validation.passed ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
                 <p className="font-semibold">
                   This saved draft needs HQLS attention.
