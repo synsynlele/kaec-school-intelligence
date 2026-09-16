@@ -191,13 +191,14 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // Callers may pin the model so audit records and the actual provider request
-  // cannot drift. Environment overrides remain available for deliberate rollouts.
+  // Callers may pin a feature-specific model so provenance and the provider
+  // request cannot drift. KSI keeps gpt-5-mini as the platform-wide cost-safe
+  // fallback for features that do not deliberately choose another model.
   const model =
     input.model?.trim() ||
     process.env.KSI_OPENAI_MODEL?.trim() ||
     process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5.6-terra";
+    "gpt-5-mini";
   const reasoningEffort = defaultReasoningEffort(input);
   const timeoutMs = configuredTimeoutMs();
   const startedAt = Date.now();
