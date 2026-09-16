@@ -17,6 +17,7 @@ for (const requirement of [
   "HQLS_MAX_OUTPUT_TOKENS = 8000",
   "HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS = 3500",
   "KSI_HQLS_OPENAI_MODEL",
+  '"gpt-5.6-terra"',
   "configuredHqlsReasoningEffort",
   "promptCacheKey",
   'textVerbosity: "low"',
@@ -43,8 +44,9 @@ assert(
 assert(
   engine.includes('HQLS_PROMPT_v1.4') &&
     engine.includes("roughly 250–450 words") &&
+    engine.includes("without needing a separate lesson note") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
-  "HQLS prompting must keep Full Illumination concise and objective-led.",
+  "HQLS prompting must keep Full Illumination concise, complete and objective-led.",
 );
 for (const requirement of [
   'OpenAIReasoningEffort = "none"',
@@ -52,11 +54,11 @@ for (const requirement of [
   "prompt_cache_key",
   "prompt_cache_options",
   "verbosity: input.textVerbosity",
-  '"gpt-5.6-terra"',
+  '"gpt-5-mini"',
 ]) {
   assert(openai.includes(requirement), `OpenAI low-latency control missing: ${requirement}`);
 }
 
 console.log(
-  "HQLS generation performance verification passed: concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
+  "HQLS generation performance verification passed: HQLS-specific Terra selection, platform cost fallback, concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
 );
