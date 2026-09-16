@@ -1,3 +1,4 @@
+import { HQLS_STAGES } from "@/lib/domain/hqls";
 import type { HqlsStageContent } from "@/lib/hqls/engine";
 import { KAEC_REPORT_LOGO_JPEG_BASE64 } from "@/lib/pdf/kaec-report-logo";
 
@@ -25,6 +26,12 @@ type TextOptions = {
   maxWidth?: number;
 };
 
+type SupportItem = {
+  label: string;
+  value: string;
+  labelColor?: [number, number, number];
+};
+
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const LEFT = 54;
@@ -37,6 +44,11 @@ const BLUE: [number, number, number] = [0.03, 0.48, 0.72];
 const RED: [number, number, number] = [0.82, 0.19, 0.2];
 const TEXT: [number, number, number] = [0.12, 0.12, 0.14];
 const MUTED: [number, number, number] = [0.38, 0.4, 0.44];
+const SUPPORT_BG: [number, number, number] = [0.965, 0.972, 0.978];
+const SUPPORT_BORDER: [number, number, number] = [0.82, 0.84, 0.87];
+const SUPPORT_TEXT: [number, number, number] = [0.25, 0.27, 0.3];
+const FULL_ILLUMINATION_PDF_MAX_CHARS = 950;
+const SUPPORT_ITEM_MAX_CHARS = 280;
 
 function ascii(value: string) {
   return value
@@ -57,10 +69,18 @@ function ascii(value: string) {
 }
 
 function pdfEscape(value: string) {
-  return ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return ascii(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 }
 
-function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
+function wrapText(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  bold = false,
+) {
   const clean = ascii(text);
   if (!clean) return [];
   const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
@@ -96,6 +116,37 @@ function wrapText(text: string, maxWidth: number, fontSize: number, bold = false
 
 function rgb([r, g, b]: [number, number, number]) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
+}
+
+function strokeRgb([r, g, b]: [number, number, number]) {
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
+}
+
+function compactText(value: string, maxChars: number) {
+  const clean = ascii(value).replace(/\s+/g, " ").trim();
+  if (clean.length <= maxChars) return clean;
+  const slice = clean.slice(0, Math.max(1, maxChars - 3));
+  const lastSpace = slice.lastIndexOf(" ");
+  const safe = lastSpace > maxChars * 0.7 ? slice.slice(0, lastSpace) : slice;
+  return `${safe.trim()}...`;
+}
+
+function conciseFullIllumination(value: string) {
+  const clean = ascii(value).replace(/\s+/g, " ").trim();
+  if (clean.length <= FULL_ILLUMINATION_PDF_MAX_CHARS) return clean;
+
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [clean];
+  const selected: string[] = [];
+  for (const sentence of sentences) {
+    const next = [...selected, sentence.trim()].filter(Boolean).join(" ");
+    if (next.length > FULL_ILLUMINATION_PDF_MAX_CHARS) break;
+    selected.push(sentence.trim());
+    if (selected.length >= 6) break;
+  }
+
+  const coherent = selected.join(" ").trim();
+  if (coherent.length >= 320) return coherent;
+  return compactText(clean, FULL_ILLUMINATION_PDF_MAX_CHARS);
 }
 
 class PdfComposer {
@@ -161,27 +212,122 @@ class PdfComposer {
   }
 
   bullet(text: string, color: [number, number, number] = TEXT) {
-    this.line(`- ${text}`, { indent: 12, maxWidth: CONTENT_WIDTH - 12, color, size: 9.4 });
+    this.line(`- ${text}`, {
+      indent: 12,
+      maxWidth: CONTENT_WIDTH - 12,
+      color,
+      size: 9.2,
+    });
+  }
+
+  supportBox(items: SupportItem[]) {
+    const visible = items
+      .map((item) => ({
+        ...item,
+        value: compactText(item.value, SUPPORT_ITEM_MAX_CHARS),
+      }))
+      .filter((item) => Boolean(item.value));
+    if (!visible.length) return;
+
+    const boxWidth = CONTENT_WIDTH;
+    const innerWidth = boxWidth - 20;
+    const titleSize = 8.3;
+    const labelSize = 7.7;
+    const bodySize = 7.7;
+    const labelLeading = labelSize * 1.25;
+    const bodyLeading = bodySize * 1.3;
+    const rows = visible.map((item) => ({
+      ...item,
+      bodyLines: wrapText(item.value, innerWidth, bodySize),
+    }));
+    const bodyHeight = rows.reduce(
+      (total, item) =>
+        total + labelLeading + item.bodyLines.length * bodyLeading + 5,
+      0,
+    );
+    const boxHeight = 24 + bodyHeight + 6;
+
+    this.ensure(boxHeight + 10);
+    this.y -= 4;
+    const top = this.y;
+    const bottom = top - boxHeight;
+
+    this.current.push("q");
+    this.current.push(rgb(SUPPORT_BG));
+    this.current.push(`${LEFT} ${bottom.toFixed(1)} ${boxWidth.toFixed(1)} ${boxHeight.toFixed(1)} re f`);
+    this.current.push(strokeRgb(SUPPORT_BORDER));
+    this.current.push("0.7 w");
+    this.current.push(`${LEFT} ${bottom.toFixed(1)} ${boxWidth.toFixed(1)} ${boxHeight.toFixed(1)} re S`);
+    this.current.push("Q");
+
+    let cursor = top - 15;
+    this.current.push(rgb(NAVY));
+    this.current.push(
+      `BT /F2 ${titleSize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape("Supporting notes")}) Tj ET`,
+    );
+    cursor -= titleSize * 1.45;
+
+    for (const item of rows) {
+      this.current.push(rgb(item.labelColor ?? NAVY));
+      this.current.push(
+        `BT /F2 ${labelSize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(item.label)}) Tj ET`,
+      );
+      cursor -= labelLeading;
+      this.current.push(rgb(SUPPORT_TEXT));
+      for (const bodyLine of item.bodyLines) {
+        this.current.push(
+          `BT /F1 ${bodySize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(bodyLine)}) Tj ET`,
+        );
+        cursor -= bodyLeading;
+      }
+      cursor -= 5;
+    }
+
+    this.y = bottom - 7;
   }
 
   addLesson() {
-    this.line("HQLS LESSON PLAN", { bold: true, size: 18, color: NAVY, gapAfter: 4 });
-    this.line(this.input.title, { bold: true, size: 13.5, color: TEXT, gapAfter: 8 });
+    this.line("HQLS LESSON PLAN", {
+      bold: true,
+      size: 18,
+      color: NAVY,
+      gapAfter: 4,
+    });
+    this.line(this.input.title, {
+      bold: true,
+      size: 13.5,
+      color: TEXT,
+      gapAfter: 8,
+    });
 
     const fidelity =
       this.input.fidelityScore === null
         ? "HQLS validation recorded"
         : `HQLS VALIDATED - Fidelity ${this.input.fidelityScore}/100`;
-    this.line(fidelity, { bold: true, size: 9, color: [0.03, 0.42, 0.25], gapAfter: 8 });
+    this.line(fidelity, {
+      bold: true,
+      size: 9,
+      color: [0.03, 0.42, 0.25],
+      gapAfter: 8,
+    });
 
     this.rule();
-    this.line(`Workspace: ${this.input.workspaceName}`, { bold: true, size: 9.5 });
-    this.line(`Subject: ${this.input.subject}    Class: ${this.input.classLevel}`, { size: 9.5 });
+    this.line(`Workspace: ${this.input.workspaceName}`, {
+      bold: true,
+      size: 9.5,
+    });
+    this.line(
+      `Subject: ${this.input.subject}    Class: ${this.input.classLevel}`,
+      { size: 9.5 },
+    );
     this.line(
       `Topic: ${this.input.topic}    Age: ${this.input.ageRange || "Not specified"}    Duration: ${this.input.durationMinutes ? `${this.input.durationMinutes} minutes` : "Not specified"}`,
       { size: 9.5 },
     );
-    this.line(`Objective: ${this.input.objective}`, { size: 9.5, gapAfter: 6 });
+    this.line(`Objective: ${this.input.objective}`, {
+      size: 9.5,
+      gapAfter: 6,
+    });
     if (this.input.sources.length) {
       this.line(`Authorised sources: ${this.input.sources.join(", ")}`, {
         size: 8.5,
@@ -192,84 +338,114 @@ class PdfComposer {
     this.rule();
 
     for (const stage of this.input.stages) {
-      this.line(`STAGE ${stage.stageNumber} - ${stage.title}`, {
+      const definition = HQLS_STAGES[stage.stageNumber - 1];
+      const stageTitle = definition?.title ?? stage.title;
+      const stagePurpose = definition?.purpose ?? stage.purpose;
+
+      this.ensure(92);
+      this.line(`STAGE ${stage.stageNumber} - ${stageTitle}`, {
         bold: true,
         size: 13,
         color: NAVY,
         gapBefore: 7,
         gapAfter: 3,
       });
-      this.line(stage.purpose, { size: 9.2, color: MUTED, gapAfter: 6 });
+      this.line(stagePurpose, {
+        size: 8.9,
+        color: MUTED,
+        gapAfter: 6,
+      });
 
-      this.line("Learning experience / task", { bold: true, size: 9.6, color: BLUE, gapAfter: 2 });
+      this.line("Teacher focus", {
+        bold: true,
+        size: 9.8,
+        color: BLUE,
+        gapAfter: 2,
+      });
       this.line(stage.experience, { size: 9.4, gapAfter: 5 });
 
-      if (stage.teacherPrompts.length) {
-        this.line("Teacher prompts / actions", { bold: true, size: 9.6, color: BLUE, gapAfter: 2 });
-        stage.teacherPrompts.forEach((item) => this.bullet(item));
-      }
-      if (stage.learnerActions.length) {
-        this.line("Expected learner actions", { bold: true, size: 9.6, color: BLUE, gapBefore: 2, gapAfter: 2 });
-        stage.learnerActions.forEach((item) => this.bullet(item));
-      }
-      if (stage.guideGuardrails.length) {
-        this.line("Guide Guardrails - what the teacher must not do", {
-          bold: true,
-          size: 9.6,
-          color: RED,
-          gapBefore: 2,
-          gapAfter: 2,
-        });
-        stage.guideGuardrails.forEach((item) => this.bullet(item, [0.35, 0.16, 0.16]));
-      }
-      if (stage.evidenceToNotice.length) {
-        this.line("Evidence to notice", { bold: true, size: 9.6, color: BLUE, gapBefore: 2, gapAfter: 2 });
-        stage.evidenceToNotice.forEach((item) => this.bullet(item));
-      }
-      if (stage.productiveStruggle) {
-        this.line("Productive struggle", { bold: true, size: 9.6, color: RED, gapBefore: 2, gapAfter: 2 });
-        this.line(stage.productiveStruggle, { size: 9.4 });
-      }
-      if (stage.teachingContent) {
-        this.line("Full Illumination - teaching after struggle", {
+      if (stage.stageNumber === 5 && stage.teachingContent) {
+        this.line("Full Illumination - concise teaching focus", {
           bold: true,
           size: 9.8,
           color: NAVY,
-          gapBefore: 3,
+          gapBefore: 2,
           gapAfter: 2,
         });
-        this.line(stage.teachingContent, { size: 9.4 });
+        this.line(conciseFullIllumination(stage.teachingContent), {
+          size: 9.2,
+          gapAfter: 5,
+        });
       }
-      if (stage.respondsToFirstAttempt) {
-        this.line("How the illumination responds to Trial 1", {
+
+      if (stage.teacherPrompts.length) {
+        this.line("Teacher prompts / actions", {
           bold: true,
-          size: 9.6,
+          size: 9.5,
+          color: BLUE,
+          gapAfter: 2,
+        });
+        stage.teacherPrompts.forEach((item) => this.bullet(item));
+      }
+
+      if (stage.stageNumber === 5 && stage.respondsToFirstAttempt) {
+        this.line("Connection to the first attempt", {
+          bold: true,
+          size: 8.9,
           color: BLUE,
           gapBefore: 2,
           gapAfter: 2,
         });
-        this.line(stage.respondsToFirstAttempt, { size: 9.4 });
+        this.line(compactText(stage.respondsToFirstAttempt, 420), {
+          size: 8.8,
+          color: MUTED,
+          gapAfter: 4,
+        });
       }
+
       if (stage.reflectionPrompt) {
         this.line("Reflection - how thinking changed", {
           bold: true,
-          size: 9.6,
+          size: 9.5,
           color: BLUE,
           gapBefore: 2,
           gapAfter: 2,
         });
-        this.line(stage.reflectionPrompt, { size: 9.4 });
+        this.line(stage.reflectionPrompt, { size: 9.2, gapAfter: 4 });
       }
+
       if (stage.transferTask) {
         this.line("Real-life / future transfer", {
           bold: true,
-          size: 9.6,
+          size: 9.5,
           color: BLUE,
           gapBefore: 2,
           gapAfter: 2,
         });
-        this.line(stage.transferTask, { size: 9.4 });
+        this.line(stage.transferTask, { size: 9.2, gapAfter: 4 });
       }
+
+      this.supportBox([
+        {
+          label: "Expected learner outcome",
+          value: stage.learnerActions.join("; "),
+        },
+        {
+          label: "Guardrail",
+          value: stage.guideGuardrails.join("; "),
+          labelColor: RED,
+        },
+        {
+          label: "Evidence to notice",
+          value: stage.evidenceToNotice.join("; "),
+        },
+        {
+          label: "Productive struggle",
+          value: stage.productiveStruggle,
+          labelColor: RED,
+        },
+      ]);
+
       this.rule();
     }
 
@@ -285,11 +461,19 @@ function buildPdfObjects(pageCommands: string[][]) {
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
 
   objects[1] = Buffer.from("<< /Type /Catalog /Pages 2 0 R >>");
-  objects[2] = Buffer.from(`<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`);
-  objects[3] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-  objects[4] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  objects[2] = Buffer.from(
+    `<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`,
+  );
+  objects[3] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  );
+  objects[4] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+  );
   objects[5] = Buffer.concat([
-    Buffer.from(`<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`),
+    Buffer.from(
+      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+    ),
     logo,
     Buffer.from("\nendstream"),
   ]);
@@ -334,9 +518,15 @@ function serializePdf(objects: Buffer[]) {
 
   const xrefOffset = offset;
   const maxObject = objects.length - 1;
-  const xref: string[] = ["xref", `0 ${maxObject + 1}`, "0000000000 65535 f "];
+  const xref: string[] = [
+    "xref",
+    `0 ${maxObject + 1}`,
+    "0000000000 65535 f ",
+  ];
   for (let index = 1; index <= maxObject; index += 1) {
-    xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
+    xref.push(
+      `${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `,
+    );
   }
   xref.push(
     "trailer",
