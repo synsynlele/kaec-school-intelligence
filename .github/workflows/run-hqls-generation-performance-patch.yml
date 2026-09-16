@@ -1,0 +1,44 @@
+name: Run HQLS generation performance patch
+
+on:
+  push:
+    branches:
+      - fix/hqls-pdf-teacher-focus
+    paths:
+      - .github/workflows/run-hqls-generation-performance-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/hqls-pdf-teacher-focus
+          fetch-depth: 0
+
+      - name: Execute prepared performance patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/patch-hqls-generation-performance.yml').read_text()
+          start_marker = "          python <<'PY'\n"
+          end_marker = "\n          PY\n\n          git config user.name"
+          start = source.index(start_marker) + len(start_marker)
+          end = source.index(end_marker, start)
+          code = textwrap.dedent(source[start:end])
+          exec(compile(code, 'hqls-performance-patch', 'exec'), {'__name__': '__main__'})
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-hqls-generation-performance.yml
+          git rm .github/workflows/run-hqls-generation-performance-patch.yml
+          git add app/api/hqls/route.ts lib/ai/openai.ts lib/hqls/engine.ts package.json scripts/verify-hqls-generation-performance.mjs
+          git commit -m "Reduce HQLS generation latency"
+          git push origin HEAD:fix/hqls-pdf-teacher-focus
