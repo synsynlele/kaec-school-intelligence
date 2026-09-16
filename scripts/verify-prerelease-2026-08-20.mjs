@@ -125,7 +125,8 @@ assert(hqlsResultPage.includes("ksi-hqls-result-document"), "HQLS result must us
 assert(workspaceCss.includes("article:nth-child(5)"), "Full Illumination must receive full-width document treatment.");
 for (const required of [
   "NORMAL LESSON MODE",
-  "detailed conventional lesson note",
+  "roughly 250–450 words",
+  "without needing a separate lesson note",
   "no HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1",
 ]) {
   assert(hqlsEngine.includes(required), `Full Illumination normal-lesson rule is missing: ${required}`);
