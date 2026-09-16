@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.3";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.4";
 
 export type HqlsStageAction =
   | "improve"
@@ -148,7 +148,7 @@ STAGE 5 — FULL ILLUMINATION:
 - The teacher may lecture, explain directly, define terms, give detailed notes, dictate or display notes, write on the board, use a textbook-like explanation, teach formulas/rules/laws, demonstrate procedures, solve worked examples, model answers, correct misconceptions and answer questions.
 - Do not force learner-discovery language, Guide/Hero language, productive-struggle language, mandatory learner participation, a special prompt count, a Trial 1 repair format, or any anti-lecture/anti-note rule inside Stage 5.
 - The only HQLS structural requirement for Stage 5 is its position after Trial 1. Its teaching style is otherwise unrestricted.
-- Make the teaching accurate, detailed, age-appropriate and genuinely useful to the stated lesson objective.
+- Make the teaching accurate, age-appropriate, concise and genuinely useful to the stated lesson objective. Cover what the objective requires without turning Stage 5 into an exhaustive textbook chapter.
 
 STAGES 6–7:
 - Trial 2 requires genuine re-application so improvement is observable.
@@ -158,12 +158,12 @@ STAGES 6–7:
 const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
-For Stages 1, 2, 3, 4, 6 and 7 include:
-- a concrete learning experience/task;
-- exact teacher prompts/actions where useful;
-- expected learner actions;
-- Guide Guardrails describing what the teacher must not do;
-- observable evidence the teacher should notice.
+For Stages 1, 2, 3, 4, 6 and 7 keep the output focused:
+- a concrete learning experience/task in 1–3 sentences;
+- no more than 3 exact teacher prompts/actions where useful;
+- no more than 3 expected learner actions;
+- no more than 2 Guide Guardrails describing what the teacher must not do;
+- no more than 3 observable evidence items the teacher should notice.
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
 Use teachingContent only for Stage 5.
 Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere.
@@ -171,27 +171,16 @@ Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 For Trial 1, Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving.
 
 FULL ILLUMINATION — NORMAL LESSON MODE:
-Stage 5 is not to be written in the special HQLS facilitation style used by the surrounding stages. Write it like an excellent normal lesson note and full classroom explanation a competent teacher can teach from directly.
+Stage 5 is normal teaching, not discovery/facilitation mode. Put the actual lesson content inside teachingContent so the teacher can teach from it directly.
 
-Inside teachingContent, give the actual lesson content, not instructions about content. Teach the topic fully to the depth required by the lesson objective. Use the conventional structure that best suits the subject. It may include, without restriction:
-- introduction to the concept;
-- formal definitions and key terms;
-- detailed explanatory notes;
-- facts, features, types, classifications, properties and relationships;
-- principles, rules, laws, formulas, processes, procedures and conventions;
-- derivations or reasons where useful;
-- diagrams described in words where useful;
-- worked examples, calculations, model answers, demonstrations and step-by-step solutions;
-- board-ready or note-ready material learners can copy;
-- teacher explanations in natural classroom language;
-- corrections of misconceptions and common errors;
-- questions and answers;
-- summaries, memory aids and evaluation examples;
-- links to familiar real-life experiences and applications whenever they help learners understand the concept.
+Keep Full Illumination concise but complete for the stated objective. For an ordinary lesson, aim for roughly 250–450 words; use up to about 650 only when a calculation, procedure or worked example genuinely needs it. Prioritise:
+- the essential concept, definitions, rule/process/formula or core facts;
+- one clear worked example, demonstration or model answer when it improves understanding;
+- the most important misconception or error to correct;
+- a brief real-life connection when useful;
+- a short teaching summary or board-ready takeaway.
 
-There is no required Full Illumination template, no required number of examples, no required number of real-life connections, no required number of teacher prompts, and no requirement that the teaching be organised around Trial 1 mistakes. Trial 1 may be referenced if useful, but it must not limit the scope or style of the normal lesson.
-
-Do not artificially shorten Full Illumination. Give teachers enough substantive content to serve as both their lesson note and the explanation they can deliver in class. A teacher should be able to read Stage 5, understand the concept, write or display appropriate notes, explain it properly and teach it without needing a separate lesson note. Real-life support may include at least two concrete experiences or applications when that naturally improves the lesson, but there is no fixed number.
+Avoid long introductions, repeated explanations, exhaustive classifications, multiple similar examples and textbook-style padding. The teacher needs a clear teaching core, not a chapter.
 
 Because the JSON schema is shared across all stages, Stage 5 must still return all schema fields. For Stage 5, experience, teacherPrompts, learnerActions, guideGuardrails, evidenceToNotice, productiveStruggle, respondsToFirstAttempt, reflectionPrompt and transferTask may be empty when they do not naturally belong in a normal lesson. Do not invent HQLS restrictions merely to fill those fields.
 
@@ -242,7 +231,7 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
-IMPORTANT: Stage 5 Full Illumination is NORMAL LESSON MODE. Stop using the discovery/facilitation style when Stage 5 begins. Write a detailed conventional lesson note and the actual teaching of the concept inside teachingContent. The teacher is free to teach normally: explain, lecture, define, give notes, write on the board, teach rules/formulas/laws, demonstrate, solve examples and correct learners. Use whatever conventional teaching structure best fits ${input.subject.trim()} and this topic. Relate the concept to real-life experiences where that improves understanding. Do not force Stage 5 to be concise, inquiry-led, learner-led, Trial-1-led or anti-note. Do not write placeholders such as “teacher explains”; write the explanation and lesson note itself.
+IMPORTANT: Stage 5 Full Illumination is NORMAL LESSON MODE. Write the actual teaching content inside teachingContent, but keep it concise and objective-led. Include only the essential explanation, key terms/rule/process, one useful example when needed, the main misconception to correct, and a short takeaway. Do not write placeholders such as “teacher explains”, and do not pad the lesson with repeated or textbook-length detail.
 
 Stage 6 must make learners apply the now-taught concept again. Stage 7 must populate both reflectionPrompt and transferTask.
 `;
@@ -270,7 +259,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Do not impose HQLS facilitation restrictions on Stage 5: it must remain a normal, detailed conventional lesson note and full teaching explanation. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
+Return the full corrected seven-stage lesson. Never move Full Illumination before Trial 1. Stage 5 remains normal teaching but must be concise, accurate and limited to what the lesson objective requires. Stage 7 must keep an explicit reflectionPrompt and a distinct transferTask.
 `;
 }
 
@@ -283,7 +272,7 @@ export function buildStageRegenerationPrompt(args: {
   const definition = HQLS_STAGES[args.targetStage.stageNumber - 1];
   const actionInstruction =
     definition.index === 5
-      ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve detailed conventional teaching.`
+      ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve concise, accurate conventional teaching.`
       : ACTION_INSTRUCTIONS[args.action];
 
   return `
@@ -302,7 +291,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. If the target is Stage 5, teachingContent must be a detailed normal lesson note and full teacher explanation, with no HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must remain a genuine re-application; Stage 7 must retain explicit changed-thinking reflection and transfer.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. If the target is Stage 5, teachingContent must be a concise normal teaching explanation focused on the lesson objective, with no HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must remain a genuine re-application; Stage 7 must retain explicit changed-thinking reflection and transfer.
 `;
 }
 
