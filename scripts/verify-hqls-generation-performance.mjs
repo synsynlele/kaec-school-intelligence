@@ -12,6 +12,7 @@ const assert = (condition, message) => {
 
 // Guard the latency work as part of KSI's structural release checks so later
 // refactors cannot silently restore the old full-repair / oversized-output path.
+// This verification intentionally travels with the product code into release CI.
 for (const requirement of [
   "HQLS_MAX_OUTPUT_TOKENS = 8000",
   "HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS = 3500",
