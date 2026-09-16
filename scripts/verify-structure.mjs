@@ -295,8 +295,9 @@ const pdfGenerator = await text("lib/pdf/hqls-lesson-pdf.ts");
 for (const requirement of [
   "KAEC_REPORT_LOGO_JPEG_BASE64",
   "HQLS LESSON PLAN",
-  "Guide Guardrails",
-  "Full Illumination - teaching after struggle",
+  "Supporting notes",
+  "Guardrail",
+  "Full Illumination - concise teaching focus",
   "Reflection - how thinking changed",
   "HQLS VALIDATED",
 ]) {
