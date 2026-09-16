@@ -58,10 +58,18 @@ function ascii(value: string) {
 }
 
 function pdfEscape(value: string) {
-  return ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return ascii(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 }
 
-function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
+function wrapText(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  bold = false,
+) {
   const clean = ascii(text);
   if (!clean) return [];
   const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
@@ -104,7 +112,8 @@ function trimPdfText(value: string, maxChars: number) {
   if (clean.length <= maxChars) return clean;
   const candidate = clean.slice(0, Math.max(1, maxChars - 3));
   const lastSpace = candidate.lastIndexOf(" ");
-  const trimmed = lastSpace > maxChars * 0.72 ? candidate.slice(0, lastSpace) : candidate;
+  const trimmed =
+    lastSpace > maxChars * 0.72 ? candidate.slice(0, lastSpace) : candidate;
   return `${trimmed.trim()}...`;
 }
 
@@ -116,7 +125,9 @@ function conciseTeachingFocus(value: string) {
     .map((sentence) => sentence.trim())
     .filter(Boolean);
   const maxChars = 900;
-  const selected = sentences.slice(0, Math.min(6, sentences.length)).join(" ");
+  const selected = sentences
+    .slice(0, Math.min(6, sentences.length))
+    .join(" ");
   return trimPdfText(selected || clean, maxChars);
 }
 
@@ -193,12 +204,19 @@ class PdfComposer {
   rule(color: [number, number, number] = [0.84, 0.85, 0.87]) {
     this.ensure(9);
     this.current.push(rgb(color));
-    this.current.push(`${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`);
+    this.current.push(
+      `${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`,
+    );
     this.y -= 9;
   }
 
   bullet(text: string, color: [number, number, number] = TEXT) {
-    this.line(`- ${text}`, { indent: 12, maxWidth: CONTENT_WIDTH - 12, color, size: 9.4 });
+    this.line(`- ${text}`, {
+      indent: 12,
+      maxWidth: CONTENT_WIDTH - 12,
+      color,
+      size: 9.4,
+    });
   }
 
   supportPanel(
@@ -269,23 +287,47 @@ class PdfComposer {
   }
 
   addLesson() {
-    this.line("HQLS LESSON PLAN", { bold: true, size: 18, color: NAVY, gapAfter: 4 });
-    this.line(this.input.title, { bold: true, size: 13.5, color: TEXT, gapAfter: 8 });
+    this.line("HQLS LESSON PLAN", {
+      bold: true,
+      size: 18,
+      color: NAVY,
+      gapAfter: 4,
+    });
+    this.line(this.input.title, {
+      bold: true,
+      size: 13.5,
+      color: TEXT,
+      gapAfter: 8,
+    });
 
     const fidelity =
       this.input.fidelityScore === null
         ? "HQLS validation recorded"
         : `HQLS VALIDATED - Fidelity ${this.input.fidelityScore}/100`;
-    this.line(fidelity, { bold: true, size: 9, color: [0.03, 0.42, 0.25], gapAfter: 8 });
+    this.line(fidelity, {
+      bold: true,
+      size: 9,
+      color: [0.03, 0.42, 0.25],
+      gapAfter: 8,
+    });
 
     this.rule();
-    this.line(`Workspace: ${this.input.workspaceName}`, { bold: true, size: 9.5 });
-    this.line(`Subject: ${this.input.subject}    Class: ${this.input.classLevel}`, { size: 9.5 });
+    this.line(`Workspace: ${this.input.workspaceName}`, {
+      bold: true,
+      size: 9.5,
+    });
+    this.line(
+      `Subject: ${this.input.subject}    Class: ${this.input.classLevel}`,
+      { size: 9.5 },
+    );
     this.line(
       `Topic: ${this.input.topic}    Age: ${this.input.ageRange || "Not specified"}    Duration: ${this.input.durationMinutes ? `${this.input.durationMinutes} minutes` : "Not specified"}`,
       { size: 9.5 },
     );
-    this.line(`Objective: ${this.input.objective}`, { size: 9.5, gapAfter: 6 });
+    this.line(`Objective: ${this.input.objective}`, {
+      size: 9.5,
+      gapAfter: 6,
+    });
     if (this.input.sources.length) {
       this.line(`Authorised sources: ${this.input.sources.join(", ")}`, {
         size: 8.5,
@@ -296,109 +338,119 @@ class PdfComposer {
     this.rule();
 
     for (const stage of this.input.stages) {
-    const definition = canonicalStageDefinition(stage.stageNumber);
-    this.ensure(115);
-    this.line(`STAGE ${stage.stageNumber} - ${definition.title}`, {
-      bold: true,
-      size: 13,
-      color: NAVY,
-      gapBefore: 7,
-      gapAfter: 3,
-    });
-    this.line(definition.purpose, { size: 9, color: MUTED, gapAfter: 6 });
-
-    if (stage.experience) {
-      this.line("Core learning experience", {
+      const definition = canonicalStageDefinition(stage.stageNumber);
+      this.ensure(115);
+      this.line(`STAGE ${stage.stageNumber} - ${definition.title}`, {
         bold: true,
-        size: 10,
-        color: BLUE,
-        gapAfter: 2,
-      });
-      this.line(stage.experience, { size: 9.5, gapAfter: 5 });
-    }
-
-    if (stage.teacherPrompts.length) {
-      this.line("Teacher prompts / actions", {
-        bold: true,
-        size: 10,
-        color: BLUE,
-        gapAfter: 2,
-      });
-      stage.teacherPrompts.forEach((item) => this.bullet(item));
-    }
-
-    if (stage.stageNumber === 5 && stage.teachingContent) {
-      this.line("Concise teaching focus", {
-        bold: true,
-        size: 10.2,
+        size: 13,
         color: NAVY,
-        gapBefore: 3,
-        gapAfter: 2,
+        gapBefore: 7,
+        gapAfter: 3,
       });
-      this.line(conciseTeachingFocus(stage.teachingContent), {
-        size: 9.5,
-        gapAfter: 5,
-      });
-    }
-
-    if (stage.respondsToFirstAttempt) {
-      this.line("Connection to Trial 1", {
-        bold: true,
-        size: 8.4,
+      this.line(definition.purpose, {
+        size: 9,
         color: MUTED,
-        gapBefore: 1,
-        gapAfter: 1,
+        gapAfter: 6,
       });
-      this.line(trimPdfText(stage.respondsToFirstAttempt, 420), {
-        size: 8.2,
-        color: MUTED,
-        gapAfter: 4,
-      });
-    }
 
-    if (stage.reflectionPrompt) {
-      this.line("Reflection prompt", {
-        bold: true,
-        size: 9.6,
-        color: BLUE,
-        gapBefore: 2,
-        gapAfter: 2,
-      });
-      this.line(stage.reflectionPrompt, { size: 9.2 });
-    }
-    if (stage.transferTask) {
-      this.line("Transfer task", {
-        bold: true,
-        size: 9.6,
-        color: BLUE,
-        gapBefore: 2,
-        gapAfter: 2,
-      });
-      this.line(stage.transferTask, { size: 9.2, gapAfter: 5 });
-    }
+      if (stage.stageNumber !== 5 && stage.experience) {
+        this.line("Core learning experience", {
+          bold: true,
+          size: 10,
+          color: BLUE,
+          gapAfter: 2,
+        });
+        this.line(stage.experience, { size: 9.5, gapAfter: 5 });
+      }
 
-    this.supportPanel([
-      {
-        label: "Expected learner outcome",
-        value: stage.learnerActions,
-      },
-      {
-        label: "Guide guardrail",
-        value: stage.guideGuardrails,
-        labelColor: RED,
-      },
-      {
-        label: "Evidence to notice",
-        value: stage.evidenceToNotice,
-      },
-      {
-        label: "Productive struggle",
-        value: stage.productiveStruggle,
-        labelColor: RED,
-      },
-    ]);
-    this.rule();
-  }
+      if (stage.stageNumber !== 5 && stage.teacherPrompts.length) {
+        this.line("Teacher prompts / actions", {
+          bold: true,
+          size: 10,
+          color: BLUE,
+          gapAfter: 2,
+        });
+        stage.teacherPrompts.forEach((item) => this.bullet(item));
+      }
+
+      if (stage.stageNumber === 5 && stage.teachingContent) {
+        this.line("Full Illumination - teaching after struggle", {
+          bold: true,
+          size: 10.2,
+          color: NAVY,
+          gapBefore: 3,
+          gapAfter: 1,
+        });
+        this.line("Concise teaching focus", {
+          bold: true,
+          size: 8.5,
+          color: MUTED,
+          gapAfter: 2,
+        });
+        this.line(conciseTeachingFocus(stage.teachingContent), {
+          size: 9.5,
+          gapAfter: 5,
+        });
+      }
+
+      if (stage.respondsToFirstAttempt) {
+        this.line("Connection to Trial 1", {
+          bold: true,
+          size: 8.4,
+          color: MUTED,
+          gapBefore: 1,
+          gapAfter: 1,
+        });
+        this.line(trimPdfText(stage.respondsToFirstAttempt, 420), {
+          size: 8.2,
+          color: MUTED,
+          gapAfter: 4,
+        });
+      }
+
+      if (stage.reflectionPrompt) {
+        this.line("Reflection - how thinking changed", {
+          bold: true,
+          size: 9.6,
+          color: BLUE,
+          gapBefore: 2,
+          gapAfter: 2,
+        });
+        this.line(stage.reflectionPrompt, { size: 9.2 });
+      }
+      if (stage.transferTask) {
+        this.line("Transfer task", {
+          bold: true,
+          size: 9.6,
+          color: BLUE,
+          gapBefore: 2,
+          gapAfter: 2,
+        });
+        this.line(stage.transferTask, { size: 9.2, gapAfter: 5 });
+      }
+
+      this.supportPanel([
+        {
+          label: "Expected learner outcome",
+          value: stage.learnerActions,
+        },
+        {
+          label: "Guide Guardrails",
+          value: stage.guideGuardrails,
+          labelColor: RED,
+        },
+        {
+          label: "Evidence to notice",
+          value: stage.evidenceToNotice,
+        },
+        {
+          label: "Productive struggle",
+          value: stage.productiveStruggle,
+          labelColor: RED,
+        },
+      ]);
+      this.rule();
+    }
 
     if (this.current.length) this.pages.push(this.current);
     return this.pages;
@@ -412,11 +464,19 @@ function buildPdfObjects(pageCommands: string[][]) {
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
 
   objects[1] = Buffer.from("<< /Type /Catalog /Pages 2 0 R >>");
-  objects[2] = Buffer.from(`<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`);
-  objects[3] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-  objects[4] = Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  objects[2] = Buffer.from(
+    `<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pageCount} >>`,
+  );
+  objects[3] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  );
+  objects[4] = Buffer.from(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+  );
   objects[5] = Buffer.concat([
-    Buffer.from(`<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`),
+    Buffer.from(
+      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+    ),
     logo,
     Buffer.from("\nendstream"),
   ]);
@@ -461,7 +521,11 @@ function serializePdf(objects: Buffer[]) {
 
   const xrefOffset = offset;
   const maxObject = objects.length - 1;
-  const xref: string[] = ["xref", `0 ${maxObject + 1}`, "0000000000 65535 f "];
+  const xref: string[] = [
+    "xref",
+    `0 ${maxObject + 1}`,
+    "0000000000 65535 f ",
+  ];
   for (let index = 1; index <= maxObject; index += 1) {
     xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
   }
