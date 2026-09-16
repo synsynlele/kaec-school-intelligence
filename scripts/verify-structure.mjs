@@ -188,7 +188,7 @@ for (const brandedSurface of [
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
   "HQLS_ENGINE_v1.2",
-  "HQLS_PROMPT_v1.3",
+  "HQLS_PROMPT_v1.4",
   "validateHqlsLesson",
   "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
