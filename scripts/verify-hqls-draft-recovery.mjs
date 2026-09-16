@@ -22,8 +22,15 @@ for (const required of [
   assert(route.includes(required), `HQLS generation hardening is missing: ${required}`);
 }
 
+const schoolGuardIndex = route.indexOf('workspace.workspace_type === "school"');
+const rateLimitCallIndex = route.indexOf(
+  "await enforceAiRateLimit(supabase, userId, input.workspaceId);",
+  schoolGuardIndex,
+);
 assert(
-  route.indexOf('workspace.workspace_type === "school"') < route.indexOf("enforceAiRateLimit"),
+  schoolGuardIndex >= 0 &&
+    rateLimitCallIndex >= 0 &&
+    schoolGuardIndex < rateLimitCallIndex,
   "School class/subject linkage must be rejected before AI quota is consumed.",
 );
 
