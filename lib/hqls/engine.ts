@@ -180,7 +180,7 @@ Keep Full Illumination concise but complete for the stated objective. For an ord
 - a brief real-life connection when useful;
 - a short teaching summary or board-ready takeaway.
 
-Avoid long introductions, repeated explanations, exhaustive classifications, multiple similar examples and textbook-style padding. The teacher needs a clear teaching core, not a chapter.
+Avoid long introductions, repeated explanations, exhaustive classifications, multiple similar examples and textbook-style padding. The teacher needs a clear teaching core, not a chapter. Keep enough substantive teaching that a competent teacher can deliver the lesson without needing a separate lesson note.
 
 Because the JSON schema is shared across all stages, Stage 5 must still return all schema fields. For Stage 5, experience, teacherPrompts, learnerActions, guideGuardrails, evidenceToNotice, productiveStruggle, respondsToFirstAttempt, reflectionPrompt and transferTask may be empty when they do not naturally belong in a normal lesson. Do not invent HQLS restrictions merely to fill those fields.
 
