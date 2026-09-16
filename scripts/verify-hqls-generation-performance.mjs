@@ -10,6 +10,8 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
+// Guard the latency work as part of KSI's structural release checks so later
+// refactors cannot silently restore the old full-repair / oversized-output path.
 for (const requirement of [
   "HQLS_MAX_OUTPUT_TOKENS = 8000",
   "HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS = 3500",
