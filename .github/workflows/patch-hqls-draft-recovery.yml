@@ -23,26 +23,26 @@ jobs:
         run: |
           python <<'PY'
           from pathlib import Path
+          import re
+
+          def sub_once(path, pattern, replacement, flags=0):
+              p = Path(path)
+              text = p.read_text()
+              next_text, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one regex match in {path}, found {count}: {pattern[:80]}")
+              p.write_text(next_text)
 
           def replace_once(path, old, new):
               p = Path(path)
               text = p.read_text()
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f"Expected exactly one match in {path}, found {count}")
+                  raise SystemExit(f"Expected exactly one literal match in {path}, found {count}: {old[:80]}")
               p.write_text(text.replace(old, new, 1))
 
           route = "app/api/hqls/route.ts"
-          replace_once(
-              route,
-              '''function requireString(value: unknown, label: string) {
-            if (typeof value !== "string" || !value.trim()) {
-              throw new Error(`${label} is required.`);
-            }
-            return value.trim();
-          }
-          ''',
-              '''function requireString(value: unknown, label: string) {
+          helper_block = r'''function requireString(value: unknown, label: string) {
             if (typeof value !== "string" || !value.trim()) {
               throw new Error(`${label} is required.`);
             }
@@ -75,7 +75,10 @@ jobs:
             kind: "class" | "subject",
           ) {
             const compactRequested = compactAcademicLabel(requested);
-            const simplifiedRequested = compactAcademicLabel(requested, kind === "subject");
+            const simplifiedRequested = compactAcademicLabel(
+              requested,
+              kind === "subject",
+            );
             const matches = rows.filter((row) => {
               if (compactAcademicLabel(row.name) === compactRequested) return true;
               if (kind === "class") return false;
@@ -88,51 +91,15 @@ jobs:
               return academicAcronym(row.name) === compactRequested;
             });
             return matches.length === 1 ? matches[0] : null;
-          }
-          ''',
+          }'''
+          sub_once(
+              route,
+              r'function requireString\(value: unknown, label: string\) \{.*?\n\}',
+              helper_block,
+              re.S,
           )
 
-          replace_once(
-              route,
-              '''async function resolveAcademicContext(
-            supabase: KsiSupabaseClient,
-            input: HqlsLessonRequest,
-          ) {
-            let subject = input.subject;
-            let classLevel = input.classLevel;
-            let ageRange = input.ageRange;
-
-            if (input.subjectId) {
-              const { data, error } = await supabase
-                .from("subjects")
-                .select("id,name,active")
-                .eq("id", input.subjectId)
-                .eq("workspace_id", input.workspaceId)
-                .single();
-              if (error || !data || !data.active) {
-                throw new Error("The selected subject is not available in this workspace.");
-              }
-              subject = data.name;
-            }
-
-            if (input.classId) {
-              const { data, error } = await supabase
-                .from("classes")
-                .select("id,name,age_range,active")
-                .eq("id", input.classId)
-                .eq("workspace_id", input.workspaceId)
-                .single();
-              if (error || !data || !data.active) {
-                throw new Error("The selected class is not available in this workspace.");
-              }
-              classLevel = data.name;
-              ageRange = input.ageRange || data.age_range || input.ageRange;
-            }
-
-            return { ...input, subject, classLevel, ageRange };
-          }
-          ''',
-              '''async function resolveAcademicContext(
+          academic_context = r'''async function resolveAcademicContext(
             supabase: KsiSupabaseClient,
             input: HqlsLessonRequest,
           ) {
@@ -195,17 +162,17 @@ jobs:
             }
 
             return { ...input, subjectId, classId, subject, classLevel, ageRange };
-          }
-          ''',
+          }'''
+          sub_once(
+              route,
+              r'async function resolveAcademicContext\(.*?\n\}\n\nasync function enforceAiRateLimit',
+              academic_context + "\n\nasync function enforceAiRateLimit",
+              re.S,
           )
 
-          replace_once(
+          sub_once(
               route,
-              '''    const validatedInput = validateGenerateInput(rawInput);
-              await requireWorkspace(supabase, validatedInput.workspaceId);
-              const input = await resolveAcademicContext(supabase, validatedInput);
-              await enforceAiRateLimit(supabase, userId, input.workspaceId);
-          ''',
+              r'    const validatedInput = validateGenerateInput\(rawInput\);\n    await requireWorkspace\(supabase, validatedInput\.workspaceId\);\n    const input = await resolveAcademicContext\(supabase, validatedInput\);\n    await enforceAiRateLimit\(supabase, userId, input\.workspaceId\);',
               '''    const validatedInput = validateGenerateInput(rawInput);
               const workspace = await requireWorkspace(supabase, validatedInput.workspaceId);
               const input = await resolveAcademicContext(supabase, validatedInput);
@@ -217,24 +184,15 @@ jobs:
                   "Choose a subject and class registered in the active school before generating an HQLS lesson. KSI will accept normal variations such as SS 1/SS1 and common subject abbreviations when they resolve uniquely.",
                 );
               }
-              await enforceAiRateLimit(supabase, userId, input.workspaceId);
-          ''',
+              await enforceAiRateLimit(supabase, userId, input.workspaceId);''',
           )
 
-          replace_once(
-              route,
-              '''  const { error } = await args.supabase
-              .from("lessons")
-              .update({
-                status: args.validation.passed ? "validated" : "draft",
-                validation_summary: toJson(args.validation),
-                engine_version: HQLS_ENGINE_VERSION,
-                prompt_version: HQLS_PROMPT_VERSION,
-              })
-              .eq("id", args.lesson.id);
-            if (error) throw error;
-          ''',
-              '''  const { data, error } = await args.supabase
+          save_validation = r'''async function saveLessonValidation(args: {
+            supabase: KsiSupabaseClient;
+            lesson: LessonRow;
+            validation: ReturnType<typeof validateHqlsLesson>;
+          }) {
+            const { data, error } = await args.supabase
               .from("lessons")
               .update({
                 status: args.validation.passed ? "validated" : "draft",
@@ -249,73 +207,46 @@ jobs:
             if (!data) {
               throw new Error("The HQLS lesson validation state was not saved.");
             }
-          ''',
+          }'''
+          sub_once(
+              route,
+              r'async function saveLessonValidation\(args: \{.*?\n\}\n\nfunction configuredOpenAIModel',
+              save_validation + "\n\nfunction configuredOpenAIModel",
+              re.S,
           )
 
           client = "components/hqls/hqls-client.tsx"
           replace_once(
               client,
-              '''  const classMatch = useMemo(
-              () =>
-                state?.classes.find(
-                  (item) => item.name.toLowerCase() === classLevel.trim().toLowerCase(),
-                ) ?? null,
-              [state?.classes, classLevel],
-            );
+              '  const refreshLessons = useCallback(async () => {',
+              '''  const needsFinalValidation = Boolean(
+            selectedLesson?.status === "draft" &&
+              validation === null &&
+              selectedLesson.class_id &&
+              selectedLesson.subject_id,
+          );
 
-            const refreshLessons = useCallback(async () => {
-          ''',
-              '''  const classMatch = useMemo(
-              () =>
-                state?.classes.find(
-                  (item) => item.name.toLowerCase() === classLevel.trim().toLowerCase(),
-                ) ?? null,
-              [state?.classes, classLevel],
-            );
-            const needsFinalValidation = Boolean(
-              selectedLesson?.status === "draft" &&
-                validation === null &&
-                selectedLesson.class_id &&
-                selectedLesson.subject_id,
-            );
-
-            const refreshLessons = useCallback(async () => {
-          ''',
+          const refreshLessons = useCallback(async () => {''',
           )
-
           replace_once(
               client,
-              '''                <button
-                          type="button"
-                          onClick={() => void saveEdits()}
-                          disabled={saving || !dirty}
-                          className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {saving ? "Saving + checking…" : dirty ? "Save edits" : "Saved"}
-                        </button>
-          ''',
-              '''                <button
-                          type="button"
-                          onClick={() => void saveEdits()}
-                          disabled={saving || (!dirty && !needsFinalValidation)}
-                          className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {saving
-                            ? "Saving + checking…"
-                            : needsFinalValidation
-                              ? "Finish validation"
-                              : dirty
-                                ? "Save edits"
-                                : "Saved"}
-                        </button>
-          ''',
+              'disabled={saving || !dirty}',
+              'disabled={saving || (!dirty && !needsFinalValidation)}',
           )
-
           replace_once(
               client,
-              '''            {validation && !validation.passed ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
-          ''',
+              '{saving ? "Saving + checking…" : dirty ? "Save edits" : "Saved"}',
+              '''{saving
+                      ? "Saving + checking…"
+                      : needsFinalValidation
+                        ? "Finish validation"
+                        : dirty
+                          ? "Save edits"
+                          : "Saved"}''',
+          )
+          replace_once(
+              client,
+              '            {validation && !validation.passed ? (',
               '''            {needsFinalValidation ? (
               <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950">
                 <p className="font-semibold">This HQLS lesson is fully generated.</p>
@@ -325,60 +256,46 @@ jobs:
               </div>
             ) : null}
 
-            {validation && !validation.passed ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
-          ''',
+            {validation && !validation.passed ? (''',
           )
 
           saved = "components/saved-work/saved-work-client.tsx"
           replace_once(
               saved,
-              '''"use client";
-
-          import { useCallback, useEffect, useMemo, useState } from "react";
-          ''',
-              '''"use client";
-
-          import Link from "next/link";
-          import { useCallback, useEffect, useMemo, useState } from "react";
-          ''',
+              'import { useCallback, useEffect, useMemo, useState } from "react";',
+              'import Link from "next/link";\nimport { useCallback, useEffect, useMemo, useState } from "react";',
           )
-
-          replace_once(
-              saved,
-              '''                    {view === "active" ? (
-                                <button
-                                  type="button"
-                                  disabled={!item.canManage || busyKey !== null}
-                                  onClick={() => void manage(item, "archive")}
-                                  className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  {busyKey === archiveKey ? "Archiving…" : "Archive"}
-                                </button>
-                              ) : (
-          ''',
-              '''                    {view === "active" ? (
-                                <>
-                                  {item.artifactType === "lesson" ? (
-                                    <Link
-                                      href={`/hqls?lesson=${encodeURIComponent(item.artifactId)}`}
-                                      className="min-h-10 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
-                                    >
-                                      Open HQLS
-                                    </Link>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    disabled={!item.canManage || busyKey !== null}
-                                    onClick={() => void manage(item, "archive")}
-                                    className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-                                  >
-                                    {busyKey === archiveKey ? "Archiving…" : "Archive"}
-                                  </button>
-                                </>
-                              ) : (
-          ''',
+          active_pattern = re.compile(
+              r'(\s*)\{view === "active" \? \(\n\s*<button\n\s*type="button"\n\s*disabled=\{!item\.canManage \|\| busyKey !== null\}\n\s*onClick=\{\(\) => void manage\(item, "archive"\)\}\n\s*className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"\n\s*>\n\s*\{busyKey === archiveKey \? "Archiving…" : "Archive"\}\n\s*</button>\n\s*\) : \(',
+              re.S,
           )
+          p = Path(saved)
+          text = p.read_text()
+          match = active_pattern.search(text)
+          if not match:
+              raise SystemExit("Could not find the active Saved Work archive action")
+          indent = match.group(1)
+          replacement = f'''{indent}{{view === "active" ? (
+                        <>
+                          {{item.artifactType === "lesson" ? (
+                            <Link
+                              href={{`/hqls?lesson=${{encodeURIComponent(item.artifactId)}}`}}
+                              className="min-h-10 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+                            >
+                              Open HQLS
+                            </Link>
+                          ) : null}}
+                          <button
+                            type="button"
+                            disabled={{!item.canManage || busyKey !== null}}
+                            onClick={{() => void manage(item, "archive")}}
+                            className="min-h-10 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {{busyKey === archiveKey ? "Archiving…" : "Archive"}}
+                          </button>
+                        </>
+                      ) : ('''
+          p.write_text(text[:match.start()] + replacement + text[match.end():])
 
           package = "package.json"
           replace_once(
