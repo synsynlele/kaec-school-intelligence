@@ -58,7 +58,7 @@ export function RecordListToolbar({
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder={searchPlaceholder}
-            className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white py-2.5 pl-9 pr-10 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+            className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white py-2.5 pl-9 pr-16 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
           />
           {searchValue ? (
             <button
