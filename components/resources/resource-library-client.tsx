@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   deleteWorkspaceResource,
   downloadWorkspaceResource,
@@ -92,8 +93,35 @@ export function ResourceLibraryClient() {
   const [title, setTitle] = useState("");
   const [resourceType, setResourceType] = useState<ResourceType>("reference");
   const [visibility, setVisibility] = useState<ResourceVisibility>("workspace");
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryType, setLibraryType] = useState("all");
+  const [librarySort, setLibrarySort] = useState<"newest" | "oldest" | "title">("newest");
 
   const maxFileSize = useMemo(() => formatBytes(KSI_RESOURCE_MAX_BYTES), []);
+  const visibleResources = useMemo(() => {
+    const query = librarySearch.trim().toLowerCase();
+    const filtered = (context?.resources ?? []).filter((resource) => {
+      if (libraryType !== "all" && resource.resource_type !== libraryType) return false;
+      if (!query) return true;
+      return [
+        resource.title,
+        resource.resource_type,
+        resource.visibility,
+        resource.status,
+        resource.mime_type ?? "",
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+    return [...filtered].sort((a, b) => {
+      if (librarySort === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return librarySort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [context?.resources, librarySearch, librarySort, libraryType]);
+  const libraryTypes = useMemo(
+    () => [...new Set((context?.resources ?? []).map((item) => item.resource_type))].sort((a, b) => a.localeCompare(b)),
+    [context?.resources],
+  );
 
   const refresh = useCallback(async () => {
     const nextContext = await loadResourceContext();
@@ -373,6 +401,20 @@ export function ResourceLibraryClient() {
             </p>
           </div>
 
+          <div className="mt-5">
+            <RecordListToolbar
+              searchValue={librarySearch}
+              onSearchChange={setLibrarySearch}
+              searchPlaceholder="Search title, type or status…"
+              sortValue={librarySort}
+              onSortChange={(value) => setLibrarySort(value as "newest" | "oldest" | "title")}
+              sortOptions={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }, { value: "title", label: "A–Z" }]}
+              filters={<select value={libraryType} onChange={(event) => setLibraryType(event.target.value)} aria-label="Filter library by type" className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800"><option value="all">All types</option>{libraryTypes.map((type) => <option key={type} value={type}>{readableType(type)}</option>)}</select>}
+              visibleCount={visibleResources.length}
+              totalCount={context.resources.length}
+            />
+          </div>
+
           {context.resources.length === 0 ? (
             <div className="py-16 text-center">
               <p className="font-medium text-zinc-700">No resources yet.</p>
@@ -380,9 +422,9 @@ export function ResourceLibraryClient() {
                 Add the first authorised source. HQLS and assessment generation can preserve provenance back to these files.
               </p>
             </div>
-          ) : (
+          ) : visibleResources.length ? (
             <div className="divide-y divide-zinc-100">
-              {context.resources.map((resource) => (
+              {visibleResources.map((resource) => (
                 <article key={resource.id} className="py-5 first:pt-6 last:pb-0">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
@@ -423,6 +465,8 @@ export function ResourceLibraryClient() {
                 </article>
               ))}
             </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-zinc-500">No resources match your search and filters.</div>
           )}
         </section>
       </div>

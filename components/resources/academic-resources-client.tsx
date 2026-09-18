@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Role = "owner" | "admin" | "leader" | "teacher" | "student";
@@ -228,6 +229,13 @@ export function AcademicResourcesClient() {
   const [subject, setSubject] = useState("");
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [tab, setTab] = useState<"scheme" | "school">("scheme");
+  const [schemeSearch, setSchemeSearch] = useState("");
+  const [schemeSort, setSchemeSort] = useState<"week" | "topic">("week");
+  const [resourceSearch, setResourceSearch] = useState("");
+  const [resourceTypeFilter, setResourceTypeFilter] = useState("all");
+  const [resourceSort, setResourceSort] = useState<
+    "newest" | "oldest" | "title"
+  >("newest");
 
   useEffect(() => {
     let cancelled = false;
@@ -314,6 +322,67 @@ export function AcademicResourcesClient() {
     [context?.catalog.documents, subject, classLevel],
   );
   const sourceCompleteness = completeness(selectedDocument);
+
+  const visibleSchemeEntries = useMemo(() => {
+    const query = schemeSearch.trim().toLowerCase();
+    const filtered = (context?.catalog.entries ?? []).filter((entry) => {
+      if (!query) return true;
+      return [
+        entry.topic,
+        entry.component ?? "",
+        entry.week_label,
+        entry.subject,
+        ...entry.learning_objectives,
+        ...entry.learning_activities,
+        ...entry.embedded_core_skills,
+        ...entry.learning_resources,
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+    return [...filtered].sort((a, b) => {
+      if (schemeSort === "topic") return a.topic.localeCompare(b.topic);
+      const aWeek = a.week_number ?? Number.MAX_SAFE_INTEGER;
+      const bWeek = b.week_number ?? Number.MAX_SAFE_INTEGER;
+      return aWeek - bWeek || a.week_label.localeCompare(b.week_label);
+    });
+  }, [context?.catalog.entries, schemeSearch, schemeSort]);
+
+  const visibleSchoolResources = useMemo(() => {
+    const query = resourceSearch.trim().toLowerCase();
+    const filtered = (context?.schoolResources ?? []).filter((resource) => {
+      if (
+        resourceTypeFilter !== "all" &&
+        resource.resource_type !== resourceTypeFilter
+      ) {
+        return false;
+      }
+      if (!query) return true;
+      return [
+        resource.title,
+        resource.resource_type,
+        resource.visibility,
+        resource.status,
+        resource.mime_type ?? "",
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+    return [...filtered].sort((a, b) => {
+      if (resourceSort === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return resourceSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [
+    context?.schoolResources,
+    resourceSearch,
+    resourceSort,
+    resourceTypeFilter,
+  ]);
+
+  const resourceTypes = useMemo(
+    () =>
+      [...new Set((context?.schoolResources ?? []).map((item) => item.resource_type))]
+        .sort((a, b) => a.localeCompare(b)),
+    [context?.schoolResources],
+  );
 
   if (loading) {
     return (
@@ -444,13 +513,31 @@ export function AcademicResourcesClient() {
                 </span>
               </div>
 
+              <div className="mt-4">
+                <RecordListToolbar
+                  searchValue={schemeSearch}
+                  onSearchChange={setSchemeSearch}
+                  searchPlaceholder="Search topic, objective, skill or resource…"
+                  sortValue={schemeSort}
+                  onSortChange={(value) =>
+                    setSchemeSort(value as "week" | "topic")
+                  }
+                  sortOptions={[
+                    { value: "week", label: "Week order" },
+                    { value: "topic", label: "Topic A–Z" },
+                  ]}
+                  visibleCount={visibleSchemeEntries.length}
+                  totalCount={context.catalog.entries.length}
+                />
+              </div>
+
               {!filtering && context.catalog.entries.length === 0 ? (
                 <div className="mt-5 rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-600">
                   No extracted scheme rows are available for this selection yet.
                 </div>
               ) : (
                 <div className="mt-5 space-y-4">
-                  {context.catalog.entries.map((entry) => {
+                  {visibleSchemeEntries.map((entry) => {
                     const objective = entry.learning_objectives.join(" ");
                     const hqlsHref = `/hqls?from=scheme&subject=${encodeURIComponent(entry.subject)}&classLevel=${encodeURIComponent(entry.class_level)}&topic=${encodeURIComponent(entry.topic)}&objective=${encodeURIComponent(objective)}&schemeEntry=${encodeURIComponent(entry.id)}`;
                     return (
@@ -486,6 +573,13 @@ export function AcademicResourcesClient() {
                   })}
                 </div>
               )}
+              {!filtering &&
+              context.catalog.entries.length > 0 &&
+              visibleSchemeEntries.length === 0 ? (
+                <div className="mt-5 rounded-3xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-600">
+                  No scheme rows match your search.
+                </div>
+              ) : null}
             </section>
           </>
         ) : (
@@ -499,9 +593,42 @@ export function AcademicResourcesClient() {
                 Manage library
               </Link>
             </div>
-            {context.schoolResources.length ? (
+            <div className="mt-5">
+              <RecordListToolbar
+                searchValue={resourceSearch}
+                onSearchChange={setResourceSearch}
+                searchPlaceholder="Search uploaded resources…"
+                sortValue={resourceSort}
+                onSortChange={(value) =>
+                  setResourceSort(value as "newest" | "oldest" | "title")
+                }
+                sortOptions={[
+                  { value: "newest", label: "Newest" },
+                  { value: "oldest", label: "Oldest" },
+                  { value: "title", label: "A–Z" },
+                ]}
+                filters={
+                  <select
+                    value={resourceTypeFilter}
+                    onChange={(event) => setResourceTypeFilter(event.target.value)}
+                    aria-label="Filter resources by type"
+                    className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
+                  >
+                    <option value="all">All types</option>
+                    {resourceTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.replaceAll("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                }
+                visibleCount={visibleSchoolResources.length}
+                totalCount={context.schoolResources.length}
+              />
+            </div>
+            {visibleSchoolResources.length ? (
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {context.schoolResources.map((resource) => (
+                {visibleSchoolResources.map((resource) => (
                   <article key={resource.id} className="rounded-2xl border border-zinc-200 bg-stone-50 p-4">
                     <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-800">{resource.resource_type.replaceAll("_", " ")}</span>
                     <h3 className="mt-3 font-bold">{resource.title}</h3>
@@ -511,7 +638,9 @@ export function AcademicResourcesClient() {
               </div>
             ) : (
               <div className="mt-5 rounded-2xl bg-stone-50 p-6 text-sm text-zinc-600">
-                No school resources have been uploaded yet. Owners and authorised staff can add trusted source material in the Resource Library.
+                {context.schoolResources.length
+                  ? "No school resources match your search and filters."
+                  : "No school resources have been uploaded yet. Owners and authorised staff can add trusted source material in the Resource Library."}
               </div>
             )}
           </section>

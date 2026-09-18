@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   deriveInterventionDraft,
   type FinalDiagnosisSource,
@@ -81,6 +82,15 @@ export function InterventionWorkspaceClient() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnosisSearch, setDiagnosisSearch] = useState("");
+  const [diagnosisSort, setDiagnosisSort] = useState<
+    "newest" | "oldest" | "student"
+  >("newest");
+  const [planSearch, setPlanSearch] = useState("");
+  const [planStatus, setPlanStatus] = useState<"all" | Handoff["status"]>("all");
+  const [planSort, setPlanSort] = useState<
+    "newest" | "oldest" | "student"
+  >("newest");
 
   useEffect(() => {
     let active = true;
@@ -107,6 +117,74 @@ export function InterventionWorkspaceClient() {
   const handoffByDiagnosis = useMemo(() => new Map(state?.handoffs.map((item) => [item.diagnosis_id, item]) ?? []), [state?.handoffs]);
   function studentName(id: string) { return state?.students.find((item) => item.id === id)?.display_name ?? "Student"; }
   function className(id: string) { const student = state?.students.find((item) => item.id === id); return student?.class_id ? state?.classes.find((item) => item.id === student.class_id)?.name ?? "Class not linked" : "Class not linked"; }
+
+  const recordNames = useMemo(() => {
+    const students = new Map(
+      (state?.students ?? []).map((item) => [
+        item.id,
+        { name: item.display_name, classId: item.class_id },
+      ]),
+    );
+    const classes = new Map(
+      (state?.classes ?? []).map((item) => [item.id, item.name]),
+    );
+    return {
+      studentName: (id: string) => students.get(id)?.name ?? "Student",
+      className: (id: string) => {
+        const classId = students.get(id)?.classId;
+        return classId ? classes.get(classId) ?? "Class not linked" : "Class not linked";
+      },
+    };
+  }, [state?.classes, state?.students]);
+
+  const visibleDiagnoses = useMemo(() => {
+    const query = diagnosisSearch.trim().toLowerCase();
+    const filtered = (state?.diagnoses ?? []).filter((diagnosis) => {
+      if (!query) return true;
+      return [
+        recordNames.studentName(diagnosis.student_id),
+        recordNames.className(diagnosis.student_id),
+        diagnosis.academic_session,
+        diagnosis.term,
+        diagnosis.concise_diagnosis,
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+    return [...filtered].sort((a, b) => {
+      if (diagnosisSort === "student") {
+        return recordNames
+          .studentName(a.student_id)
+          .localeCompare(recordNames.studentName(b.student_id));
+      }
+      const aTime = a.finalised_at ? new Date(a.finalised_at).getTime() : 0;
+      const bTime = b.finalised_at ? new Date(b.finalised_at).getTime() : 0;
+      return diagnosisSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [diagnosisSearch, diagnosisSort, recordNames, state?.diagnoses]);
+
+  const visibleHandoffs = useMemo(() => {
+    const query = planSearch.trim().toLowerCase();
+    const filtered = (state?.handoffs ?? []).filter((handoff) => {
+      if (planStatus !== "all" && handoff.status !== planStatus) return false;
+      if (!query) return true;
+      return [
+        recordNames.studentName(handoff.student_id),
+        recordNames.className(handoff.student_id),
+        handoff.status,
+        handoff.priority_growth_target,
+        handoff.next_lesson_id ? "next hqls linked" : "",
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+    return [...filtered].sort((a, b) => {
+      if (planSort === "student") {
+        return recordNames
+          .studentName(a.student_id)
+          .localeCompare(recordNames.studentName(b.student_id));
+      }
+      const aTime = new Date(a.updated_at).getTime();
+      const bTime = new Date(b.updated_at).getTime();
+      return planSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [planSearch, planSort, planStatus, recordNames, state?.handoffs]);
 
   async function createHandoff(diagnosis: Diagnosis) {
     if (!state) return;
@@ -160,8 +238,27 @@ export function InterventionWorkspaceClient() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Governed improvement handoff</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">Create intervention from a final diagnosis</h1>
           <p className="mt-2 text-sm leading-6 text-zinc-600">Choose an approved diagnosis. KSI creates one deterministic intervention draft, then opens it on its own result page for human review and confirmation.</p>
-          <div className="mt-6 grid gap-3">
-            {state.diagnoses.length ? state.diagnoses.map((diagnosis) => {
+          <div className="mt-5">
+            <RecordListToolbar
+              compact
+              searchValue={diagnosisSearch}
+              onSearchChange={setDiagnosisSearch}
+              searchPlaceholder="Search learner, class, session or diagnosis…"
+              sortValue={diagnosisSort}
+              onSortChange={(value) =>
+                setDiagnosisSort(value as "newest" | "oldest" | "student")
+              }
+              sortOptions={[
+                { value: "newest", label: "Newest" },
+                { value: "oldest", label: "Oldest" },
+                { value: "student", label: "Learner A–Z" },
+              ]}
+              visibleCount={visibleDiagnoses.length}
+              totalCount={state.diagnoses.length}
+            />
+          </div>
+          <div className="mt-4 grid gap-3">
+            {visibleDiagnoses.length ? visibleDiagnoses.map((diagnosis) => {
               const handoff = handoffByDiagnosis.get(diagnosis.id);
               return (
                 <article key={diagnosis.id} className="rounded-2xl border border-zinc-200 p-4">
@@ -175,14 +272,48 @@ export function InterventionWorkspaceClient() {
                   </div>
                 </article>
               );
-            }) : <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500">No final diagnosis is available. Review and approve a diagnosis first.</p>}
+            }) : <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500">{diagnosisSearch.trim() ? "No final diagnoses match your search." : "No final diagnosis is available. Review and approve a diagnosis first."}</p>}
           </div>
         </section>
 
         <aside className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-emerald-800">Saved work</p><h2 className="mt-1 text-xl font-semibold text-zinc-950">Interventions</h2></div><span className="text-xs text-zinc-400">{state.handoffs.length}</span></div>
           <p className="mt-2 text-xs leading-5 text-zinc-500">Draft, confirmed and archived plans each open on a dedicated result page.</p>
-          <div className="mt-4 grid gap-2">{state.handoffs.length ? state.handoffs.map((handoff) => <Link key={handoff.id} href={`/interventions/result?intervention=${encodeURIComponent(handoff.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{studentName(handoff.student_id)}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{handoff.status}</span></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-500">{handoff.priority_growth_target}</p>{handoff.next_lesson_id ? <p className="mt-2 text-[11px] font-semibold text-emerald-800">Next HQLS linked</p> : null}</Link>) : <p className="text-sm text-zinc-500">No intervention plans yet.</p>}</div>
+          <div className="mt-4">
+            <RecordListToolbar
+              compact
+              searchValue={planSearch}
+              onSearchChange={setPlanSearch}
+              searchPlaceholder="Search learner, class or growth target…"
+              sortValue={planSort}
+              onSortChange={(value) =>
+                setPlanSort(value as "newest" | "oldest" | "student")
+              }
+              sortOptions={[
+                { value: "newest", label: "Newest" },
+                { value: "oldest", label: "Oldest" },
+                { value: "student", label: "Learner A–Z" },
+              ]}
+              filters={
+                <select
+                  value={planStatus}
+                  onChange={(event) =>
+                    setPlanStatus(event.target.value as "all" | Handoff["status"])
+                  }
+                  aria-label="Filter intervention plans by status"
+                  className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              }
+              visibleCount={visibleHandoffs.length}
+              totalCount={state.handoffs.length}
+            />
+          </div>
+          <div className="mt-4 grid gap-2">{visibleHandoffs.length ? visibleHandoffs.map((handoff) => <Link key={handoff.id} href={`/interventions/result?intervention=${encodeURIComponent(handoff.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{studentName(handoff.student_id)}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{handoff.status}</span></div><p className="mt-1 text-[11px] text-zinc-400">{className(handoff.student_id)}</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-500">{handoff.priority_growth_target}</p>{handoff.next_lesson_id ? <p className="mt-2 text-[11px] font-semibold text-emerald-800">Next HQLS linked</p> : null}</Link>) : <p className="text-sm text-zinc-500">{planSearch.trim() || planStatus !== "all" ? "No intervention plans match your search and filters." : "No intervention plans yet."}</p>}</div>
         </aside>
       </div>
     </main>
