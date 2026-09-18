@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { KaecBrand } from "@/components/branding/kaec-brand";
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Lesson = {
@@ -26,6 +27,26 @@ export function HqlsExportsClient() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | Lesson["status"]>("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "title">("newest");
+
+  const visibleLessons = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = (state?.lessons ?? []).filter((lesson) => {
+      if (statusFilter !== "all" && lesson.status !== statusFilter) return false;
+      if (!query) return true;
+      return [lesson.title, lesson.topic, lesson.status].some((value) =>
+        value.toLowerCase().includes(query),
+      );
+    });
+    return [...filtered].sort((a, b) => {
+      if (sortOrder === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.updated_at).getTime();
+      const bTime = new Date(b.updated_at).getTime();
+      return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [searchQuery, sortOrder, state?.lessons, statusFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,13 +197,29 @@ export function HqlsExportsClient() {
           </div>
         ) : null}
 
+        {!loading && state ? (
+          <div className="mt-7">
+            <RecordListToolbar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search lesson title, topic or status…"
+              sortValue={sortOrder}
+              onSortChange={(value) => setSortOrder(value as "newest" | "oldest" | "title")}
+              sortOptions={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }, { value: "title", label: "A–Z" }]}
+              filters={<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | Lesson["status"])} aria-label="Filter lesson exports by status" className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800"><option value="all">All statuses</option><option value="validated">Validated</option><option value="draft">Draft</option><option value="archived">Archived</option></select>}
+              visibleCount={visibleLessons.length}
+              totalCount={state.lessons.length}
+            />
+          </div>
+        ) : null}
+
         <section className="mt-7 space-y-3">
           {loading ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
               Loading saved lessons…
             </div>
-          ) : state?.lessons.length ? (
-            state.lessons.map((lesson) => (
+          ) : visibleLessons.length ? (
+            visibleLessons.map((lesson) => (
               <article
                 key={lesson.id}
                 className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -213,7 +250,7 @@ export function HqlsExportsClient() {
             ))
           ) : (
             <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
-              No saved HQLS lessons are available in this workspace yet.
+              {state?.lessons.length ? "No HQLS lessons match your search and filters." : "No saved HQLS lessons are available in this workspace yet."}
             </div>
           )}
         </section>
