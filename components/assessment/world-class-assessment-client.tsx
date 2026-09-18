@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   parseGeneratedAssessment,
   type AssessmentItemCounts,
@@ -352,6 +353,13 @@ export function WorldClassAssessmentClient() {
   const [editor, setEditor] = useState<GeneratedAssessment | null>(null);
   const [validation, setValidation] = useState<AssessmentValidation | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [assessmentSearch, setAssessmentSearch] = useState("");
+  const [assessmentStatus, setAssessmentStatus] = useState<
+    "all" | AssessmentSummary["status"]
+  >("all");
+  const [assessmentSort, setAssessmentSort] = useState<
+    "newest" | "oldest" | "title"
+  >("newest");
 
   const subjectMatch = useMemo(
     () =>
@@ -371,6 +379,62 @@ export function WorldClassAssessmentClient() {
     () => topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0),
     [topics],
   );
+
+  const visibleAssessments = useMemo(() => {
+    const query = assessmentSearch.trim().toLowerCase();
+    const subjectNames = new Map(
+      (state?.subjects ?? []).map((item) => [item.id, item.name]),
+    );
+    const classNames = new Map(
+      (state?.classes ?? []).map((item) => [item.id, item.name]),
+    );
+    const filtered = (state?.assessments ?? []).filter((assessment) => {
+      if (
+        assessmentStatus !== "all" &&
+        assessment.status !== assessmentStatus
+      ) {
+        return false;
+      }
+      if (!query) return true;
+      const blueprint = isRecord(assessment.blueprint)
+        ? assessment.blueprint
+        : {};
+      const kind =
+        typeof blueprint.assessmentKind === "string"
+          ? blueprint.assessmentKind
+          : "";
+      const difficulty =
+        typeof blueprint.overallDifficulty === "string"
+          ? blueprint.overallDifficulty
+          : "";
+      const values = [
+        assessment.title,
+        assessment.assessment_mode,
+        assessment.status,
+        kind,
+        difficulty,
+        assessment.subject_id
+          ? subjectNames.get(assessment.subject_id) ?? ""
+          : "",
+        assessment.class_id ? classNames.get(assessment.class_id) ?? "" : "",
+      ];
+      return values.some((value) => value.toLowerCase().includes(query));
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (assessmentSort === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.updated_at).getTime();
+      const bTime = new Date(b.updated_at).getTime();
+      return assessmentSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [
+    assessmentSearch,
+    assessmentSort,
+    assessmentStatus,
+    state?.assessments,
+    state?.classes,
+    state?.subjects,
+  ]);
 
   const refreshAssessments = useCallback(async () => {
     if (!state) return;
@@ -1164,9 +1228,47 @@ export function WorldClassAssessmentClient() {
               v1.0 assessments remain readable. New generations use the richer
               v1.1 blueprint.
             </p>
+            <div className="mt-4">
+              <RecordListToolbar
+                compact
+                searchValue={assessmentSearch}
+                onSearchChange={setAssessmentSearch}
+                searchPlaceholder="Search title, type, subject or class…"
+                sortValue={assessmentSort}
+                onSortChange={(value) =>
+                  setAssessmentSort(value as "newest" | "oldest" | "title")
+                }
+                sortOptions={[
+                  { value: "newest", label: "Newest" },
+                  { value: "oldest", label: "Oldest" },
+                  { value: "title", label: "A–Z" },
+                ]}
+                filters={
+                  <select
+                    value={assessmentStatus}
+                    onChange={(event) =>
+                      setAssessmentStatus(
+                        event.target.value as
+                          | "all"
+                          | AssessmentSummary["status"],
+                      )
+                    }
+                    aria-label="Filter assessments by status"
+                    className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="validated">Validated</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                }
+                visibleCount={visibleAssessments.length}
+                totalCount={state.assessments.length}
+              />
+            </div>
             <div className="mt-4 grid gap-2">
-              {state.assessments.length ? (
-                state.assessments.map((assessment) => {
+              {visibleAssessments.length ? (
+                visibleAssessments.map((assessment) => {
                   const blueprint = isRecord(assessment.blueprint)
                     ? assessment.blueprint
                     : {};
@@ -1199,7 +1301,11 @@ export function WorldClassAssessmentClient() {
                   );
                 })
               ) : (
-                <p className="text-sm text-zinc-500">No saved assessments yet.</p>
+                <p className="text-sm text-zinc-500">
+                  {assessmentSearch.trim() || assessmentStatus !== "all"
+                    ? "No assessments match your search and filters."
+                    : "No saved assessments yet."}
+                </p>
               )}
             </div>
           </aside>
