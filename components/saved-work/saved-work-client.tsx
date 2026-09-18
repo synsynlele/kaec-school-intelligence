@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type SavedWorkType = "lesson" | "assessment";
@@ -43,6 +44,8 @@ export function SavedWorkClient() {
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<"active" | "archived">("active");
   const [typeFilter, setTypeFilter] = useState<"all" | SavedWorkType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "title">("newest");
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -106,9 +109,25 @@ export function SavedWorkClient() {
 
   const items = useMemo(() => {
     const source = view === "active" ? data?.active ?? [] : data?.archived ?? [];
-    if (typeFilter === "all") return source;
-    return source.filter((item) => item.artifactType === typeFilter);
-  }, [data, typeFilter, view]);
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = source.filter((item) => {
+      if (typeFilter !== "all" && item.artifactType !== typeFilter) return false;
+      if (!query) return true;
+      return [
+        item.title,
+        item.detail,
+        item.status,
+        item.artifactType === "lesson" ? "HQLS lesson" : "assessment",
+      ].some((value) => value.toLowerCase().includes(query));
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortOrder === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.updatedAt).getTime();
+      const bTime = new Date(b.updatedAt).getTime();
+      return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [data, searchQuery, sortOrder, typeFilter, view]);
 
   async function manage(item: SavedWorkItem, action: SavedWorkAction) {
     if (!item.canManage) return;
@@ -253,6 +272,27 @@ export function SavedWorkClient() {
         </div>
       </div>
 
+      <div className="mt-4">
+        <RecordListToolbar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search title, subject, class or status…"
+          sortValue={sortOrder}
+          onSortChange={(value) =>
+            setSortOrder(value as "newest" | "oldest" | "title")
+          }
+          sortOptions={[
+            { value: "newest", label: "Newest" },
+            { value: "oldest", label: "Oldest" },
+            { value: "title", label: "A–Z" },
+          ]}
+          visibleCount={items.length}
+          totalCount={
+            view === "active" ? data?.active.length ?? 0 : data?.archived.length ?? 0
+          }
+        />
+      </div>
+
       <section className="mt-5 grid gap-3">
         {items.length ? (
           items.map((item) => {
@@ -348,9 +388,11 @@ export function SavedWorkClient() {
           })
         ) : (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500">
-            {view === "active"
-              ? "No active saved work matches this filter."
-              : "Your Archived area is empty."}
+            {searchQuery.trim()
+              ? "No saved work matches your search and filters."
+              : view === "active"
+                ? "No active saved work matches this filter."
+                : "Your Archived area is empty."}
           </div>
         )}
       </section>
