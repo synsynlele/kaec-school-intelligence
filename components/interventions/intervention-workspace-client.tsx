@@ -118,13 +118,32 @@ export function InterventionWorkspaceClient() {
   function studentName(id: string) { return state?.students.find((item) => item.id === id)?.display_name ?? "Student"; }
   function className(id: string) { const student = state?.students.find((item) => item.id === id); return student?.class_id ? state?.classes.find((item) => item.id === student.class_id)?.name ?? "Class not linked" : "Class not linked"; }
 
+  const recordNames = useMemo(() => {
+    const students = new Map(
+      (state?.students ?? []).map((item) => [
+        item.id,
+        { name: item.display_name, classId: item.class_id },
+      ]),
+    );
+    const classes = new Map(
+      (state?.classes ?? []).map((item) => [item.id, item.name]),
+    );
+    return {
+      studentName: (id: string) => students.get(id)?.name ?? "Student",
+      className: (id: string) => {
+        const classId = students.get(id)?.classId;
+        return classId ? classes.get(classId) ?? "Class not linked" : "Class not linked";
+      },
+    };
+  }, [state?.classes, state?.students]);
+
   const visibleDiagnoses = useMemo(() => {
     const query = diagnosisSearch.trim().toLowerCase();
     const filtered = (state?.diagnoses ?? []).filter((diagnosis) => {
       if (!query) return true;
       return [
-        studentName(diagnosis.student_id),
-        className(diagnosis.student_id),
+        recordNames.studentName(diagnosis.student_id),
+        recordNames.className(diagnosis.student_id),
         diagnosis.academic_session,
         diagnosis.term,
         diagnosis.concise_diagnosis,
@@ -132,13 +151,15 @@ export function InterventionWorkspaceClient() {
     });
     return [...filtered].sort((a, b) => {
       if (diagnosisSort === "student") {
-        return studentName(a.student_id).localeCompare(studentName(b.student_id));
+        return recordNames
+          .studentName(a.student_id)
+          .localeCompare(recordNames.studentName(b.student_id));
       }
       const aTime = a.finalised_at ? new Date(a.finalised_at).getTime() : 0;
       const bTime = b.finalised_at ? new Date(b.finalised_at).getTime() : 0;
       return diagnosisSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
-  }, [diagnosisSearch, diagnosisSort, state?.diagnoses, state?.students, state?.classes]);
+  }, [diagnosisSearch, diagnosisSort, recordNames, state?.diagnoses]);
 
   const visibleHandoffs = useMemo(() => {
     const query = planSearch.trim().toLowerCase();
@@ -146,8 +167,8 @@ export function InterventionWorkspaceClient() {
       if (planStatus !== "all" && handoff.status !== planStatus) return false;
       if (!query) return true;
       return [
-        studentName(handoff.student_id),
-        className(handoff.student_id),
+        recordNames.studentName(handoff.student_id),
+        recordNames.className(handoff.student_id),
         handoff.status,
         handoff.priority_growth_target,
         handoff.next_lesson_id ? "next hqls linked" : "",
@@ -155,13 +176,15 @@ export function InterventionWorkspaceClient() {
     });
     return [...filtered].sort((a, b) => {
       if (planSort === "student") {
-        return studentName(a.student_id).localeCompare(studentName(b.student_id));
+        return recordNames
+          .studentName(a.student_id)
+          .localeCompare(recordNames.studentName(b.student_id));
       }
       const aTime = new Date(a.updated_at).getTime();
       const bTime = new Date(b.updated_at).getTime();
       return planSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
-  }, [planSearch, planSort, planStatus, state?.handoffs, state?.students, state?.classes]);
+  }, [planSearch, planSort, planStatus, recordNames, state?.handoffs]);
 
   async function createHandoff(diagnosis: Diagnosis) {
     if (!state) return;
