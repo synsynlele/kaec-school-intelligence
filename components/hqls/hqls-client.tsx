@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import {
   parseHqlsStageContent,
@@ -238,6 +239,13 @@ export function HqlsClient() {
   const [editorStages, setEditorStages] = useState<HqlsStageContent[]>([]);
   const [validation, setValidation] = useState<ValidationView | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [lessonSearch, setLessonSearch] = useState("");
+  const [lessonStatus, setLessonStatus] = useState<
+    "all" | LessonSummary["status"]
+  >("all");
+  const [lessonSort, setLessonSort] = useState<
+    "newest" | "oldest" | "title"
+  >("newest");
   const [stageActions, setStageActions] = useState<
     Record<number, HqlsStageAction>
   >({});
@@ -256,6 +264,43 @@ export function HqlsClient() {
       ) ?? null,
     [state?.classes, classLevel],
   );
+
+  const visibleLessons = useMemo(() => {
+    const query = lessonSearch.trim().toLowerCase();
+    const subjectNames = new Map(
+      (state?.subjects ?? []).map((item) => [item.id, item.name]),
+    );
+    const classNames = new Map(
+      (state?.classes ?? []).map((item) => [item.id, item.name]),
+    );
+    const filtered = (state?.lessons ?? []).filter((lesson) => {
+      if (lessonStatus !== "all" && lesson.status !== lessonStatus) return false;
+      if (!query) return true;
+      const values = [
+        lesson.title,
+        lesson.topic,
+        lesson.objective,
+        lesson.status,
+        lesson.subject_id ? subjectNames.get(lesson.subject_id) ?? "" : "",
+        lesson.class_id ? classNames.get(lesson.class_id) ?? "" : "",
+      ];
+      return values.some((value) => value.toLowerCase().includes(query));
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (lessonSort === "title") return a.title.localeCompare(b.title);
+      const aTime = new Date(a.updated_at).getTime();
+      const bTime = new Date(b.updated_at).getTime();
+      return lessonSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [
+    lessonSearch,
+    lessonSort,
+    lessonStatus,
+    state?.classes,
+    state?.lessons,
+    state?.subjects,
+  ]);
 
   const needsFinalValidation = Boolean(
   selectedLesson?.status === "draft" &&
@@ -810,9 +855,47 @@ const refreshLessons = useCallback(async () => {
                 {state.lessons.length}
               </span>
             </div>
-            <div className="mt-5 space-y-2">
-              {state.lessons.length ? (
-                state.lessons.map((lesson) => (
+            <div className="mt-4">
+              <RecordListToolbar
+                compact
+                searchValue={lessonSearch}
+                onSearchChange={setLessonSearch}
+                searchPlaceholder="Search HQLS title, topic, subject or class…"
+                sortValue={lessonSort}
+                onSortChange={(value) =>
+                  setLessonSort(value as "newest" | "oldest" | "title")
+                }
+                sortOptions={[
+                  { value: "newest", label: "Newest" },
+                  { value: "oldest", label: "Oldest" },
+                  { value: "title", label: "A–Z" },
+                ]}
+                filters={
+                  <select
+                    value={lessonStatus}
+                    onChange={(event) =>
+                      setLessonStatus(
+                        event.target.value as
+                          | "all"
+                          | LessonSummary["status"],
+                      )
+                    }
+                    aria-label="Filter HQLS lessons by status"
+                    className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="validated">Validated</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                }
+                visibleCount={visibleLessons.length}
+                totalCount={state.lessons.length}
+              />
+            </div>
+            <div className="mt-4 space-y-2">
+              {visibleLessons.length ? (
+                visibleLessons.map((lesson) => (
                   <button
                     key={lesson.id}
                     type="button"
@@ -831,8 +914,9 @@ const refreshLessons = useCallback(async () => {
                 ))
               ) : (
                 <div className="rounded-2xl bg-stone-50 p-4 text-sm leading-6 text-zinc-500">
-                  Your generated HQLS lessons will appear here and remain available
-                  after refresh or re-login.
+                  {lessonSearch.trim() || lessonStatus !== "all"
+                    ? "No HQLS lessons match your search and filters."
+                    : "Your generated HQLS lessons will appear here and remain available after refresh or re-login."}
                 </div>
               )}
             </div>
