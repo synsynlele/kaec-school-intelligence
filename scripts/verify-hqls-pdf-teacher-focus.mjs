@@ -33,9 +33,9 @@ assert(
 );
 
 assert(
-  pdf.includes("Math.min(6, sentences.length)") &&
-    pdf.includes("const maxChars = 900"),
-  "Full Illumination PDF focus must remain deliberately concise.",
+  pdf.includes("Math.min(9, sentences.length)") &&
+    pdf.includes("const maxChars = 1400"),
+  "Full Illumination PDF focus must remain focused while carrying enough substantive teaching.",
 );
 
 assert(
@@ -51,5 +51,5 @@ assert(
 );
 
 console.log(
-  "HQLS PDF teacher-focus verification passed: canonical stage names, concise Full Illumination, and compact support cues are enforced in the PDF renderer.",
+  "HQLS PDF teacher-focus verification passed: canonical stage names, fuller focused Full Illumination, and compact support cues are enforced in the PDF renderer.",
 );
