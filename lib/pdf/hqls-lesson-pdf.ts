@@ -107,43 +107,8 @@ function canonicalStageDefinition(stageNumber: number) {
   return HQLS_STAGES[stageNumber - 1] ?? HQLS_STAGES[0];
 }
 
-function trimPdfText(value: string, maxChars: number) {
-  const clean = ascii(value);
-  if (clean.length <= maxChars) return clean;
-  const candidate = clean.slice(0, Math.max(1, maxChars - 3));
-  const lastSpace = candidate.lastIndexOf(" ");
-  const trimmed =
-    lastSpace > maxChars * 0.72 ? candidate.slice(0, lastSpace) : candidate;
-  return `${trimmed.trim()}...`;
-}
-
-function conciseTeachingFocus(value: string) {
-  const clean = ascii(value);
-  if (!clean) return "";
-  const sentences = clean
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-  const maxChars = 1400;
-  const selected = sentences
-    .slice(0, Math.min(9, sentences.length))
-    .join(" ");
-  return trimPdfText(selected || clean, maxChars);
-}
-
-function compactSupportValue(value: string | string[]) {
-  const supportText = Array.isArray(value)
-    ? value.filter(Boolean).slice(0, 4).join("; ")
-    : value;
-  return trimPdfText(supportText, 360);
-}
-
 function rgb([r, g, b]: [number, number, number]) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
-}
-
-function strokeRgb([r, g, b]: [number, number, number]) {
-  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
 }
 
 class PdfComposer {
@@ -219,71 +184,56 @@ class PdfComposer {
     });
   }
 
-  supportPanel(
-    sections: Array<{
-      label: string;
-      value: string | string[];
-      labelColor?: [number, number, number];
-    }>,
+  detailSection(
+    label: string,
+    value: string | string[],
+    options: { color?: [number, number, number]; bullets?: boolean } = {},
   ) {
-    const prepared = sections
-      .map((section) => ({
-        ...section,
-        text: compactSupportValue(section.value),
-      }))
-      .filter((section) => Boolean(section.text));
-    if (!prepared.length) return;
+    const items = Array.isArray(value)
+      ? value.map((item) => ascii(item)).filter(Boolean)
+      : [ascii(value)].filter(Boolean);
+    if (!items.length) return;
 
-    const innerWidth = CONTENT_WIDTH - 20;
-    const bodySize = 7.7;
-    const bodyLeading = 10.1;
-    const rows = prepared.map((section) => ({
-      ...section,
-      lines: wrapText(section.text, innerWidth, bodySize),
-    }));
-    const height =
-      28 +
-      rows.reduce(
-        (total, row) => total + 10 + row.lines.length * bodyLeading + 4,
-        0,
-      );
+    this.line(label, {
+      bold: true,
+      size: 9.8,
+      color: options.color ?? BLUE,
+      gapBefore: 2,
+      gapAfter: 2,
+    });
 
-    this.ensure(height + 8);
-    const top = this.y;
-    const bottom = top - height;
-    this.current.push("q 0.973 0.978 0.982 rg");
-    this.current.push(
-      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re f Q`,
-    );
-    this.current.push(`q ${strokeRgb([0.82, 0.84, 0.87])} 0.7 w`);
-    this.current.push(
-      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re S Q`,
-    );
-
-    let cursor = top - 13;
-    this.current.push(rgb(NAVY));
-    this.current.push(
-      `BT /F2 8.2 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (Support cues) Tj ET`,
-    );
-    cursor -= 14;
-
-    for (const row of rows) {
-      this.current.push(rgb(row.labelColor ?? MUTED));
-      this.current.push(
-        `BT /F2 7.5 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
-      );
-      cursor -= 9.5;
-      this.current.push(rgb(TEXT));
-      for (const line of row.lines) {
-        this.current.push(
-          `BT /F1 ${bodySize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
-        );
-        cursor -= bodyLeading;
-      }
-      cursor -= 4;
+    if (Array.isArray(value) || options.bullets) {
+      items.forEach((item) => this.bullet(item, options.color === RED ? RED : TEXT));
+    } else {
+      this.line(items[0], { size: 9.4, gapAfter: 5 });
     }
+  }
 
-    this.y = bottom - 7;
+  teachingNote(text: string) {
+    const blocks = ascii(text)
+      .split(/\n+/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+
+    for (const block of blocks) {
+      if (block.startsWith("- ")) {
+        this.bullet(block.slice(2));
+        continue;
+      }
+
+      const looksLikeHeading =
+        block.length <= 72 &&
+        block.endsWith(":") &&
+        !/[.!?]/.test(block.slice(0, -1));
+
+      this.line(block, {
+        bold: looksLikeHeading,
+        size: looksLikeHeading ? 9.8 : 9.5,
+        color: looksLikeHeading ? BLUE : TEXT,
+        gapBefore: looksLikeHeading ? 3 : 0,
+        gapAfter: looksLikeHeading ? 2 : 5,
+      });
+    }
   }
 
   addLesson() {
@@ -354,101 +304,79 @@ class PdfComposer {
       });
 
       if (stage.stageNumber !== 5 && stage.experience) {
-        this.line("Core learning experience", {
-          bold: true,
-          size: 10,
-          color: BLUE,
-          gapAfter: 2,
-        });
-        this.line(stage.experience, { size: 9.5, gapAfter: 5 });
+        this.detailSection("What happens in this stage", stage.experience);
       }
 
       if (stage.stageNumber !== 5 && stage.teacherPrompts.length) {
-        this.line("Teacher prompts / actions", {
-          bold: true,
-          size: 10,
-          color: BLUE,
-          gapAfter: 2,
-        });
-        stage.teacherPrompts.forEach((item) => this.bullet(item));
+        this.detailSection(
+          "What the teacher says or does",
+          stage.teacherPrompts,
+          { bullets: true },
+        );
       }
 
       if (stage.stageNumber === 5 && stage.teachingContent) {
-        this.line("Full Illumination - teaching after struggle", {
+        this.line("Full Illumination - complete teaching note", {
           bold: true,
-          size: 10.2,
+          size: 10.4,
           color: NAVY,
           gapBefore: 3,
-          gapAfter: 1,
-        });
-        this.line("Concise teaching focus", {
-          bold: true,
-          size: 8.5,
-          color: MUTED,
           gapAfter: 2,
         });
-        this.line(conciseTeachingFocus(stage.teachingContent), {
-          size: 9.5,
-          gapAfter: 5,
-        });
-      }
-
-      if (stage.respondsToFirstAttempt) {
-        this.line("Connection to Trial 1", {
-          bold: true,
-          size: 8.4,
-          color: MUTED,
-          gapBefore: 1,
-          gapAfter: 1,
-        });
-        this.line(trimPdfText(stage.respondsToFirstAttempt, 420), {
-          size: 8.2,
+        this.line("Teach this after learners have made their first attempt.", {
+          size: 8.7,
           color: MUTED,
           gapAfter: 4,
         });
+        this.teachingNote(stage.teachingContent);
+      }
+
+      if (stage.respondsToFirstAttempt) {
+        this.detailSection(
+          "How this connects to the first attempt",
+          stage.respondsToFirstAttempt,
+        );
+      }
+
+      if (stage.learnerActions.length) {
+        this.detailSection(
+          "What learners should do",
+          stage.learnerActions,
+          { bullets: true },
+        );
+      }
+
+      if (stage.productiveStruggle) {
+        this.detailSection("Expected struggle", stage.productiveStruggle, {
+          color: RED,
+        });
+      }
+
+      if (stage.guideGuardrails.length) {
+        this.detailSection(
+          "What the teacher must not do",
+          stage.guideGuardrails,
+          { color: RED, bullets: true },
+        );
+      }
+
+      if (stage.evidenceToNotice.length) {
+        this.detailSection(
+          "What the teacher should look for",
+          stage.evidenceToNotice,
+          { bullets: true },
+        );
       }
 
       if (stage.reflectionPrompt) {
-        this.line("Reflection - how thinking changed", {
-          bold: true,
-          size: 9.6,
-          color: BLUE,
-          gapBefore: 2,
-          gapAfter: 2,
-        });
-        this.line(stage.reflectionPrompt, { size: 9.2 });
+        this.detailSection("Reflection questions", stage.reflectionPrompt);
       }
       if (stage.transferTask) {
-        this.line("Transfer task", {
-          bold: true,
-          size: 9.6,
-          color: BLUE,
-          gapBefore: 2,
-          gapAfter: 2,
-        });
-        this.line(stage.transferTask, { size: 9.2, gapAfter: 5 });
+        this.detailSection(
+          "Real-life follow-up / transfer task",
+          stage.transferTask,
+        );
       }
-
-      this.supportPanel([
-        {
-          label: "Expected learner outcome",
-          value: stage.learnerActions,
-        },
-        {
-          label: "Guide Guardrails",
-          value: stage.guideGuardrails,
-          labelColor: RED,
-        },
-        {
-          label: "Evidence to notice",
-          value: stage.evidenceToNotice,
-        },
-        {
-          label: "Productive struggle",
-          value: stage.productiveStruggle,
-          labelColor: RED,
-        },
-      ]);
       this.rule();
     }
 
