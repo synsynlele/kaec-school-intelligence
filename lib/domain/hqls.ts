@@ -23,7 +23,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 1,
     key: "awakening",
     title: "Awakening",
-    purpose: "Curiosity, meaning and identity.",
+    purpose: "Make learners curious and show why the lesson matters.",
     nonNegotiable:
       "Begin with a problem, situation, tension or provocative question. No definitions, notes or full teaching.",
   },
@@ -31,7 +31,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 2,
     key: "exploration",
     title: "Exploration",
-    purpose: "Expose crude thinking, assumptions and learner voice.",
+    purpose: "Let learners share what they already think, including wrong or incomplete ideas.",
     nonNegotiable:
       "Wrong and incomplete thinking may surface. Correction is deliberately withheld while the teacher observes thinking.",
   },
@@ -39,7 +39,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 3,
     key: "micro_illumination",
     title: "Micro-Illumination",
-    purpose: "Provide minimal clarity and guardrails.",
+    purpose: "Give only a small amount of clarification so learners can continue.",
     nonNegotiable:
       "Give only enough clarity to prevent hopelessness. Do not convert this stage into full teaching or a worked solution.",
   },
@@ -47,7 +47,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 4,
     key: "trial_first",
     title: "Trial — First Attempt",
-    purpose: "Create productive struggle and expose gaps.",
+    purpose: "Let learners try before full teaching so their gaps and difficulties become clear.",
     nonNegotiable:
       "Students attempt before full explanation. The teacher does not rescue, solve or remove meaningful cognitive effort.",
   },
@@ -55,7 +55,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 5,
     key: "full_illumination",
     title: "Full Illumination",
-    purpose: "Teach the concept fully in normal lesson style.",
+    purpose: "Teach the concept fully in a clear, normal lesson style.",
     nonNegotiable:
       "Full Illumination must occur after Trial — First Attempt. Inside Stage 5, normal teaching is unrestricted: the teacher may explain, lecture, define, give notes, write on the board, demonstrate, solve examples, use formulas/rules/laws and teach in the conventional style best suited to the subject and class.",
   },
@@ -63,7 +63,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 6,
     key: "trial_second",
     title: "Trial — Second Attempt",
-    purpose: "Apply new understanding and make growth visible.",
+    purpose: "Let learners try again using what they have now learned.",
     nonNegotiable:
       "Students reattempt with better tools and clearer reasoning while the teacher returns ownership to the learner.",
   },
@@ -71,7 +71,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 7,
     key: "integration",
     title: "Integration",
-    purpose: "Reflection, identity and transfer.",
+    purpose: "Help learners reflect on what changed and connect the lesson to real life.",
     nonNegotiable:
       "Learners reflect on how thinking changed and connect the learning to life, future action or self-understanding.",
   },

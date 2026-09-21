@@ -42,13 +42,15 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.5') &&
+  engine.includes('HQLS_PROMPT_v1.6') &&
+    engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
+    engine.includes("teacherPrompts must be exact words or actions") &&
     engine.includes("roughly 350–550 words") &&
     engine.includes("use up to about 700") &&
     engine.includes("serious teaching core, not a chapter") &&
     engine.includes("without needing a separate lesson note") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
-  "HQLS prompting must keep Full Illumination focused, substantial and objective-led.",
+  "HQLS prompting must keep every stage plain-English while Full Illumination remains focused, substantial and objective-led.",
 );
 for (const requirement of [
   'OpenAIReasoningEffort = "none"',

@@ -188,7 +188,7 @@ for (const brandedSurface of [
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
   "HQLS_ENGINE_v1.2",
-  "HQLS_PROMPT_v1.5",
+  "HQLS_PROMPT_v1.6",
   "validateHqlsLesson",
   "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
@@ -295,9 +295,9 @@ const pdfGenerator = await text("lib/pdf/hqls-lesson-pdf.ts");
 for (const requirement of [
   "KAEC_REPORT_LOGO_JPEG_BASE64",
   "HQLS LESSON PLAN",
-  "Guide Guardrails",
-  "Full Illumination - teaching after struggle",
-  "Reflection - how thinking changed",
+  "What the teacher must not do",
+  "Full Illumination - complete teaching note",
+  "Reflection questions",
   "HQLS VALIDATED",
 ]) {
   assert(
