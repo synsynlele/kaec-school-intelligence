@@ -43,7 +43,9 @@ assert(
 );
 assert(
   engine.includes('HQLS_PROMPT_v1.6') &&
-    engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&\n    engine.includes("teacherPrompts must be exact words or actions") &&\n    engine.includes("roughly 350–550 words") &&
+    engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
+    engine.includes("teacherPrompts must be exact words or actions") &&
+    engine.includes("roughly 350–550 words") &&
     engine.includes("use up to about 700") &&
     engine.includes("serious teaching core, not a chapter") &&
     engine.includes("without needing a separate lesson note") &&
