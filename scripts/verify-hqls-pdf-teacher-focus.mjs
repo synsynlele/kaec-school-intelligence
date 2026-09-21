@@ -13,6 +13,8 @@ for (const required of [
   "canonicalStageDefinition",
   "detailSection",
   "teachingNote",
+  "teacherFollowUpPanel",
+  "Teacher follow-up guide",
   "What happens in this stage",
   "What the teacher says or does",
   "What learners should do",
@@ -39,16 +41,17 @@ assert(
 assert(
   !pdf.includes("conciseTeachingFocus") &&
     !pdf.includes("trimPdfText(stage.teachingContent") &&
-    !pdf.includes("supportPanel(") &&
     !pdf.includes("compactSupportValue"),
-  "HQLS PDF must not truncate Full Illumination or compress stage details into shortened support cues.",
+  "HQLS PDF must not truncate Full Illumination or shorten teacher follow-up guidance.",
 );
 
 assert(
   pdf.includes("this.teachingNote(stage.teachingContent)") &&
-    pdf.includes('this.detailSection("Expected struggle"') &&
-    pdf.includes('"What the teacher must not do"'),
-  "Full lesson content and stage guidance must render in readable, paginated sections.",
+    pdf.includes("this.teacherFollowUpPanel([") &&
+    pdf.includes('label: "Expected struggle"') &&
+    pdf.includes('label: "What the teacher must not do"') &&
+    pdf.includes('label: "What the teacher should look for"'),
+  "Full lesson content must remain prominent while teacher drift-check guidance is grouped in the compact follow-up box.",
 );
 
 assert(
@@ -58,5 +61,5 @@ assert(
 );
 
 console.log(
-  "HQLS PDF teacher-focus verification passed: canonical stage names, complete Full Illumination, and full plain-English stage guidance are enforced in the PDF renderer.",
+  "HQLS PDF teacher-focus verification passed: complete Full Illumination and plain-English lesson instructions stay prominent while teacher drift-check guidance is grouped in a compact follow-up box.",
 );
