@@ -51,6 +51,12 @@ assert(
   "Full lesson content and stage guidance must render in readable, paginated sections.",
 );
 
+assert(
+  pdf.includes("this.ensure(leading + gapAfter)") &&
+    !pdf.includes("wrapped.length * leading"),
+  "Long HQLS text must paginate line-by-line instead of overflowing a single PDF page.",
+);
+
 console.log(
   "HQLS PDF teacher-focus verification passed: canonical stage names, complete Full Illumination, and full plain-English stage guidance are enforced in the PDF renderer.",
 );
