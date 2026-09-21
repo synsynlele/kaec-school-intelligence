@@ -124,9 +124,9 @@ function conciseTeachingFocus(value: string) {
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
-  const maxChars = 900;
+  const maxChars = 1400;
   const selected = sentences
-    .slice(0, Math.min(6, sentences.length))
+    .slice(0, Math.min(9, sentences.length))
     .join(" ");
   return trimPdfText(selected || clean, maxChars);
 }
