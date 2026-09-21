@@ -152,17 +152,20 @@ class PdfComposer {
     const maxWidth = options.maxWidth ?? CONTENT_WIDTH - indent;
     const wrapped = wrapText(text, maxWidth, size, bold);
     if (!wrapped.length) return;
+
     const leading = size * 1.35;
-    const height = gapBefore + wrapped.length * leading + gapAfter;
-    this.ensure(height);
+    this.ensure(gapBefore + leading + gapAfter);
     this.y -= gapBefore;
-    this.current.push(rgb(options.color ?? TEXT));
+
     for (const wrappedLine of wrapped) {
+      this.ensure(leading + gapAfter);
+      this.current.push(rgb(options.color ?? TEXT));
       this.current.push(
         `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(LEFT + indent).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(wrappedLine)}) Tj ET`,
       );
       this.y -= leading;
     }
+
     this.y -= gapAfter;
   }
 
