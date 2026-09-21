@@ -111,6 +111,10 @@ function rgb([r, g, b]: [number, number, number]) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
 }
 
+function strokeRgb([r, g, b]: [number, number, number]) {
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
+}
+
 class PdfComposer {
   private pages: string[][] = [];
   private current: string[] = [];
@@ -239,6 +243,82 @@ class PdfComposer {
     }
   }
 
+  teacherFollowUpPanel(sections: Array<{
+    label: string;
+    value: string | string[];
+    labelColor?: [number, number, number];
+  }>) {
+    const prepared = sections
+      .map((section) => ({
+        ...section,
+        items: Array.isArray(section.value)
+          ? section.value.map((item) => ascii(item)).filter(Boolean)
+          : [ascii(section.value)].filter(Boolean),
+      }))
+      .filter((section) => section.items.length > 0);
+
+    if (!prepared.length) return;
+
+    const bodySize = 7.8;
+    const bodyLeading = 10.4;
+    const innerWidth = CONTENT_WIDTH - 24;
+    const rows = prepared.map((section) => ({
+      ...section,
+      lines: section.items.flatMap((item) =>
+        wrapText(item, innerWidth, bodySize).map((line, index) =>
+          section.items.length > 1 && index === 0 ? `- ${line}` : line,
+        ),
+      ),
+    }));
+
+    const height =
+      28 +
+      rows.reduce(
+        (total, row) => total + 10 + row.lines.length * bodyLeading + 6,
+        0,
+      );
+
+    this.ensure(height + 8);
+
+    const top = this.y;
+    const bottom = top - height;
+
+    this.current.push("q 0.973 0.978 0.982 rg");
+    this.current.push(
+      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re f Q`,
+    );
+    this.current.push(`q ${strokeRgb([0.82, 0.84, 0.87])} 0.7 w`);
+    this.current.push(
+      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re S Q`,
+    );
+
+    let cursor = top - 13;
+    this.current.push(rgb(NAVY));
+    this.current.push(
+      `BT /F2 8.4 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (Teacher follow-up guide) Tj ET`,
+    );
+    cursor -= 15;
+
+    for (const row of rows) {
+      this.current.push(rgb(row.labelColor ?? MUTED));
+      this.current.push(
+        `BT /F2 7.6 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
+      );
+      cursor -= 10;
+
+      this.current.push(rgb(TEXT));
+      for (const line of row.lines) {
+        this.current.push(
+          `BT /F1 ${bodySize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
+        );
+        cursor -= bodyLeading;
+      }
+      cursor -= 5;
+    }
+
+    this.y = bottom - 7;
+  }
+
   addLesson() {
     this.line("HQLS LESSON PLAN", {
       bold: true,
@@ -349,27 +429,22 @@ class PdfComposer {
         );
       }
 
-      if (stage.productiveStruggle) {
-        this.detailSection("Expected struggle", stage.productiveStruggle, {
-          color: RED,
-        });
-      }
-
-      if (stage.guideGuardrails.length) {
-        this.detailSection(
-          "What the teacher must not do",
-          stage.guideGuardrails,
-          { color: RED, bullets: true },
-        );
-      }
-
-      if (stage.evidenceToNotice.length) {
-        this.detailSection(
-          "What the teacher should look for",
-          stage.evidenceToNotice,
-          { bullets: true },
-        );
-      }
+      this.teacherFollowUpPanel([
+        {
+          label: "Expected struggle",
+          value: stage.productiveStruggle,
+          labelColor: RED,
+        },
+        {
+          label: "What the teacher must not do",
+          value: stage.guideGuardrails,
+          labelColor: RED,
+        },
+        {
+          label: "What the teacher should look for",
+          value: stage.evidenceToNotice,
+        },
+      ]);
 
       if (stage.reflectionPrompt) {
         this.detailSection("Reflection questions", stage.reflectionPrompt);
