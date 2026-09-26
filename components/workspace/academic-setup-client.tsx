@@ -67,19 +67,22 @@ async function prepareSchoolLogo(file: File) {
 
     const scale = Math.min(
       1,
-      SCHOOL_LOGO_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight),
+      (SCHOOL_LOGO_MAX_DIMENSION * 0.82) /
+        Math.max(image.naturalWidth, image.naturalHeight),
     );
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = SCHOOL_LOGO_MAX_DIMENSION;
+    canvas.height = SCHOOL_LOGO_MAX_DIMENSION;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("The school logo could not be prepared.");
 
     context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const x = Math.round((canvas.width - width) / 2);
+    const y = Math.round((canvas.height - height) / 2);
+    context.drawImage(image, x, y, width, height);
     return canvas.toDataURL("image/jpeg", 0.86);
   } finally {
     URL.revokeObjectURL(objectUrl);
