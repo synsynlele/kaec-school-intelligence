@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">KSI product mark</title>
+  <desc id="desc">A geometric school intelligence mark combining structure, rising intelligence bars and an upward path.</desc>
+  <path fill="#0B3268" d="M76 151 286 30c20-12 45 3 45 26v45L126 219v211l-50-29V151Z"/>
+  <path fill="#0B3268" d="M76 151 286 30c20-12 45 3 45 26v29L76 232v-81Z"/>
+  <path fill="#10B99A" d="M161 239 215 208v133l-54 31V239Zm78-45 61-35v137l-61 35V194Zm85-49 75-43v144l-75 43V145Z"/>
+  <path fill="#10B99A" d="M161 393 436 234v79c0 18-10 35-26 44L161 501V393Z"/>
+</svg>
