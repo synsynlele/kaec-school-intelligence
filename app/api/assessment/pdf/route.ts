@@ -5,6 +5,7 @@ import {
   type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
 import { getSupabasePublicEnv } from "@/lib/env";
+import { createAssessmentDocx } from "@/lib/docx/assessment-docx";
 import {
   createAssessmentPdf,
   safeAssessmentPdfFilename,
@@ -147,6 +148,8 @@ export async function GET(request: Request) {
       throw new Error("Unsupported assessment PDF mode.");
     }
     const mode = requestedMode as AssessmentPdfMode;
+    const format = url.searchParams.get("format")?.trim() || "pdf";
+    if (format !== "pdf" && format !== "docx") throw new Error("Unsupported assessment document format.");
 
     const supabase = await getAuthenticatedClient(request);
     const rows = await fetchAssessment(supabase, assessmentId);
@@ -229,20 +232,23 @@ export async function GET(request: Request) {
         topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
         assessment: generated,
       });
-    const pdf = createAssessmentPdf(
-      {
-        ...safeInput,
-        brandLogoJpegBase64: branding.logoJpegBase64,
-        hasSchoolLogo: branding.hasSchoolLogo,
-      },
-      mode,
-    );
-    const filename = safeAssessmentPdfFilename(rows.assessment.title, mode);
+    const documentInput = {
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    };
+    const bytes = format === "docx"
+      ? createAssessmentDocx(documentInput, mode)
+      : createAssessmentPdf(documentInput, mode);
+    const pdfName = safeAssessmentPdfFilename(rows.assessment.title, mode);
+    const filename = format === "docx" ? pdfName.replace(/\.pdf$/i, ".docx") : pdfName;
 
-    return new Response(pdf, {
+    return new Response(bytes, {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
+        "Content-Type": format === "docx"
+          ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          : "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-store",
       },
