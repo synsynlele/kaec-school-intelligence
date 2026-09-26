@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { SavedWorkClient } from "@/components/saved-work/saved-work-client";
 
 export default function SavedWorkPage() {
@@ -8,7 +8,7 @@ export default function SavedWorkPage() {
     <div className="ksi-saved-work-shell min-h-screen bg-stone-50">
       <div className="border-b border-emerald-900/10 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 md:flex-row md:items-center md:justify-between">
-          <KaecBrand compact />
+          <KsiBrand compact />
           <nav className="flex flex-wrap gap-2 text-sm font-semibold">
             <Link
               href="/dashboard"
