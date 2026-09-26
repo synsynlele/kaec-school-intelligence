@@ -197,11 +197,8 @@ export async function GET(request: Request) {
     if (classResult.error) throw classResult.error;
 
     const branding = resolvePdfBranding(workspace.logo_url);
-    const pdf = createAssessmentPdf(
-      pdfSafeValue({
+    const safeInput = pdfSafeValue({
         workspaceName: workspace.name,
-        brandLogoJpegBase64: branding.logoJpegBase64,
-        hasSchoolLogo: branding.hasSchoolLogo,
         subject: subjectResult.data?.name ?? "Not linked",
         classLevel: classResult.data?.name ?? "Not linked",
         academicSession:
@@ -231,7 +228,13 @@ export async function GET(request: Request) {
             : null,
         topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
         assessment: generated,
-      }),
+      });
+    const pdf = createAssessmentPdf(
+      {
+        ...safeInput,
+        brandLogoJpegBase64: branding.logoJpegBase64,
+        hasSchoolLogo: branding.hasSchoolLogo,
+      },
       mode,
     );
     const filename = safeAssessmentPdfFilename(rows.assessment.title, mode);
