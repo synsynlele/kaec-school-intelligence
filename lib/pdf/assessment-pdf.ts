@@ -276,7 +276,10 @@ class PdfComposer {
   private answerSpace(item: GeneratedAssessmentItem) {
     const lines = assessmentAnswerLines(item);
     // Start with enough room for the label and several answer lines.
-    this.ensure(100);
+    if (this.y - 100 < BOTTOM + 18) {
+      this.newPage();
+      this.line(`Question ${item.position} - answer`, { bold: true, size: 8.5, color: NAVY, gapAfter: 5 });
+    }
     this.line(item.itemType === "project" ? "Working / planning space:" : "Answer:", {
       size: 8.5,
       color: MUTED,
@@ -351,7 +354,7 @@ class PdfComposer {
   }
 
   private examQuestion(item: GeneratedAssessmentItem) {
-    this.ensure(item.itemType === "objective" ? 65 : 110);
+    this.ensure(item.itemType === "objective" ? 65 : item.itemType === "project" ? 170 : 140);
     this.line(
       `${item.position}. ${item.prompt} [${item.marks} mark${item.marks === 1 ? "" : "s"}]`,
       {
