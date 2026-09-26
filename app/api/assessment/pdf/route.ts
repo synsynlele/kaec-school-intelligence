@@ -204,7 +204,10 @@ export async function GET(request: Request) {
         hasSchoolLogo: branding.hasSchoolLogo,
         subject: subjectResult.data?.name ?? "Not linked",
         classLevel: classResult.data?.name ?? "Not linked",
-        academicSession: classResult.data?.academic_session ?? null,
+        academicSession:
+          typeof blueprint.academicSession === "string"
+            ? blueprint.academicSession
+            : classResult.data?.academic_session ?? null,
         term: typeof blueprint.term === "string" ? blueprint.term : null,
         topic:
           typeof blueprint.topic === "string"
