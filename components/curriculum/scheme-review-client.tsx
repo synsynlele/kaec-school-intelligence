@@ -213,7 +213,7 @@ export function SchemeReviewClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const classOptions = useMemo(() => {
+  const classOptions = (() => {
     const values = new Set<string>();
     for (const level of consoleData?.class_levels ?? []) {
       if (level.trim()) values.add(level.trim());
@@ -230,7 +230,7 @@ export function SchemeReviewClient() {
     return [...values].sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
     );
-  }, [consoleData?.class_levels, consoleData?.documents, editing?.classLevel, pageData?.entries]);
+  })();
 
   async function fetchConsole(activeWorkspaceId: string) {
     const supabase = getBrowserSupabaseClient();
