@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -43,6 +44,47 @@ type EditingRecord =
     };
 
 type RecordKind = EditingRecord["kind"];
+
+const SCHOOL_LOGO_MAX_BYTES = 5 * 1024 * 1024;
+const SCHOOL_LOGO_MAX_DIMENSION = 480;
+
+async function prepareSchoolLogo(file: File) {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    throw new Error("Use a PNG, JPEG or WebP school logo.");
+  }
+  if (file.size > SCHOOL_LOGO_MAX_BYTES) {
+    throw new Error("School logo must be 5 MB or smaller.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const next = new window.Image();
+      next.onload = () => resolve(next);
+      next.onerror = () => reject(new Error("The school logo could not be read."));
+      next.src = objectUrl;
+    });
+
+    const scale = Math.min(
+      1,
+      SCHOOL_LOGO_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight),
+    );
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("The school logo could not be prepared.");
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", 0.86);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 async function loadSetupContext(): Promise<SetupContext | null> {
   const supabase = getBrowserSupabaseClient();
@@ -268,6 +310,49 @@ export function AcademicSetupClient() {
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Student could not be added.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function saveSchoolLogo(file: File) {
+    if (!context || !canManage) return;
+    setSaving("school-logo");
+    setError(null);
+    setSuccess(null);
+    try {
+      const logoUrl = await prepareSchoolLogo(file);
+      const { error: updateError } = await getBrowserSupabaseClient()
+        .from("workspaces")
+        .update({ logo_url: logoUrl })
+        .eq("id", context.workspace.id);
+      if (updateError) throw updateError;
+      setSuccess("School logo saved. New KSI PDFs will use this school branding.");
+      await refresh();
+      window.dispatchEvent(new Event("ksi-workspace-change"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "School logo could not be saved.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function removeSchoolLogo() {
+    if (!context || !canManage) return;
+    setSaving("school-logo");
+    setError(null);
+    setSuccess(null);
+    try {
+      const { error: updateError } = await getBrowserSupabaseClient()
+        .from("workspaces")
+        .update({ logo_url: null })
+        .eq("id", context.workspace.id);
+      if (updateError) throw updateError;
+      setSuccess("School logo removed. KSI will be used as the PDF fallback brand.");
+      await refresh();
+      window.dispatchEvent(new Event("ksi-workspace-change"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "School logo could not be removed.");
     } finally {
       setSaving(null);
     }
@@ -594,6 +679,63 @@ export function AcademicSetupClient() {
 
         {error ? <Message tone="error">{error}</Message> : null}
         {success ? <Message tone="success">{success}</Message> : null}
+
+        <section className="mt-8 rounded-3xl border border-[#0B3268]/10 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2">
+                <Image
+                  src={context.workspace.logo_url || "/ksi-mark.svg"}
+                  alt={context.workspace.logo_url ? `${context.workspace.name} logo` : "KSI fallback mark"}
+                  width={72}
+                  height={72}
+                  unoptimized
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0B3268]">
+                  School document branding
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                  {context.workspace.name}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                  This school logo becomes the primary identity on Exam, HQLS, Diagnosis and Intervention PDFs.
+                  If no logo is uploaded, KSI is used as the fallback with a small “by KAEC-NG” endorsement.
+                </p>
+              </div>
+            </div>
+            {canManage ? (
+              <div className="flex flex-wrap gap-2">
+                <label className="cursor-pointer rounded-xl bg-[#0B3268] px-4 py-2.5 text-sm font-semibold text-white">
+                  {saving === "school-logo" ? "Saving…" : context.workspace.logo_url ? "Replace logo" : "Upload school logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={saving === "school-logo"}
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.currentTarget.value = "";
+                      if (file) void saveSchoolLogo(file);
+                    }}
+                  />
+                </label>
+                {context.workspace.logo_url ? (
+                  <button
+                    type="button"
+                    disabled={saving === "school-logo"}
+                    onClick={() => void removeSchoolLogo()}
+                    className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-700 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </section>
 
         {!canManage ? (
           <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
