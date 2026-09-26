@@ -42,6 +42,8 @@ export type WorldClassAssessmentRequest = AssessmentRequest & {
   assessmentKind: AssessmentKind;
   overallDifficulty: AssessmentOverallDifficulty;
   topics: AssessmentTopicSpec[];
+  term: string;
+  academicSession: string;
 };
 
 export type TopicCoverageEvidence = {
