@@ -82,14 +82,14 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png" }],
-    shortcut: "/icon.png",
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
   },
 };
 
 export const viewport: Viewport = {
   colorScheme: "light",
-  themeColor: "#064e3b",
+  themeColor: "#0B3268",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
