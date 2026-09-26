@@ -7,6 +7,7 @@ import {
   safeDiagnosisPdfFilename,
 } from "@/lib/pdf/diagnosis-pdf";
 import { pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 import type { Database } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
     const [workspaceResult, studentResult, assessmentResult] = await Promise.all([
       supabase
         .from("workspaces")
-        .select("name")
+        .select("name,logo_url")
         .eq("id", diagnosis.workspace_id)
         .single(),
       supabase
@@ -155,9 +156,12 @@ export async function GET(request: Request) {
       );
     }
 
+    const branding = resolvePdfBranding(workspaceResult.data.logo_url);
     const bytes = createDiagnosisPdf(
       pdfSafeValue({
         workspaceName: workspaceResult.data.name,
+        brandLogoJpegBase64: branding.logoJpegBase64,
+        hasSchoolLogo: branding.hasSchoolLogo,
         studentName: studentResult.data.display_name,
         className,
         academicSession,
