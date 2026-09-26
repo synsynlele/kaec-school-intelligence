@@ -73,7 +73,6 @@ type Context = {
   schoolResources: WorkspaceResource[];
 };
 
-const DEFAULT_CLASS = "JSS1";
 const DEFAULT_TERM = "First Term";
 const TERMS = ["First Term", "Second Term", "Third Term"];
 
@@ -89,6 +88,31 @@ function asCatalog(value: unknown): Catalog {
     documents: Array.isArray(item.documents) ? item.documents : [],
     entries: Array.isArray(item.entries) ? item.entries : [],
   };
+}
+
+function normaliseClassLabel(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function sameClassLabel(left: string, right: string) {
+  return normaliseClassLabel(left) === normaliseClassLabel(right);
+}
+
+function schemeClassFilter(value: string) {
+  const normalized = normaliseClassLabel(value);
+  return /^(jss[123]|ss[123])$/.test(normalized)
+    ? normalized.toUpperCase()
+    : value;
+}
+
+function isLegacyClassFilterError(caught: unknown) {
+  const message =
+    caught instanceof Error
+      ? caught.message
+      : caught && typeof caught === "object" && "message" in caught
+        ? String((caught as { message?: unknown }).message ?? "")
+        : "";
+  return /invalid class filter/i.test(message);
 }
 
 async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null> {
@@ -107,7 +131,14 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
   }
   const workspaceId = profile.default_workspace_id as string;
 
-  const [workspaceResult, membershipResult, indexResult, resourceResult] = await Promise.all([
+  const [
+    workspaceResult,
+    membershipResult,
+    classResult,
+    subjectResult,
+    indexResult,
+    resourceResult,
+  ] = await Promise.all([
     supabase
       .from("workspaces")
       .select("name,workspace_type,access_status")
@@ -119,9 +150,21 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
       .eq("workspace_id", workspaceId)
       .eq("user_id", user.id)
       .single(),
+    supabase
+      .from("classes")
+      .select("id,name")
+      .eq("workspace_id", workspaceId)
+      .eq("active", true)
+      .order("name"),
+    supabase
+      .from("subjects")
+      .select("id,name")
+      .eq("workspace_id", workspaceId)
+      .eq("active", true)
+      .order("name"),
     supabase.rpc("get_academic_resource_catalog", {
       target_workspace_id: workspaceId,
-      target_class_level: DEFAULT_CLASS,
+      target_class_level: null,
       target_subject: "__catalog_only__",
       target_term: DEFAULT_TERM,
     }),
@@ -137,6 +180,8 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
   const firstError =
     workspaceResult.error ??
     membershipResult.error ??
+    classResult.error ??
+    subjectResult.error ??
     indexResult.error ??
     resourceResult.error;
   if (firstError) throw firstError;
@@ -153,19 +198,35 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
     throw new Error("Academic Resources is available to Teachers and School Leadership.");
   }
 
-  const indexCatalog = asCatalog(indexResult.data);
-  const firstSubject = indexCatalog.subjects[0] ?? "";
-  let initialCatalog = indexCatalog;
+  const setupClasses = (classResult.data ?? []).map((item) => item.name);
+  const setupSubjects = (subjectResult.data ?? []).map((item) => item.name);
+  const indexCatalog: Catalog = {
+    ...asCatalog(indexResult.data),
+    classes: setupClasses,
+    subjects: setupSubjects,
+    documents: [],
+    entries: [],
+  };
+  const firstClass = setupClasses[0] ?? "";
+  const firstSubject = setupSubjects[0] ?? "";
+  let initialCatalog: Catalog = indexCatalog;
 
-  if (firstSubject) {
+  if (firstClass && firstSubject) {
     const { data, error } = await supabase.rpc("get_academic_resource_catalog", {
       target_workspace_id: workspaceId,
-      target_class_level: DEFAULT_CLASS,
+      target_class_level: schemeClassFilter(firstClass),
       target_subject: firstSubject,
       target_term: DEFAULT_TERM,
     });
-    if (error) throw error;
-    initialCatalog = asCatalog(data);
+    if (!error) {
+      initialCatalog = {
+        ...asCatalog(data),
+        classes: setupClasses,
+        subjects: setupSubjects,
+      };
+    } else if (!/invalid class filter/i.test(error.message ?? "")) {
+      throw error;
+    }
   }
 
   return {
@@ -225,7 +286,7 @@ export function AcademicResourcesClient() {
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [classLevel, setClassLevel] = useState(DEFAULT_CLASS);
+  const [classLevel, setClassLevel] = useState("");
   const [subject, setSubject] = useState("");
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [tab, setTab] = useState<"scheme" | "school">("scheme");
@@ -248,6 +309,7 @@ export function AcademicResourcesClient() {
           return;
         }
         setContext(next);
+        setClassLevel(next.catalog.classes[0] ?? "");
         setSubject(next.catalog.subjects[0] ?? "");
       })
       .catch((caught) => {
@@ -267,7 +329,7 @@ export function AcademicResourcesClient() {
 
   const loadScheme = useCallback(
     async (nextClass: string, nextSubject: string, nextTerm: string) => {
-      if (!context || !nextSubject) return;
+      if (!context || !nextClass || !nextSubject) return;
       setFiltering(true);
       setError(null);
       try {
@@ -275,14 +337,40 @@ export function AcademicResourcesClient() {
           "get_academic_resource_catalog",
           {
             target_workspace_id: context.workspaceId,
-            target_class_level: nextClass,
+            target_class_level: schemeClassFilter(nextClass),
             target_subject: nextSubject,
             target_term: nextTerm,
           },
         );
-        if (rpcError) throw rpcError;
+        if (rpcError) {
+          if (isLegacyClassFilterError(rpcError)) {
+            setContext((current) =>
+              current
+                ? {
+                    ...current,
+                    catalog: {
+                      ...current.catalog,
+                      documents: [],
+                      entries: [],
+                    },
+                  }
+                : current,
+            );
+            return;
+          }
+          throw rpcError;
+        }
         setContext((current) =>
-          current ? { ...current, catalog: asCatalog(data) } : current,
+          current
+            ? {
+                ...current,
+                catalog: {
+                  ...asCatalog(data),
+                  classes: current.catalog.classes,
+                  subjects: current.catalog.subjects,
+                },
+              }
+            : current,
         );
       } catch (caught) {
         setError(
@@ -317,7 +405,9 @@ export function AcademicResourcesClient() {
       context?.catalog.documents.find(
         (item) =>
           item.subject.toLowerCase() === subject.toLowerCase() &&
-          item.class_scope.includes(classLevel),
+          item.class_scope.some((itemClass) =>
+            sameClassLabel(itemClass, classLevel),
+          ),
       ),
     [context?.catalog.documents, subject, classLevel],
   );
