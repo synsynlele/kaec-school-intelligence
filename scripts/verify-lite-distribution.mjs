@@ -8,7 +8,11 @@ const assert = (condition, message) => {
 };
 const usesCanonicalIcon = (url) => {
   try {
-    return new URL(url).pathname.endsWith("/app/icon.png");
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === "www.ksi.name.ng" &&
+      parsed.pathname === "/pwa/icon-512"
+    );
   } catch {
     return false;
   }
@@ -116,8 +120,8 @@ assert(
 );
 
 assert(
-  pwaIconRenderer.includes('"https://www.ksi.name.ng/icon.png"'),
-  "KSI PWA icons must render from the canonical KSI favicon asset (/icon.png).",
+  pwaIconRenderer.includes('"https://www.ksi.name.ng/icon.svg"'),
+  "KSI PWA icons must render from the canonical KSI product icon (/icon.svg).",
 );
 
 assert(twa.packageId === "ng.name.ksi.lite", "KSI Lite package identity changed.");
@@ -151,11 +155,11 @@ assert(
 );
 assert(
   usesCanonicalIcon(twa.iconUrl) && usesCanonicalIcon(twa.maskableIconUrl),
-  "KSI Lite launcher and maskable icons must use the canonical KSI app/favicon asset (app/icon.png).",
+  "KSI Lite launcher and maskable icons must use the canonical KSI product icon endpoint.",
 );
 assert(
   bootstrap.icons?.some(({ src }) => usesCanonicalIcon(src)),
-  "KSI Lite bootstrap manifest must use the canonical KSI app/favicon asset (app/icon.png).",
+  "KSI Lite bootstrap manifest must use the canonical KSI product icon endpoint.",
 );
 
 for (const required of [
