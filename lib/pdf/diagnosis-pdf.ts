@@ -649,5 +649,5 @@ export function safeDiagnosisPdfFilename(studentName: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
-  return `${slug || "student"}-kaec-diagnosis.pdf`;
+  return `${slug || "student"}-diagnosis-report.pdf`;
 }
