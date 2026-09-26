@@ -17,6 +17,7 @@ import {
   type AssessmentKind,
   type AssessmentOverallDifficulty,
 } from "@/lib/assessment/world-class";
+import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const ITEM_TYPES = [
@@ -306,7 +307,9 @@ async function loadWorkspaceState(): Promise<WorkspaceState | null> {
   return {
     workspace: workspaceResult.data as Workspace,
     subjects: (subjectResult.data ?? []) as Subject[],
-    classes: (classResult.data ?? []) as SchoolClass[],
+    classes: ((classResult.data ?? []) as SchoolClass[]).filter(
+      (item) => !isTemporaryClassLabel(item.name),
+    ),
     resources: (resourceResult.data ?? []) as Resource[],
     lessons: (lessonResult.data ?? []) as LessonSummary[],
     assessments: (assessmentResult.data ?? []) as AssessmentSummary[],
@@ -984,30 +987,41 @@ export function WorldClassAssessmentClient() {
                 onChange={setTitle}
                 required
               />
-              <TextInput
+              <SelectInput
                 label="Subject"
-                value={subject}
-                onChange={setSubject}
-                list="assessment-v11-subjects"
-                required
+                value={subjectMatch?.id ?? ""}
+                onChange={(value) => {
+                  const selected = state.subjects.find(
+                    (item) => item.id === value,
+                  );
+                  setSubject(selected?.name ?? "");
+                }}
+                options={[
+                  { value: "", label: "Select subject" },
+                  ...state.subjects.map((item) => ({
+                    value: item.id,
+                    label: item.name,
+                  })),
+                ]}
               />
-              <datalist id="assessment-v11-subjects">
-                {state.subjects.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
-              <TextInput
+              <SelectInput
                 label="Class"
-                value={classLevel}
-                onChange={setClassLevel}
-                list="assessment-v11-classes"
-                required
+                value={classMatch?.id ?? ""}
+                onChange={(value) => {
+                  const selected = state.classes.find(
+                    (item) => item.id === value,
+                  );
+                  setClassLevel(selected?.name ?? "");
+                  setAgeRange(selected?.age_range ?? "");
+                }}
+                options={[
+                  { value: "", label: "Select class" },
+                  ...state.classes.map((item) => ({
+                    value: item.id,
+                    label: item.name,
+                  })),
+                ]}
               />
-              <datalist id="assessment-v11-classes">
-                {state.classes.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
               <TextInput
                 label="Age / age range"
                 value={ageRange}

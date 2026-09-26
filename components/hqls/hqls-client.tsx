@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
+import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import {
   parseHqlsStageContent,
@@ -203,7 +204,9 @@ async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
   return {
     workspace: workspaceResult.data as Workspace,
     subjects: (subjectResult.data ?? []) as Subject[],
-    classes: (classResult.data ?? []) as SchoolClass[],
+    classes: ((classResult.data ?? []) as SchoolClass[]).filter(
+      (item) => !isTemporaryClassLabel(item.name),
+    ),
     resources: (resourceResult.data ?? []) as Resource[],
     lessons: (lessonResult.data ?? []) as LessonSummary[],
   };
@@ -690,19 +693,30 @@ const refreshLessons = useCallback(async () => {
             </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
-              <TextInput
-                label="Subject"
-                value={subject}
-                onChange={setSubject}
-                list="hqls-subjects"
-                placeholder="English Language"
-                required
-              />
-              <datalist id="hqls-subjects">
-                {state.subjects.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-zinc-800">
+                  Subject
+                </span>
+                <select
+                  id="hqls-subject"
+                  required
+                  value={subjectMatch?.id ?? ""}
+                  onChange={(event) => {
+                    const selected = state.subjects.find(
+                      (item) => item.id === event.target.value,
+                    );
+                    setSubject(selected?.name ?? "");
+                  }}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 outline-none focus:border-emerald-700"
+                >
+                  <option value="">Select subject</option>
+                  {state.subjects.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <TextInput
                 label="Topic"
                 value={topic}
@@ -710,26 +724,31 @@ const refreshLessons = useCallback(async () => {
                 placeholder="Parts of speech"
                 required
               />
-              <TextInput
-                label="Class level"
-                value={classLevel}
-                onChange={(value) => {
-                  setClassLevel(value);
-                  const matched = state.classes.find(
-                    (item) =>
-                      item.name.toLowerCase() === value.trim().toLowerCase(),
-                  );
-                  if (matched?.age_range) setAgeRange(matched.age_range);
-                }}
-                list="hqls-classes"
-                placeholder="JSS 1"
-                required
-              />
-              <datalist id="hqls-classes">
-                {state.classes.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-zinc-800">
+                  Class
+                </span>
+                <select
+                  id="hqls-class"
+                  required
+                  value={classMatch?.id ?? ""}
+                  onChange={(event) => {
+                    const selected = state.classes.find(
+                      (item) => item.id === event.target.value,
+                    );
+                    setClassLevel(selected?.name ?? "");
+                    setAgeRange(selected?.age_range ?? "");
+                  }}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 outline-none focus:border-emerald-700"
+                >
+                  <option value="">Select class</option>
+                  {state.classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <TextInput
                 label="Age / age range"
                 value={ageRange}
