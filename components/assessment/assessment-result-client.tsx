@@ -137,7 +137,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
     };
   }, [assessmentId, router]);
 
-  async function downloadPdf(mode: "exam" | "marking") {
+  async function downloadPdf(mode: "exam" | "marking", format: "pdf" | "docx" = "pdf") {
     if (!state) return;
     setDownloadingMode(mode);
     setError(null);
@@ -150,21 +150,21 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
       if (sessionError) throw sessionError;
       if (!session?.access_token) throw new Error("Your session has expired. Sign in again.");
       const response = await fetch(
-        `/api/assessment/pdf?assessmentId=${encodeURIComponent(state.assessment.id)}&mode=${mode}`,
+        `/api/assessment/pdf?assessmentId=${encodeURIComponent(state.assessment.id)}&mode=${mode}&format=${format}`,
         {
           headers: { Authorization: `Bearer ${session.access_token}` },
         },
       );
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-        throw new Error(typeof payload.error === "string" ? payload.error : "The assessment PDF could not be prepared.");
+        throw new Error(typeof payload.error === "string" ? payload.error : "The assessment document could not be prepared.");
       }
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
       const match = disposition.match(/filename="([^"]+)"/);
       const filename =
         match?.[1] ??
-        (mode === "exam" ? "ksi-exam-paper.pdf" : "ksi-marking-guide.pdf");
+        (mode === "exam" ? "ksi-exam-paper" : "ksi-marking-guide") + `.${format}`;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -174,7 +174,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The assessment PDF could not be downloaded.");
+      setError(caught instanceof Error ? caught.message : "The assessment document could not be downloaded.");
     } finally {
       setDownloadingMode(null);
     }
@@ -231,6 +231,8 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
                 ? "Preparing guide…"
                 : "Download Marking Guide"}
             </button>
+            <button type="button" onClick={() => void downloadPdf("exam", "docx")} disabled={downloadingMode !== null} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Exam Word</button>
+            <button type="button" onClick={() => void downloadPdf("marking", "docx")} disabled={downloadingMode !== null} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Guide Word</button>
           </div>
         </div>
         <div className="mt-6 rounded-2xl bg-stone-50 p-4">
