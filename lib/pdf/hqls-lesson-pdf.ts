@@ -128,7 +128,7 @@ class PdfComposer {
 
   private header() {
     if (this.input.hasSchoolLogo) {
-      this.current.push("q 42 0 0 42 54 744 cm /Im1 Do Q");
+      this.current.push("q 42 0 0 42 54 760 cm /Im1 Do Q");
     } else {
       this.current.push(rgb(NAVY));
       this.current.push("BT /F2 17 Tf 1 0 0 1 54 781 Tm (KSI) Tj ET");
