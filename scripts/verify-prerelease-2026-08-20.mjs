@@ -133,7 +133,7 @@ for (const required of [
 }
 
 assert(hqlsDownload.includes("Download Lesson PDF"), "HQLS result download action is missing.");
-assert(assessmentResult.includes("Download PDF"), "Assessment result download action is missing.");
+assert(assessmentResult.includes("Download Exam PDF") && assessmentResult.includes("Download Marking Guide"), "Assessment result exam and marking-guide download actions are missing.");
 assert(diagnosisResult.includes("Download Parent PDF"), "Final Diagnosis download action is missing.");
 assert(interventionResultPage.includes("InterventionDownloadButton"), "Intervention result must mount its download action.");
 assert(interventionDownload.includes("Download Intervention PDF"), "Intervention PDF button is missing.");
