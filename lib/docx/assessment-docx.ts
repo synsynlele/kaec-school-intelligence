@@ -23,8 +23,8 @@ function paragraph(
 ) {
   const properties = [
     options.keepNext ? "<w:keepNext/>" : "",
-    `<w:spacing w:after="${options.spaceAfter ?? 110}"/>`,
-    options.rule ? '<w:pBdr><w:bottom w:val="single" w:sz="4" w:color="C5CDD6"/></w:pBdr>' : "",
+    options.rule ? '<w:spacing w:after="0" w:line="390" w:lineRule="exact"/>' : `<w:spacing w:after="${options.spaceAfter ?? 110}"/>`,
+    options.rule ? '<w:pBdr><w:bottom w:val="single" w:sz="4" w:color="C5CDD6"/><w:between w:val="single" w:sz="4" w:color="C5CDD6"/></w:pBdr>' : "",
   ].join("");
   const run = [
     options.bold ? "<w:b/>" : "",
@@ -68,7 +68,7 @@ function examBody(input: AssessmentPdfInput) {
         if (type === "project" && item.deliverable) blocks.push(paragraph(`Deliverable: ${item.deliverable}`, { spaceAfter: 90, keepNext: true }));
         blocks.push(paragraph(type === "project" ? "Working and planning space:" : "Answer:", { size: 18, color: "667085", keepNext: true, spaceAfter: 60 }));
         for (let i = 0; i < assessmentAnswerLines(item); i += 1) {
-          blocks.push(paragraph(" ", { rule: true, spaceAfter: 150 }));
+          blocks.push(paragraph(" ", { rule: true }));
         }
       }
     }
@@ -116,7 +116,7 @@ function zip(entries: Array<[string, Buffer]>) {
     const header = Buffer.alloc(30);
     header.writeUInt32LE(0x04034b50, 0);
     header.writeUInt16LE(20, 4);
-    header.writeUInt16LE(8, 6);
+    header.writeUInt16LE(0, 6);
     header.writeUInt16LE(8, 8);
     header.writeUInt32LE(crc, 14);
     header.writeUInt32LE(compressed.length, 18);
@@ -128,7 +128,7 @@ function zip(entries: Array<[string, Buffer]>) {
     directory.writeUInt32LE(0x02014b50, 0);
     directory.writeUInt16LE(20, 4);
     directory.writeUInt16LE(20, 6);
-    directory.writeUInt16LE(8, 8);
+    directory.writeUInt16LE(0, 8);
     directory.writeUInt16LE(8, 10);
     directory.writeUInt32LE(crc, 16);
     directory.writeUInt32LE(compressed.length, 20);
@@ -151,7 +151,7 @@ function zip(entries: Array<[string, Buffer]>) {
 export function createAssessmentDocx(input: AssessmentPdfInput, mode: AssessmentPdfMode) {
   const hasLogo = input.hasSchoolLogo;
   const body = mode === "exam" ? examBody(input) : markingBody(input);
-  const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${hasLogo ? schoolLogo() : ""}${paragraph(input.workspaceName.toUpperCase(), { bold: true, size: 25, color: "0B3268", spaceAfter: 60 })}${paragraph("KSI School Intelligence  |  by KAEC-NG", { size: 16, color: "667085", spaceAfter: 240 })}${body}${paragraph("Prepared with KSI by KAEC-NG", { size: 15, color: "667085", spaceAfter: 0 })}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850"/></w:sectPr></w:body></w:document>`;
+  const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${hasLogo ? schoolLogo() : ""}${paragraph(input.workspaceName.toUpperCase(), { bold: true, size: 25, color: "0B3268", spaceAfter: 60 })}${paragraph("KSI School Intelligence  |  by KAEC-NG", { size: 16, color: "667085", spaceAfter: 240 })}${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850"/></w:sectPr></w:body></w:document>`;
   const types = `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${hasLogo ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : ""}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
   const entries: Array<[string, Buffer]> = [
     ["[Content_Types].xml", Buffer.from(types)],
