@@ -117,11 +117,8 @@ export async function GET(request: Request) {
 
     const studentName = studentResult.data?.display_name || "Student";
     const branding = resolvePdfBranding(workspaceResult.data.logo_url);
-    const pdf = createInterventionPdf(
-      pdfSafeValue({
+    const safeInput = pdfSafeValue({
         workspaceName: workspaceResult.data.name,
-        brandLogoJpegBase64: branding.logoJpegBase64,
-        hasSchoolLogo: branding.hasSchoolLogo,
         studentName,
         className,
         status: handoff.status,
@@ -134,8 +131,12 @@ export async function GET(request: Request) {
         successIndicator: handoff.success_indicator,
         reviewDate: handoff.review_date,
         nextLearningAdjustment: handoff.next_learning_adjustment,
-      }),
-    );
+      });
+    const pdf = createInterventionPdf({
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    });
 
     return new Response(pdf, {
       status: 200,
