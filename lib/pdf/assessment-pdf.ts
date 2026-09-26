@@ -166,7 +166,7 @@ export function assessmentAnswerLines(item: GeneratedAssessmentItem) {
       /\b(state|list|name|identify|define|give one|mention)\b/i.test(item.prompt) &&
       evidencePoints <= 2;
     const multiplier =
-      item.itemType === "project" ? 1.6 :
+      item.itemType === "project" ? 1.25 :
       item.itemType === "critical_thinking" ? 1.4 : 1.1;
     let lines = Math.max(
       item.itemType === "project" ? 12 : item.itemType === "critical_thinking" ? 6 : 3,
