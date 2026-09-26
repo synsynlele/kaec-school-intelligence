@@ -851,7 +851,7 @@ export function WorldClassAssessmentClient() {
     }
   }
 
-  async function downloadPdf() {
+  async function downloadPdf(format: "pdf" | "docx" = "pdf") {
     if (!selectedAssessment) return;
     setDownloading(true);
     setError(null);
@@ -866,7 +866,7 @@ export function WorldClassAssessmentClient() {
         throw new Error("Your session has expired. Sign in again.");
       }
       const response = await fetch(
-        `/api/assessment/pdf?assessmentId=${encodeURIComponent(selectedAssessment.id)}`,
+        `/api/assessment/pdf?assessmentId=${encodeURIComponent(selectedAssessment.id)}&format=${format}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } },
       );
       if (!response.ok) {
@@ -876,13 +876,13 @@ export function WorldClassAssessmentClient() {
         throw new Error(
           typeof payload.error === "string"
             ? payload.error
-            : "The assessment PDF could not be prepared.",
+            : "The assessment document could not be prepared.",
         );
       }
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
       const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? "kaec-assessment.pdf";
+      const filename = match?.[1] ?? `ksi-exam-paper.${format}`;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -895,7 +895,7 @@ export function WorldClassAssessmentClient() {
       setError(
         caught instanceof Error
           ? caught.message
-          : "The assessment PDF could not be downloaded.",
+          : "The assessment document could not be downloaded.",
       );
     } finally {
       setDownloading(false);
@@ -1393,8 +1393,9 @@ export function WorldClassAssessmentClient() {
                   disabled={downloading}
                   className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold"
                 >
-                  {downloading ? "Preparing PDF…" : "Download PDF"}
+                  {downloading ? "Preparing…" : "Download Exam PDF"}
                 </button>
+                <button type="button" onClick={() => void downloadPdf("docx")} disabled={downloading} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Exam Word</button>
               </div>
             </div>
 
