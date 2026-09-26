@@ -130,7 +130,7 @@ for (const required of [
   "Critical Thinking",
   "Project",
   "Save edits",
-  "Download Exam PDF",
+  "Download PDF",
   "sm:grid-cols-2",
 ]) {
   assert(client.includes(required), `Stage 3 v1.1 UI is missing ${required}.`);
@@ -248,7 +248,7 @@ for (const required of [
 const pdfRoute = await text("app/api/assessment/pdf/route.ts");
 assert(
   pdfRoute.includes("Only a saved validated assessment") &&
-    pdfRoute.includes('"Content-Type": "application/pdf"'),
+    pdfRoute.includes('"application/pdf"') && pdfRoute.includes('"application/vnd.openxmlformats-officedocument.wordprocessingml.document"'),
   "Stage 3 PDF route does not enforce validated authenticated export.",
 );
 
