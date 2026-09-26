@@ -180,8 +180,8 @@ for (const brandedSurface of [
 ]) {
   const surface = await text(brandedSurface);
   assert(
-    surface.includes("KaecBrand"),
-    `Official KAEC-NG branding is missing from ${brandedSurface}.`,
+    surface.includes("KsiBrand"),
+    `KSI product branding is missing from ${brandedSurface}.`,
   );
 }
 
@@ -293,7 +293,9 @@ assert(
 
 const pdfGenerator = await text("lib/pdf/hqls-lesson-pdf.ts");
 for (const requirement of [
-  "KAEC_REPORT_LOGO_JPEG_BASE64",
+  "brandLogoJpegBase64",
+  "hasSchoolLogo",
+  "by KAEC-NG",
   "HQLS LESSON PLAN",
   "What the teacher must not do",
   "Full Illumination - complete teaching note",
@@ -310,10 +312,10 @@ const exportsClient = await text("components/hqls/hqls-exports-client.tsx");
 assert(
   exportsClient.includes("/api/hqls/pdf") &&
     exportsClient.includes("Download PDF") &&
-    exportsClient.includes("KaecBrand"),
-  "HQLS PDF download experience or official branding is incomplete.",
+    exportsClient.includes("KsiBrand"),
+  "HQLS PDF download experience or KSI product branding is incomplete.",
 );
 
 console.log(
-  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine with unrestricted normal-lesson Full Illumination, secure fidelity RPC, official KAEC-NG branding and validated lesson PDF export present.`,
+  `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine with unrestricted normal-lesson Full Illumination, secure fidelity RPC, KSI product branding with KAEC-NG endorsement and validated lesson PDF export present.`,
 );
