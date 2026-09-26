@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Role = "owner" | "admin" | "leader" | "teacher" | "student";
@@ -232,7 +232,7 @@ export function KsiAppNav() {
         aria-label="KSI desktop navigation"
         className="ksi-desktop-nav fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-emerald-950/10 bg-[#f8faf7] px-4 py-5 shadow-[10px_0_35px_rgba(18,48,35,0.04)] lg:flex"
       >
-        <div className="px-2"><KaecBrand compact /></div>
+        <div className="px-2"><KsiBrand compact /></div>
         <div className="mt-5 rounded-2xl border border-emerald-950/10 bg-white p-3.5">
           <p className="truncate text-sm font-bold text-zinc-950">{contextName}</p>
           <p className="mt-1 text-xs font-semibold text-emerald-800">{contextRole}</p>
@@ -265,7 +265,7 @@ export function KsiAppNav() {
           ))}
         </nav>
         <p className="border-t border-zinc-200 px-2 pt-4 text-[11px] leading-5 text-zinc-400">
-          KAEC School Intelligence<br />Teacher + Leadership OS
+          KSI · KAEC School Intelligence<br />by KAEC-NG
         </p>
       </aside>
 
@@ -343,7 +343,7 @@ export function KsiAppNav() {
                 </section>
               ))}
               <p className="pb-4 text-center text-[11px] leading-5 text-zinc-400">
-                KAEC School Intelligence · Teacher + Leadership OS
+                KSI · KAEC School Intelligence · by KAEC-NG
               </p>
             </nav>
           </section>
