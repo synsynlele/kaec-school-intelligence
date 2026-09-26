@@ -200,7 +200,7 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
 
   const setupClasses = (classResult.data ?? []).map((item) => item.name);
   const setupSubjects = (subjectResult.data ?? []).map((item) => item.name);
-  const indexCatalog = {
+  const indexCatalog: Catalog = {
     ...asCatalog(indexResult.data),
     classes: setupClasses,
     subjects: setupSubjects,
@@ -209,7 +209,7 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
   };
   const firstClass = setupClasses[0] ?? "";
   const firstSubject = setupSubjects[0] ?? "";
-  let initialCatalog = indexCatalog;
+  let initialCatalog: Catalog = indexCatalog;
 
   if (firstClass && firstSubject) {
     const { data, error } = await supabase.rpc("get_academic_resource_catalog", {
