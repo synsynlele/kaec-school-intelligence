@@ -1,13 +1,13 @@
 import Link from "next/link";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { SchoolDashboardClient } from "@/components/dashboard/school-dashboard-client";
 
 export default function DashboardPage() {
   return (
     <>
       <div className="hidden" aria-hidden="true">
-        <KaecBrand compact />
+        <KsiBrand compact />
         <span>School Intelligence Workspace</span>
         <span>Teacher and Leadership Intelligence Workspace</span>
         <Link href="/teacher/resources">Academic Resources</Link>
