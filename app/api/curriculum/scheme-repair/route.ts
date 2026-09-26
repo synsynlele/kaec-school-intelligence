@@ -7,18 +7,18 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const TERMS = ["First Term", "Second Term", "Third Term"] as const;
-const CLASSES = ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"] as const;
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
-const EXTRACTION_SCHEMA = {
-  type: "object",
-  properties: {
-    rows: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          class_level: { type: "string", enum: CLASSES },
+function extractionSchema(classLevel: string) {
+  return {
+    type: "object",
+    properties: {
+      rows: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            class_level: { type: "string", enum: [classLevel] },
           term: { type: "string", enum: TERMS },
           week_label: { type: "string" },
           week_number: { type: ["integer", "null"] },
@@ -30,11 +30,12 @@ const EXTRACTION_SCHEMA = {
           learning_resources: { type: "array", items: { type: "string" } },
           source_page: { type: ["integer", "null"] },
           source_reference: { type: "string" },
+          },
         },
       },
     },
-  },
-} as const;
+  } as const;
+}
 
 type ExtractedRow = {
   class_level: string;
@@ -138,8 +139,8 @@ export async function POST(request: Request) {
     if (!workspaceId || !documentId) {
       throw new Error("Choose a registered scheme document first.");
     }
-    if (!CLASSES.includes(classLevel as (typeof CLASSES)[number])) {
-      throw new Error("Choose a valid class level.");
+    if (!classLevel || classLevel.length > 80) {
+      throw new Error("Choose a valid class from the registered source.");
     }
     if (!(source instanceof File) || source.type !== "application/pdf") {
       throw new Error("Upload the matching source PDF.");
@@ -188,7 +189,7 @@ export async function POST(request: Request) {
           },
         },
       ],
-      responseSchema: EXTRACTION_SCHEMA,
+      responseSchema: extractionSchema(classLevel),
       schemaName: "ksi_scheme_source_extraction",
       maxOutputTokens: 20000,
       reasoningEffort: "low",
