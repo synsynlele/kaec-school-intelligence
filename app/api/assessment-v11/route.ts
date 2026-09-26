@@ -283,7 +283,7 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
   if (!["First Term", "Second Term", "Third Term"].includes(term)) {
     throw new Error("Select a valid academic term.");
   }
-  const academicSession = requireString(input.academicSession, "Academic session");
+  const academicSession = optionalString(input.academicSession) ?? "";
 
   const topics = parseTopics(input.topics, input.topic, input.objective);
   const combinedTopic = topics.map((entry) => entry.topic).join("; ");
