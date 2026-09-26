@@ -149,18 +149,28 @@ assert(
   "PDF layout safety helper must keep deterministic long-token wrapping and byte-safe header geometry patches.",
 );
 
-assert(hqlsPdfRoute.includes('["54 752 487 1.4 re f", "97 752 444 1.4 re f"]'), "HQLS PDF header rule must begin after the logo footprint.");
-assert(assessmentPdfRoute.includes('["54 746 487 1.3 re f", "89 746 452 1.3 re f"]'), "Assessment PDF header rule must begin after the logo footprint.");
 assert(
-  hqlsPdf.includes("const BOTTOM = 64;") && hqlsPdf.includes("54 30 Tm (KAEC-NG | Human Quest Learning System"),
+  hqlsPdfRoute.includes("resolvePdfBranding") &&
+    hqlsPdf.includes("hasSchoolLogo") &&
+    hqlsPdf.includes("KSI_PDF_ATTRIBUTION"),
+  "HQLS PDF header must use the school-first KSI branding contract.",
+);
+assert(
+  assessmentPdfRoute.includes("resolvePdfBranding") &&
+    assessmentPdf.includes("hasSchoolLogo") &&
+    assessmentPdf.includes("KSI_PDF_ATTRIBUTION"),
+  "Assessment PDF header must use the school-first KSI branding contract.",
+);
+assert(
+  hqlsPdf.includes("const BOTTOM = 64;") && hqlsPdf.includes("KSI_PDF_ATTRIBUTION"),
   "HQLS PDF must retain protected body/footer separation.",
 );
 assert(
-  assessmentPdf.includes("const BOTTOM = 58;") && assessmentPdf.includes("54 30 Tm (KAEC-NG | Assessment Intelligence"),
+  assessmentPdf.includes("const BOTTOM = 52;") && assessmentPdf.includes("KSI_PDF_ATTRIBUTION"),
   "Assessment PDF must retain protected body/footer separation.",
 );
 assert(
-  diagnosisPdf.includes("return this.y - height > 42;") && diagnosisPdf.includes("28 20 Tm (KAEC-NG | Student Diagnosis Intelligence"),
+  diagnosisPdf.includes("return this.y - height > 42;") && diagnosisPdf.includes("KSI_PDF_ATTRIBUTION"),
   "Diagnosis PDF flow pages must retain protected body/footer separation.",
 );
 
