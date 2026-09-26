@@ -1,12 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="KSI Lite">
-  <defs>
-    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0f766e"/>
-      <stop offset="1" stop-color="#064e3b"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="172" fill="none" stroke="#d6b969" stroke-width="18" opacity="0.95"/>
-  <text x="256" y="286" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="132" font-weight="800" letter-spacing="-6" fill="#ffffff">KSI</text>
-  <path d="M176 337h160" stroke="#d6b969" stroke-width="14" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="KSI">
+  <rect width="512" height="512" rx="112" fill="#0B3268"/>
+  <path fill="#FFFFFF" d="M91 161 275 55c18-11 41 2 41 23v37L136 219v184l-45-26V161Z"/>
+  <path fill="#10B99A" d="M166 239 214 211v117l-48 28V239Zm70-40 54-31v120l-54 31V199Zm76-44 66-38v126l-66 38V155Z"/>
+  <path fill="#10B99A" d="M166 375 410 234v69c0 17-9 32-24 41L166 471v-96Z"/>
 </svg>
