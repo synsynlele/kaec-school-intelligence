@@ -6,13 +6,16 @@
   "scope": "https://www.ksi.name.ng/",
   "display": "standalone",
   "background_color": "#fafaf9",
-  "theme_color": "#064e3b",
+  "theme_color": "#0B3268",
   "orientation": "any",
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/synsynlele/kaec-school-intelligence/c9938f50d6ac988532a41f3968dc33d098daabe0/app/icon.png",
-      "sizes": "64x64",
+      "src": "https://www.ksi.name.ng/pwa/icon-512",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
