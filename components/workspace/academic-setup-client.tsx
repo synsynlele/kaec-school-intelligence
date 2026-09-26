@@ -4,6 +4,10 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  classNameValidationMessage,
+  isTemporaryClassLabel,
+} from "@/lib/domain/academic-context";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database";
 
@@ -208,6 +212,12 @@ export function AcademicSetupClient() {
   async function addClass(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!context || !canManage || !className.trim()) return;
+    const classNameError = classNameValidationMessage(className);
+    if (classNameError) {
+      setError(classNameError);
+      setSuccess(null);
+      return;
+    }
     setSaving("class");
     setError(null);
     setSuccess(null);
@@ -263,6 +273,14 @@ export function AcademicSetupClient() {
     }
   }
 
+  function revealEditor() {
+    window.setTimeout(() => {
+      document
+        .getElementById("academic-record-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
   function beginSubjectEdit(item: Subject) {
     setEditing({
       kind: "subject",
@@ -272,6 +290,7 @@ export function AcademicSetupClient() {
     });
     setError(null);
     setSuccess(null);
+    revealEditor();
   }
 
   function beginClassEdit(item: SchoolClass) {
@@ -284,6 +303,7 @@ export function AcademicSetupClient() {
     });
     setError(null);
     setSuccess(null);
+    revealEditor();
   }
 
   function beginStudentEdit(item: Student) {
@@ -296,11 +316,21 @@ export function AcademicSetupClient() {
     });
     setError(null);
     setSuccess(null);
+    revealEditor();
   }
 
   async function saveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!context || !canManage || !editing || !editing.name.trim()) return;
+
+    if (editing.kind === "class") {
+      const classNameError = classNameValidationMessage(editing.name);
+      if (classNameError) {
+        setError(classNameError);
+        setSuccess(null);
+        return;
+      }
+    }
 
     setSaving(`edit:${editing.kind}:${editing.id}`);
     setError(null);
@@ -644,8 +674,9 @@ export function AcademicSetupClient() {
 
         {canManage && editing ? (
           <form
+            id="academic-record-editor"
             onSubmit={saveEdit}
-            className="mb-8 rounded-3xl border border-emerald-900/10 bg-emerald-50/70 p-6"
+            className="mb-8 scroll-mt-6 rounded-3xl border border-emerald-900/10 bg-emerald-50/70 p-6"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -765,8 +796,15 @@ export function AcademicSetupClient() {
                 key={item.id}
                 primary={item.name}
                 secondary={
-                  [item.age_range, item.academic_session].filter(Boolean).join(" · ") ||
-                  "No additional details"
+                  [
+                    isTemporaryClassLabel(item.name)
+                      ? "Needs rename — use the actual class name"
+                      : null,
+                    item.age_range,
+                    item.academic_session,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "No additional details"
                 }
                 active={item.active}
                 actions={
