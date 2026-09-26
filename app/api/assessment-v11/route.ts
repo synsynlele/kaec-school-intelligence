@@ -279,6 +279,12 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     throw new Error(`Select no more than ${MAX_SELECTED_RESOURCES} resources.`);
   }
 
+  const term = requireString(input.term, "Term");
+  if (!["First Term", "Second Term", "Third Term"].includes(term)) {
+    throw new Error("Select a valid academic term.");
+  }
+  const academicSession = optionalString(input.academicSession) ?? "";
+
   const topics = parseTopics(input.topics, input.topic, input.objective);
   const combinedTopic = topics.map((entry) => entry.topic).join("; ");
   const combinedObjective = topics
@@ -300,6 +306,8 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     assessmentKind,
     overallDifficulty,
     topics,
+    term,
+    academicSession,
     totalItems,
     totalMarks: optionalPositiveNumber(input.totalMarks, "Total marks"),
     durationMinutes: optionalPositiveNumber(input.durationMinutes, "Duration"),
@@ -818,6 +826,8 @@ async function handleGenerate(
         assessmentKind: input.assessmentKind,
         overallDifficulty: input.overallDifficulty,
         requestedTopics: input.topics,
+        term: input.term,
+        academicSession: input.academicSession,
         qualitySummary,
       },
       sourceContext: resources.sourceContext,

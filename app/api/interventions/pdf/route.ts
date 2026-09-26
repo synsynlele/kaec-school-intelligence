@@ -7,6 +7,7 @@ import {
   type InterventionPdfAction,
 } from "@/lib/pdf/intervention-pdf";
 import { pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 import type { Database } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
     }
 
     const [workspaceResult, studentResult, diagnosisResult] = await Promise.all([
-      supabase.from("workspaces").select("name").eq("id", handoff.workspace_id).single(),
+      supabase.from("workspaces").select("name,logo_url").eq("id", handoff.workspace_id).single(),
       supabase
         .from("students")
         .select("display_name,class_id")
@@ -115,8 +116,8 @@ export async function GET(request: Request) {
     }
 
     const studentName = studentResult.data?.display_name || "Student";
-    const pdf = createInterventionPdf(
-      pdfSafeValue({
+    const branding = resolvePdfBranding(workspaceResult.data.logo_url);
+    const safeInput = pdfSafeValue({
         workspaceName: workspaceResult.data.name,
         studentName,
         className,
@@ -130,8 +131,12 @@ export async function GET(request: Request) {
         successIndicator: handoff.success_indicator,
         reviewDate: handoff.review_date,
         nextLearningAdjustment: handoff.next_learning_adjustment,
-      }),
-    );
+      });
+    const pdf = createInterventionPdf({
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    });
 
     return new Response(pdf, {
       status: 200,

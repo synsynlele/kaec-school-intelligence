@@ -8,8 +8,10 @@ import { getSupabasePublicEnv } from "@/lib/env";
 import {
   createAssessmentPdf,
   safeAssessmentPdfFilename,
+  type AssessmentPdfMode,
 } from "@/lib/pdf/assessment-pdf";
-import { patchPdfCommands, pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -140,6 +142,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const assessmentId = url.searchParams.get("assessmentId")?.trim();
     if (!assessmentId) throw new Error("Assessment id is required.");
+    const requestedMode = url.searchParams.get("mode")?.trim() || "exam";
+    if (!["exam", "marking"].includes(requestedMode)) {
+      throw new Error("Unsupported assessment PDF mode.");
+    }
+    const mode = requestedMode as AssessmentPdfMode;
 
     const supabase = await getAuthenticatedClient(request);
     const rows = await fetchAssessment(supabase, assessmentId);
@@ -165,7 +172,7 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       supabase
         .from("workspaces")
-        .select("name")
+        .select("name,logo_url")
         .eq("id", rows.assessment.workspace_id)
         .single(),
       rows.assessment.subject_id
@@ -178,7 +185,7 @@ export async function GET(request: Request) {
       rows.assessment.class_id
         ? supabase
             .from("classes")
-            .select("name")
+            .select("name,academic_session")
             .eq("id", rows.assessment.class_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -189,11 +196,16 @@ export async function GET(request: Request) {
     if (subjectResult.error) throw subjectResult.error;
     if (classResult.error) throw classResult.error;
 
-    const pdf = createAssessmentPdf(
-      pdfSafeValue({
+    const branding = resolvePdfBranding(workspace.logo_url);
+    const safeInput = pdfSafeValue({
         workspaceName: workspace.name,
         subject: subjectResult.data?.name ?? "Not linked",
         classLevel: classResult.data?.name ?? "Not linked",
+        academicSession:
+          typeof blueprint.academicSession === "string"
+            ? blueprint.academicSession
+            : classResult.data?.academic_session ?? null,
+        term: typeof blueprint.term === "string" ? blueprint.term : null,
         topic:
           typeof blueprint.topic === "string"
             ? blueprint.topic
@@ -216,14 +228,18 @@ export async function GET(request: Request) {
             : null,
         topicCoverage: requestedTopicCoverage(blueprint.requestedTopics),
         assessment: generated,
-      }),
+      });
+    const pdf = createAssessmentPdf(
+      {
+        ...safeInput,
+        brandLogoJpegBase64: branding.logoJpegBase64,
+        hasSchoolLogo: branding.hasSchoolLogo,
+      },
+      mode,
     );
-    const protectedPdf = patchPdfCommands(pdf, [
-      ["54 746 487 1.3 re f", "89 746 452 1.3 re f"],
-    ]);
-    const filename = safeAssessmentPdfFilename(rows.assessment.title);
+    const filename = safeAssessmentPdfFilename(rows.assessment.title, mode);
 
-    return new Response(protectedPdf, {
+    return new Response(pdf, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

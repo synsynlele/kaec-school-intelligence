@@ -1,10 +1,19 @@
-import type { GeneratedAssessment } from "@/lib/assessment/engine";
-import { KAEC_REPORT_LOGO_JPEG_BASE64 } from "@/lib/pdf/kaec-report-logo";
+import type {
+  GeneratedAssessment,
+  GeneratedAssessmentItem,
+} from "@/lib/assessment/engine";
+import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
+
+export type AssessmentPdfMode = "exam" | "marking";
 
 export type AssessmentPdfInput = {
   workspaceName: string;
+  brandLogoJpegBase64: string;
+  hasSchoolLogo: boolean;
   subject: string;
   classLevel: string;
+  academicSession?: string | null;
+  term?: string | null;
   topic: string;
   objective: string;
   durationMinutes: number | null;
@@ -21,20 +30,50 @@ type TextOptions = {
   indent?: number;
   gapBefore?: number;
   gapAfter?: number;
+  maxWidth?: number;
+};
+
+type SectionDefinition = {
+  type: GeneratedAssessmentItem["itemType"];
+  title: string;
+  instruction: string;
 };
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-const LEFT = 54;
-const RIGHT = 54;
-const TOP = 64;
-const BOTTOM = 58;
+const LEFT = 48;
+const RIGHT = 48;
+const TOP = 48;
+const BOTTOM = 52;
 const CONTENT_WIDTH = PAGE_WIDTH - LEFT - RIGHT;
-const NAVY: [number, number, number] = [0.05, 0.24, 0.38];
-const BLUE: [number, number, number] = [0.03, 0.48, 0.72];
-const TEXT: [number, number, number] = [0.12, 0.12, 0.14];
+const NAVY: [number, number, number] = [0.043, 0.196, 0.408];
+const TEAL: [number, number, number] = [0.063, 0.725, 0.604];
+const TEXT: [number, number, number] = [0.11, 0.12, 0.14];
 const MUTED: [number, number, number] = [0.38, 0.4, 0.44];
-const GREEN: [number, number, number] = [0.03, 0.42, 0.25];
+const GREEN: [number, number, number] = [0.02, 0.42, 0.25];
+
+const SECTIONS: SectionDefinition[] = [
+  {
+    type: "objective",
+    title: "OBJECTIVE",
+    instruction: "Choose the best answer for each question.",
+  },
+  {
+    type: "subjective",
+    title: "SUBJECTIVE / THEORY",
+    instruction: "Answer the questions according to the instructions on this paper.",
+  },
+  {
+    type: "critical_thinking",
+    title: "CRITICAL THINKING / REASONING",
+    instruction: "Read each situation carefully and show your reasoning in your answers.",
+  },
+  {
+    type: "project",
+    title: "PROJECT / PRACTICAL",
+    instruction: "Complete the required task or deliverable as instructed.",
+  },
+];
 
 function ascii(value: string) {
   return value
@@ -69,19 +108,22 @@ function wrapText(
   const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
   const maxChars = Math.max(12, Math.floor(maxWidth / averageGlyph));
   const lines: string[] = [];
+
   for (const paragraph of clean.split(/\n+/)) {
     const words = paragraph.split(/\s+/).filter(Boolean);
     let line = "";
     for (const word of words) {
       const next = line ? `${line} ${word}` : word;
-      if (next.length <= maxChars) line = next;
-      else {
+      if (next.length <= maxChars) {
+        line = next;
+      } else {
         if (line) lines.push(line);
         line = word;
       }
     }
     if (line) lines.push(line);
   }
+
   return lines;
 }
 
@@ -98,25 +140,52 @@ function titleCase(value: string) {
     .join(" ");
 }
 
+function assessmentLabel(value: string | null | undefined) {
+  if (!value) return "Assessment";
+  if (value === "exam") return "Examination";
+  return titleCase(value);
+}
+
+function groupedItems(assessment: GeneratedAssessment) {
+  return SECTIONS.map((section) => ({
+    ...section,
+    items: assessment.items.filter((item) => item.itemType === section.type),
+  })).filter((section) => section.items.length > 0);
+}
+
 class PdfComposer {
   private pages: string[][] = [];
   private current: string[] = [];
   private y = PAGE_HEIGHT - TOP;
 
-  constructor(private readonly input: AssessmentPdfInput) {
+  constructor(
+    private readonly input: AssessmentPdfInput,
+    private readonly mode: AssessmentPdfMode,
+  ) {
     this.newPage();
   }
 
   private header() {
-    this.current.push("q 34 0 0 34 54 756 cm /Im1 Do Q");
+    if (this.input.hasSchoolLogo) {
+      this.current.push("q 42 0 0 42 48 751 cm /Im1 Do Q");
+    } else {
+      this.current.push(rgb(NAVY));
+      this.current.push("BT /F2 18 Tf 1 0 0 1 48 780 Tm (KSI) Tj ET");
+      this.current.push(rgb(TEAL));
+      this.current.push("48 757 34 4 re f");
+    }
+
+    const schoolX = this.input.hasSchoolLogo ? 101 : 48;
     this.current.push(rgb(NAVY));
-    this.current.push("BT /F2 13 Tf 1 0 0 1 101 782 Tm (KAEC-NG) Tj ET");
+    this.current.push(
+      `BT /F2 12.5 Tf 1 0 0 1 ${schoolX} 780 Tm (${pdfEscape(this.input.workspaceName.toUpperCase())}) Tj ET`,
+    );
     this.current.push(rgb(MUTED));
     this.current.push(
-      "BT /F1 8.5 Tf 1 0 0 1 101 768 Tm (KAEC School Intelligence - Assessment Intelligence) Tj ET",
+      `BT /F1 7.8 Tf 1 0 0 1 ${schoolX} 766 Tm (KSI | KAEC School Intelligence | by KAEC-NG) Tj ET`,
     );
-    this.current.push(rgb(BLUE));
-    this.current.push("54 746 487 1.3 re f");
+    this.current.push(rgb(TEAL));
+    this.current.push("48 744 499 1.4 re f");
     this.y = 724;
   }
 
@@ -126,188 +195,220 @@ class PdfComposer {
     this.header();
   }
 
-  forceNewPage() {
-    this.newPage();
-  }
-
   private ensure(height: number) {
     if (this.y - height < BOTTOM + 18) this.newPage();
   }
 
-  line(text: string, options: TextOptions = {}) {
+  private line(text: string, options: TextOptions = {}) {
     const size = options.size ?? 10;
     const bold = options.bold ?? false;
     const indent = options.indent ?? 0;
     const gapBefore = options.gapBefore ?? 0;
     const gapAfter = options.gapAfter ?? 2;
-    const wrapped = wrapText(text, CONTENT_WIDTH - indent, size, bold);
+    const maxWidth = options.maxWidth ?? CONTENT_WIDTH - indent;
+    const wrapped = wrapText(text, maxWidth, size, bold);
     if (!wrapped.length) return;
-    const leading = size * 1.35;
-    this.ensure(gapBefore + wrapped.length * leading + gapAfter);
+
+    const leading = size * 1.34;
     this.y -= gapBefore;
-    this.current.push(rgb(options.color ?? TEXT));
     for (const wrappedLine of wrapped) {
+      this.ensure(leading + gapAfter);
+      this.current.push(rgb(options.color ?? TEXT));
       this.current.push(
-        `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(LEFT + indent).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(wrappedLine)}) Tj ET`,
+        `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(
+          LEFT + indent
+        ).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(wrappedLine)}) Tj ET`,
       );
       this.y -= leading;
     }
     this.y -= gapAfter;
   }
 
-  rule() {
-    this.ensure(8);
+  private rule(gap = 8) {
+    this.ensure(gap + 2);
     this.current.push("0.850 0.860 0.880 rg");
+    this.current.push(`${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`);
+    this.y -= gap;
+  }
+
+  private sectionHeading(index: number, title: string, instruction: string) {
+    this.ensure(42);
+    const letter = String.fromCharCode(65 + index);
+    this.current.push(rgb(NAVY));
+    this.current.push(`${LEFT} ${(this.y - 24).toFixed(1)} ${CONTENT_WIDTH} 31 re f`);
+    this.current.push("1 1 1 rg");
     this.current.push(
-      `${LEFT} ${this.y.toFixed(1)} ${CONTENT_WIDTH} 0.7 re f`,
+      `BT /F2 11 Tf 1 0 0 1 ${LEFT + 12} ${(this.y - 5).toFixed(1)} Tm (SECTION ${letter} - ${pdfEscape(title)}) Tj ET`,
     );
-    this.y -= 8;
+    this.current.push("0.900 0.950 0.970 rg");
+    this.current.push(
+      `BT /F1 8 Tf 1 0 0 1 ${LEFT + 12} ${(this.y - 18).toFixed(1)} Tm (${pdfEscape(instruction)}) Tj ET`,
+    );
+    this.y -= 42;
   }
 
-  bullet(text: string) {
-    this.line(`- ${text}`, { indent: 12, size: 9.2 });
-  }
-
-  addAssessment() {
+  private examFrontMatter() {
     const { assessment } = this.input;
-    this.line("STUDENT ASSESSMENT", { bold: true, size: 17, color: NAVY });
-    this.line(assessment.title, { bold: true, size: 13, gapAfter: 7 });
-    this.line(`School / workspace: ${this.input.workspaceName}`, { size: 9.3 });
-    this.line(
-      `Subject: ${this.input.subject}    Class: ${this.input.classLevel}`,
-      { size: 9.3 },
-    );
-    if (this.input.assessmentType || this.input.overallDifficulty) {
-      this.line(
-        `Assessment type: ${titleCase(this.input.assessmentType || "Not specified")}    Overall difficulty: ${titleCase(this.input.overallDifficulty || "Not specified")}`,
-        { size: 9.3 },
-      );
-    }
-    this.line(
-      `Total marks: ${assessment.blueprint.totalMarks}${
-        this.input.durationMinutes
-          ? `    Duration: ${this.input.durationMinutes} minutes`
-          : ""
-      }`,
-      { size: 9.3 },
-    );
-    if (this.input.topicCoverage?.length) {
-      this.line("Topic coverage", {
-        bold: true,
-        size: 9.6,
-        color: BLUE,
-        gapBefore: 3,
-      });
-      this.input.topicCoverage.forEach((entry) => this.bullet(entry));
-    } else {
-      this.line(`Topic: ${this.input.topic}`, { size: 9.3 });
-      this.line(`Objective: ${this.input.objective}`, {
-        size: 9.3,
-        gapAfter: 5,
-      });
-    }
-    this.rule();
-    this.line("Instructions", { bold: true, size: 10.5, color: BLUE });
-    this.line(assessment.studentInstructions, { size: 9.5, gapAfter: 6 });
-    this.rule();
-
-    for (const item of assessment.items) {
-      this.line(
-        `${item.position}. ${item.prompt} (${item.marks} mark${item.marks === 1 ? "" : "s"})`,
-        {
-          bold: true,
-          size: 10.2,
-          gapBefore: 5,
-          gapAfter: 3,
-        },
-      );
-      if (item.itemType === "objective") {
-        item.options.forEach((option, index) =>
-          this.line(`${String.fromCharCode(65 + index)}. ${option}`, {
-            indent: 14,
-            size: 9.6,
-          }),
-        );
-      } else if (item.itemType === "project" && item.deliverable) {
-        this.line(`Deliverable: ${item.deliverable}`, {
-          size: 9.2,
-          color: MUTED,
-          indent: 10,
-        });
-      }
-      this.line(" ", { gapAfter: 3 });
-    }
-
-    this.forceNewPage();
-    this.line("TEACHER ANSWER & MARKING GUIDE", {
+    this.line(assessmentLabel(this.input.assessmentType).toUpperCase(), {
       bold: true,
-      size: 17,
-      color: NAVY,
+      size: 10,
+      color: TEAL,
+      gapAfter: 4,
     });
-    this.line(assessment.title, { bold: true, size: 12.5, gapAfter: 4 });
-    if (this.input.assessmentType || this.input.overallDifficulty) {
-      this.line(
-        `${titleCase(this.input.assessmentType || "Assessment")} | ${titleCase(this.input.overallDifficulty || "Difficulty not specified")}`,
-        { size: 9, color: MUTED, gapAfter: 4 },
-      );
-    }
-    this.line("KAEC assessment quality validation recorded", {
+    this.line(assessment.title, {
       bold: true,
-      size: 9,
-      color: GREEN,
+      size: 16,
+      color: NAVY,
+      gapAfter: 7,
+    });
+
+    this.line("Name: ____________________________________________    Date: ____________________", {
+      size: 9.3,
+      gapAfter: 7,
+    });
+    this.line(
+      `Subject: ${this.input.subject}    Class: ${this.input.classLevel}    Total Marks: ${assessment.blueprint.totalMarks}`,
+      { bold: true, size: 9.2 },
+    );
+    this.line(
+      `Session: ${this.input.academicSession || "Not specified"}    Term: ${this.input.term || "Not specified"}    Duration: ${
+        this.input.durationMinutes ? `${this.input.durationMinutes} minutes` : "Not specified"
+      }`,
+      { size: 9.2, gapAfter: 7 },
+    );
+    this.rule();
+
+    this.line("GENERAL INSTRUCTIONS", {
+      bold: true,
+      size: 9.5,
+      color: NAVY,
+      gapAfter: 3,
+    });
+    this.line(assessment.studentInstructions || "Answer all questions as instructed.", {
+      size: 9.1,
       gapAfter: 7,
     });
     this.rule();
+  }
+
+  private examQuestion(item: GeneratedAssessmentItem) {
+    this.line(
+      `${item.position}. ${item.prompt} [${item.marks} mark${item.marks === 1 ? "" : "s"}]`,
+      {
+        bold: item.itemType !== "critical_thinking",
+        size: 9.8,
+        gapBefore: 4,
+        gapAfter: 3,
+      },
+    );
+
+    if (item.itemType === "objective") {
+      item.options.forEach((option, index) => {
+        this.line(`${String.fromCharCode(65 + index)}. ${option}`, {
+          indent: 16,
+          size: 9.2,
+          gapAfter: 1,
+        });
+      });
+    }
+
+    if (item.itemType === "project" && item.deliverable) {
+      this.line(`Deliverable: ${item.deliverable}`, {
+        indent: 10,
+        size: 8.9,
+        color: MUTED,
+      });
+    }
+
+    this.y -= 4;
+  }
+
+  private addExam() {
+    this.examFrontMatter();
+    groupedItems(this.input.assessment).forEach((section, index) => {
+      this.sectionHeading(index, section.title, section.instruction);
+      section.items.forEach((item) => this.examQuestion(item));
+      this.y -= 5;
+    });
+  }
+
+  private addMarkingGuide() {
+    const { assessment } = this.input;
+    this.line("MARKING GUIDE - NOT FOR STUDENTS", {
+      bold: true,
+      size: 14,
+      color: NAVY,
+      gapAfter: 4,
+    });
+    this.line(assessment.title, { bold: true, size: 12, gapAfter: 4 });
+    this.line(
+      `${this.input.subject} | ${this.input.classLevel} | ${this.input.academicSession || "Session not specified"} | ${this.input.term || "Term not specified"}`,
+      { size: 8.8, color: MUTED, gapAfter: 7 },
+    );
+    this.line("KSI assessment quality validation recorded.", {
+      bold: true,
+      size: 8.8,
+      color: GREEN,
+      gapAfter: 6,
+    });
+    this.rule();
 
     for (const item of assessment.items) {
       this.line(
-        `Item ${item.position} - ${item.itemType.replaceAll("_", " ")} - ${item.marks} marks`,
-        {
-          bold: true,
-          size: 10.5,
-          color: NAVY,
-          gapBefore: 5,
-        },
+        `Item ${item.position} - ${titleCase(item.itemType)} - ${item.marks} mark${item.marks === 1 ? "" : "s"}`,
+        { bold: true, size: 10.1, color: NAVY, gapBefore: 5 },
       );
-      this.line(`Topic: ${item.topic} | Difficulty: ${item.difficulty}`, {
-        size: 8.8,
-        color: MUTED,
-      });
-      this.line(`Expected evidence: ${item.expectedEvidence.join("; ")}`, {
-        size: 9.2,
-      });
+      this.line(item.prompt, { size: 9.1, gapAfter: 3 });
+
       if (item.itemType === "objective") {
         this.line(`Answer: ${item.correctAnswer}`, {
           bold: true,
-          size: 9.5,
+          size: 9.2,
           color: GREEN,
         });
         if (item.answerRationale) {
-          this.line(`Rationale: ${item.answerRationale}`, { size: 9.2 });
+          this.line(`Rationale: ${item.answerRationale}`, { size: 8.9 });
         }
       } else {
-        this.line("Marking guide", { bold: true, size: 9.5, color: BLUE });
-        item.markingGuide.forEach((criterion) => this.bullet(criterion));
-        if (item.deliverable) {
-          this.line(`Deliverable: ${item.deliverable}`, { size: 9.2 });
+        if (item.expectedEvidence.length) {
+          this.line("Expected evidence", { bold: true, size: 8.9, color: TEAL });
+          item.expectedEvidence.forEach((entry) =>
+            this.line(`- ${entry}`, { indent: 10, size: 8.8 }),
+          );
+        }
+        if (item.markingGuide.length) {
+          this.line("Marking criteria", { bold: true, size: 8.9, color: TEAL });
+          item.markingGuide.forEach((entry) =>
+            this.line(`- ${entry}`, { indent: 10, size: 8.8 }),
+          );
         }
       }
+
       if (item.criticalThinkingType) {
         this.line(
-          `KAEC Critical Thinking experience: ${item.criticalThinkingType.replaceAll("_", " ")}`,
-          { size: 8.8, color: MUTED },
+          `Critical-thinking experience: ${titleCase(item.criticalThinkingType)}`,
+          { size: 8.3, color: MUTED },
         );
       }
-      this.rule();
+      this.rule(7);
     }
+  }
+
+  compose() {
+    if (this.mode === "exam") this.addExam();
+    else this.addMarkingGuide();
 
     if (this.current.length) this.pages.push(this.current);
     return this.pages;
   }
 }
 
-function buildPdfObjects(pageCommands: string[][]) {
-  const logo = Buffer.from(KAEC_REPORT_LOGO_JPEG_BASE64, "base64");
+function buildPdfObjects(
+  pageCommands: string[][],
+  logoJpegBase64: string,
+  hasSchoolLogo: boolean,
+) {
+  const logo = Buffer.from(logoJpegBase64, "base64");
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
@@ -322,9 +423,10 @@ function buildPdfObjects(pageCommands: string[][]) {
   objects[4] = Buffer.from(
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
   );
+  const dimension = hasSchoolLogo ? 480 : 1;
   objects[5] = Buffer.concat([
     Buffer.from(
-      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+      `<< /Type /XObject /Subtype /Image /Width ${dimension} /Height ${dimension} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
     ),
     logo,
     Buffer.from("\nendstream"),
@@ -335,7 +437,7 @@ function buildPdfObjects(pageCommands: string[][]) {
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (KAEC-NG | Assessment Intelligence | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.2 Tf 1 0 0 1 48 28 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "latin1");
@@ -348,6 +450,7 @@ function buildPdfObjects(pageCommands: string[][]) {
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentRef} 0 R >>`,
     );
   }
+
   return objects;
 }
 
@@ -356,6 +459,7 @@ function serializePdf(objects: Buffer[]) {
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
   let offset = header.length;
+
   for (let index = 1; index < objects.length; index += 1) {
     const object = objects[index];
     if (!object) continue;
@@ -365,6 +469,7 @@ function serializePdf(objects: Buffer[]) {
     chunks.push(prefix, object, suffix);
     offset += prefix.length + object.length + suffix.length;
   }
+
   const xrefOffset = offset;
   const maxObject = objects.length - 1;
   const xref: string[] = [
@@ -372,9 +477,11 @@ function serializePdf(objects: Buffer[]) {
     `0 ${maxObject + 1}`,
     "0000000000 65535 f ",
   ];
+
   for (let index = 1; index <= maxObject; index += 1) {
     xref.push(`${String(offsets[index] ?? 0).padStart(10, "0")} 00000 n `);
   }
+
   xref.push(
     "trailer",
     `<< /Size ${maxObject + 1} /Root 1 0 R >>`,
@@ -386,18 +493,33 @@ function serializePdf(objects: Buffer[]) {
   return new Uint8Array(Buffer.concat(chunks));
 }
 
-export function createAssessmentPdf(input: AssessmentPdfInput) {
+export function createAssessmentPdf(
+  input: AssessmentPdfInput,
+  mode: AssessmentPdfMode = "exam",
+) {
   if (!input.assessment.items.length) {
     throw new Error("A teacher-ready assessment PDF requires assessment items.");
   }
-  return serializePdf(buildPdfObjects(new PdfComposer(input).addAssessment()));
+
+  const commands = new PdfComposer(input, mode).compose();
+  return serializePdf(
+    buildPdfObjects(commands, input.brandLogoJpegBase64, input.hasSchoolLogo),
+  );
 }
 
-export function safeAssessmentPdfFilename(title: string) {
-  const slug = ascii(title)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 72);
-  return `${slug || "kaec-assessment"}.pdf`;
+function safeSlug(title: string) {
+  return (
+    ascii(title)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 68) || "ksi-assessment"
+  );
+}
+
+export function safeAssessmentPdfFilename(
+  title: string,
+  mode: AssessmentPdfMode = "exam",
+) {
+  return `${safeSlug(title)}-${mode === "exam" ? "exam-paper" : "marking-guide"}.pdf`;
 }

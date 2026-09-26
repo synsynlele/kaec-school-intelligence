@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Profile = {
@@ -247,7 +247,7 @@ export function DashboardClient() {
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2"><KaecBrand compact /></div>
+            <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2"><KsiBrand compact /></div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">KAEC School Intelligence</p>
               <p className="mt-1 text-sm text-zinc-500">Teacher & Leadership learning intelligence</p>

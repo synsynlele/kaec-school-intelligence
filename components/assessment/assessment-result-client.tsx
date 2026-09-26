@@ -58,7 +58,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   const router = useRouter();
   const [state, setState] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingMode, setDownloadingMode] = useState<"exam" | "marking" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -137,9 +137,9 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
     };
   }, [assessmentId, router]);
 
-  async function downloadPdf() {
+  async function downloadPdf(mode: "exam" | "marking") {
     if (!state) return;
-    setDownloading(true);
+    setDownloadingMode(mode);
     setError(null);
     try {
       const supabase = getBrowserSupabaseClient();
@@ -149,9 +149,12 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
       } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!session?.access_token) throw new Error("Your session has expired. Sign in again.");
-      const response = await fetch(`/api/assessment/pdf?assessmentId=${encodeURIComponent(state.assessment.id)}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      const response = await fetch(
+        `/api/assessment/pdf?assessmentId=${encodeURIComponent(state.assessment.id)}&mode=${mode}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+      );
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
         throw new Error(typeof payload.error === "string" ? payload.error : "The assessment PDF could not be prepared.");
@@ -159,7 +162,9 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
       const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? "kaec-assessment.pdf";
+      const filename =
+        match?.[1] ??
+        (mode === "exam" ? "ksi-exam-paper.pdf" : "ksi-marking-guide.pdf");
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -171,7 +176,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The assessment PDF could not be downloaded.");
     } finally {
-      setDownloading(false);
+      setDownloadingMode(null);
     }
   }
 
@@ -208,7 +213,24 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             {state.assessment.status !== "archived" ? (
               <Link href={`/assessment?assessment=${encodeURIComponent(state.assessment.id)}&edit=1`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit Assessment</Link>
             ) : null}
-            <button type="button" onClick={() => void downloadPdf()} disabled={downloading} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">{downloading ? "Preparing PDF…" : "Download PDF"}</button>
+            <button
+              type="button"
+              onClick={() => void downloadPdf("exam")}
+              disabled={downloadingMode !== null}
+              className="min-h-11 rounded-xl bg-[#0B3268] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {downloadingMode === "exam" ? "Preparing exam…" : "Download Exam PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void downloadPdf("marking")}
+              disabled={downloadingMode !== null}
+              className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50"
+            >
+              {downloadingMode === "marking"
+                ? "Preparing guide…"
+                : "Download Marking Guide"}
+            </button>
           </div>
         </div>
         <div className="mt-6 rounded-2xl bg-stone-50 p-4">

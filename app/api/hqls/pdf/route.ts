@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabasePublicEnv } from "@/lib/env";
 import { parseHqlsStageContent } from "@/lib/hqls/engine";
 import { createHqlsLessonPdf, safePdfFilename } from "@/lib/pdf/hqls-lesson-pdf";
-import { patchPdfCommands, pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { pdfSafeValue } from "@/lib/pdf/layout-safety";
+import { resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 import type { Database } from "@/lib/supabase/database";
 
 export const runtime = "nodejs";
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     const [workspaceResult, subjectResult, classResult] = await Promise.all([
-      supabase.from("workspaces").select("name").eq("id", lesson.workspace_id).single(),
+      supabase.from("workspaces").select("name,logo_url").eq("id", lesson.workspace_id).single(),
       lesson.subject_id
         ? supabase.from("subjects").select("name").eq("id", lesson.subject_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -106,8 +107,8 @@ export async function POST(request: Request) {
     const stages = stageResult.data.map((stage, index) =>
       parseHqlsStageContent(stage.content, index + 1),
     );
-    const pdf = createHqlsLessonPdf(
-      pdfSafeValue({
+    const branding = resolvePdfBranding(workspaceResult.data.logo_url);
+    const safeInput = pdfSafeValue({
         workspaceName: workspaceResult.data.name,
         title: lesson.title,
         subject: subjectResult.data?.name ?? "General",
@@ -119,13 +120,13 @@ export async function POST(request: Request) {
         fidelityScore: Number(fidelityResult.data.score ?? 0),
         sources: sourceLabels(lesson.source_context),
         stages,
-      }),
-    );
-    const protectedPdf = patchPdfCommands(pdf, [
-      ["54 752 487 1.4 re f", "97 752 444 1.4 re f"],
-    ]);
-
-    return new Response(protectedPdf, {
+      });
+    const pdf = createHqlsLessonPdf({
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    });
+    return new Response(pdf, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

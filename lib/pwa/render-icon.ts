@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createElement } from "react";
 
-const canonicalKsiIconUrl = "https://www.ksi.name.ng/icon.png";
+const canonicalKsiIconUrl = "https://www.ksi.name.ng/icon.svg";
 
 export function renderPwaIcon(size: number) {
   return new ImageResponse(

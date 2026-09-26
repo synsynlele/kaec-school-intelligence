@@ -226,7 +226,7 @@ for (const required of [
 
 const savedWorkPage = await text("app/saved-work/page.tsx");
 assert(
-  savedWorkPage.includes("KaecBrand") &&
+  savedWorkPage.includes("KsiBrand") &&
     savedWorkPage.includes("SavedWorkClient") &&
     savedWorkPage.includes('href="/hqls"') &&
     savedWorkPage.includes('href="/assessment"'),
@@ -235,10 +235,12 @@ assert(
 
 const pdf = await text("lib/pdf/assessment-pdf.ts");
 for (const required of [
-  "KAEC_REPORT_LOGO_JPEG_BASE64",
-  "STUDENT ASSESSMENT",
-  "TEACHER ANSWER & MARKING GUIDE",
-  "Assessment Intelligence",
+  "brandLogoJpegBase64",
+  "hasSchoolLogo",
+  "OBJECTIVE",
+  "SUBJECTIVE / THEORY",
+  "CRITICAL THINKING / REASONING",
+  "MARKING GUIDE - NOT FOR STUDENTS",
 ]) {
   assert(pdf.includes(required), `Stage 3 PDF is missing ${required}.`);
 }

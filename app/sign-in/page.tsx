@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 
 type SignInPageProps = {
   searchParams: Promise<{ notice?: string | string[] }>;
@@ -16,7 +16,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <main className="min-h-screen bg-stone-50 px-5 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="w-fit"><KaecBrand compact /></Link>
+          <Link href="/" className="w-fit"><KsiBrand compact /></Link>
           <Link href="/" className="w-fit text-sm font-semibold text-zinc-600 transition hover:text-zinc-950">← Back to KSI</Link>
         </div>
 

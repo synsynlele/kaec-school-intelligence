@@ -1,9 +1,11 @@
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import type { HqlsStageContent } from "@/lib/hqls/engine";
-import { KAEC_REPORT_LOGO_JPEG_BASE64 } from "@/lib/pdf/kaec-report-logo";
+import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
 
 export type HqlsLessonPdfInput = {
   workspaceName: string;
+  brandLogoJpegBase64: string;
+  hasSchoolLogo: boolean;
   title: string;
   subject: string;
   classLevel: string;
@@ -125,12 +127,20 @@ class PdfComposer {
   }
 
   private header() {
-    this.current.push("q 42 0 0 42 54 744 cm /Im1 Do Q");
+    if (this.input.hasSchoolLogo) {
+      this.current.push("q 42 0 0 42 54 744 cm /Im1 Do Q");
+    } else {
+      this.current.push(rgb(NAVY));
+      this.current.push("BT /F2 17 Tf 1 0 0 1 54 781 Tm (KSI) Tj ET");
+    }
+    const schoolX = this.input.hasSchoolLogo ? 108 : 54;
     this.current.push(rgb(NAVY));
-    this.current.push("BT /F2 14 Tf 1 0 0 1 108 783 Tm (KAEC-NG) Tj ET");
+    this.current.push(
+      `BT /F2 13 Tf 1 0 0 1 ${schoolX} 783 Tm (${pdfEscape(this.input.workspaceName.toUpperCase())}) Tj ET`,
+    );
     this.current.push(rgb(MUTED));
     this.current.push(
-      "BT /F1 8.5 Tf 1 0 0 1 108 768 Tm (KAEC School Intelligence - Human Quest Learning System) Tj ET",
+      `BT /F1 8.2 Tf 1 0 0 1 ${schoolX} 768 Tm (HQLS Lesson | Powered by KSI | by KAEC-NG) Tj ET`,
     );
     this.current.push(rgb(BLUE));
     this.current.push("54 752 487 1.4 re f");
@@ -463,8 +473,8 @@ class PdfComposer {
   }
 }
 
-function buildPdfObjects(pageCommands: string[][]) {
-  const logo = Buffer.from(KAEC_REPORT_LOGO_JPEG_BASE64, "base64");
+function buildPdfObjects(pageCommands: string[][], input: HqlsLessonPdfInput) {
+  const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
@@ -481,7 +491,7 @@ function buildPdfObjects(pageCommands: string[][]) {
   );
   objects[5] = Buffer.concat([
     Buffer.from(
-      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+      `<< /Type /XObject /Subtype /Image /Width ${input.hasSchoolLogo ? 480 : 1} /Height ${input.hasSchoolLogo ? 480 : 1} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
     ),
     logo,
     Buffer.from("\nendstream"),
@@ -492,7 +502,7 @@ function buildPdfObjects(pageCommands: string[][]) {
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (KAEC-NG | Human Quest Learning System | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | HQLS | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "latin1");
@@ -551,7 +561,7 @@ export function createHqlsLessonPdf(input: HqlsLessonPdfInput) {
     throw new Error("A teacher-ready HQLS PDF requires all seven lesson stages.");
   }
   const pages = new PdfComposer(input).addLesson();
-  return serializePdf(buildPdfObjects(pages));
+  return serializePdf(buildPdfObjects(pages, input));
 }
 
 export function safePdfFilename(title: string) {

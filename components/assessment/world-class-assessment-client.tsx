@@ -35,6 +35,12 @@ const ASSESSMENT_TYPES: Array<{ value: AssessmentKind; label: string }> = [
   { value: "project", label: "Project" },
 ];
 
+const TERMS = [
+  { value: "First Term", label: "First Term" },
+  { value: "Second Term", label: "Second Term" },
+  { value: "Third Term", label: "Third Term" },
+] as const;
+
 const DIFFICULTIES: Array<{
   value: AssessmentOverallDifficulty;
   label: string;
@@ -50,7 +56,12 @@ type Workspace = {
   workspace_type: "individual" | "school";
 };
 type Subject = { id: string; name: string };
-type SchoolClass = { id: string; name: string; age_range: string | null };
+type SchoolClass = {
+  id: string;
+  name: string;
+  age_range: string | null;
+  academic_session: string | null;
+};
 type Resource = {
   id: string;
   title: string;
@@ -267,7 +278,7 @@ async function loadWorkspaceState(): Promise<WorkspaceState | null> {
       .order("name"),
     supabase
       .from("classes")
-      .select("id,name,age_range")
+      .select("id,name,age_range,academic_session")
       .eq("workspace_id", workspaceId)
       .eq("active", true)
       .order("name"),
@@ -331,6 +342,7 @@ export function WorldClassAssessmentClient() {
   const [ageRange, setAgeRange] = useState("");
   const [title, setTitle] = useState("");
   const [assessmentKind, setAssessmentKind] = useState<AssessmentKind>("test");
+  const [term, setTerm] = useState("First Term");
   const [overallDifficulty, setOverallDifficulty] =
     useState<AssessmentOverallDifficulty>("medium");
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("mixed");
@@ -680,6 +692,8 @@ export function WorldClassAssessmentClient() {
           ageRange,
           title,
           assessmentKind,
+          term,
+          academicSession: classMatch?.academic_session ?? "",
           overallDifficulty,
           topics: topics.map((topic) => ({
             topic: topic.topic,
@@ -1033,6 +1047,12 @@ export function WorldClassAssessmentClient() {
                 value={assessmentKind}
                 onChange={(value) => setAssessmentKind(value as AssessmentKind)}
                 options={ASSESSMENT_TYPES}
+              />
+              <SelectInput
+                label="Academic term"
+                value={term}
+                onChange={setTerm}
+                options={[...TERMS]}
               />
               <SelectInput
                 label="Overall difficulty"

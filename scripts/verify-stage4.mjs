@@ -139,7 +139,9 @@ for (const required of [
 }
 
 for (const required of [
-  "KAEC_REPORT_LOGO_JPEG_BASE64",
+  "brandLogoJpegBase64",
+  "hasSchoolLogo",
+  "by KAEC-NG",
   "STUDENT DIAGNOSIS",
   "DIAGNOSIS:",
   "ACADEMICS / SKILLS",
@@ -156,7 +158,7 @@ for (const required of [
 
 assert(
   pdf.includes("PAGE_WIDTH = 841.89") && pdf.includes("PAGE_HEIGHT = 595.28"),
-  "KAEC parent diagnosis PDF must use the landscape diagnosis-sheet layout.",
+  "Parent diagnosis PDF must use the landscape diagnosis-sheet layout.",
 );
 assert(
   pdfRoute.includes("diagnosis.academic_session") &&

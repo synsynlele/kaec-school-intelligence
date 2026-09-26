@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { LandingDistributionButton } from "@/components/pwa/landing-distribution-button";
 
 const engines = [
@@ -26,7 +26,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-stone-50 text-zinc-950">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
         <nav className="flex flex-col items-start gap-4 border-b border-zinc-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <KaecBrand />
+          <KsiBrand />
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <LandingDistributionButton />
             <Link

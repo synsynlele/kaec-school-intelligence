@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -159,7 +159,7 @@ export function HqlsExportsClient() {
     <main className="min-h-screen bg-stone-50 text-zinc-950">
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-5 py-5 sm:px-8 md:flex-row md:items-center md:justify-between">
-          <KaecBrand />
+          <KsiBrand />
           <div className="flex flex-wrap gap-2">
             <Link
               href="/hqls"
@@ -183,7 +183,7 @@ export function HqlsExportsClient() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Download HQLS lesson PDFs</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          PDFs are prepared from the final saved lesson, use the official KAEC-NG branding, and are available only when the lesson has a passing HQLS fidelity record.
+          PDFs are prepared from the final saved lesson, use the active school’s branding with KSI endorsement, and are available only when the lesson has a passing HQLS fidelity record.
         </p>
 
         {state ? (

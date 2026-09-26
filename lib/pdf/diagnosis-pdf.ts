@@ -1,8 +1,10 @@
 import type { GeneratedDiagnosis } from "@/lib/diagnosis/engine";
-import { KAEC_REPORT_LOGO_JPEG_BASE64 } from "@/lib/pdf/kaec-report-logo";
+import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
 
 export type DiagnosisPdfInput = {
   workspaceName: string;
+  brandLogoJpegBase64: string;
+  hasSchoolLogo: boolean;
   studentName: string;
   className: string;
   academicSession: string;
@@ -296,7 +298,11 @@ function firstPage(input: DiagnosisPdfInput) {
   const commands: string[] = [];
   const diagnosis = input.diagnosis;
 
-  commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
+  if (input.hasSchoolLogo) {
+    commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
+  } else {
+    textAtTop(commands, "KSI", 30, 27, 16, true, FOREST);
+  }
   brandName(
     commands,
     input.workspaceName,
@@ -438,7 +444,11 @@ class FlowPage {
   private y = PAGE_HEIGHT - 102;
 
   constructor(private readonly input: DiagnosisPdfInput) {
-    this.commands.push("q 36 0 0 36 30 523 cm /Im1 Do Q");
+    if (input.hasSchoolLogo) {
+      this.commands.push("q 36 0 0 36 30 523 cm /Im1 Do Q");
+    } else {
+      textAtTop(this.commands, "KSI", 30, 29, 15, true, FOREST);
+    }
     brandName(this.commands, input.workspaceName, 74, 25, 170, 48, 8.4);
     textAtTop(
       this.commands,
@@ -532,7 +542,7 @@ class FlowPage {
     });
 
     this.line(
-      "Prepared through KAEC School Intelligence. This is an educational growth report, not a medical, psychiatric or psychological diagnosis.",
+      "Prepared through KSI - KAEC School Intelligence, by KAEC-NG. This is an educational growth report, not a medical, psychiatric or psychological diagnosis.",
       { size: 8.5, color: MUTED, gapBefore: 12 },
     );
 
@@ -540,8 +550,8 @@ class FlowPage {
   }
 }
 
-function buildPdfObjects(pageCommands: string[][]) {
-  const logo = Buffer.from(KAEC_REPORT_LOGO_JPEG_BASE64, "base64");
+function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
+  const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
@@ -558,7 +568,7 @@ function buildPdfObjects(pageCommands: string[][]) {
   );
   objects[5] = Buffer.concat([
     Buffer.from(
-      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+      `<< /Type /XObject /Subtype /Image /Width ${input.hasSchoolLogo ? 480 : 1} /Height ${input.hasSchoolLogo ? 480 : 1} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
     ),
     logo,
     Buffer.from("\nendstream"),
@@ -569,7 +579,7 @@ function buildPdfObjects(pageCommands: string[][]) {
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (KAEC-NG | Student Diagnosis Intelligence | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Diagnosis | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "latin1");
@@ -630,7 +640,7 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
   }
 
   const pages = [firstPage(input), new FlowPage(input).build()];
-  return serializePdf(buildPdfObjects(pages));
+  return serializePdf(buildPdfObjects(pages, input));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {
@@ -639,5 +649,5 @@ export function safeDiagnosisPdfFilename(studentName: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
-  return `${slug || "student"}-kaec-diagnosis.pdf`;
+  return `${slug || "student"}-diagnosis-report.pdf`;
 }

@@ -1,4 +1,4 @@
-import { KAEC_REPORT_LOGO_JPEG_BASE64 } from "@/lib/pdf/kaec-report-logo";
+import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
 
 export type InterventionPdfAction = {
   domain: string;
@@ -8,6 +8,8 @@ export type InterventionPdfAction = {
 
 export type InterventionPdfInput = {
   workspaceName: string;
+  brandLogoJpegBase64: string;
+  hasSchoolLogo: boolean;
   studentName: string;
   className: string;
   status: string;
@@ -110,12 +112,20 @@ class PdfComposer {
   }
 
   private header() {
-    this.current.push("q 34 0 0 34 54 756 cm /Im1 Do Q");
+    if (this.input.hasSchoolLogo) {
+      this.current.push("q 34 0 0 34 54 756 cm /Im1 Do Q");
+    } else {
+      this.current.push(rgb(NAVY));
+      this.current.push("BT /F2 16 Tf 1 0 0 1 54 782 Tm (KSI) Tj ET");
+    }
+    const schoolX = this.input.hasSchoolLogo ? 101 : 54;
     this.current.push(rgb(NAVY));
-    this.current.push("BT /F2 13 Tf 1 0 0 1 101 782 Tm (KAEC-NG) Tj ET");
+    this.current.push(
+      `BT /F2 12.5 Tf 1 0 0 1 ${schoolX} 782 Tm (${pdfEscape(this.input.workspaceName.toUpperCase())}) Tj ET`,
+    );
     this.current.push(rgb(MUTED));
     this.current.push(
-      "BT /F1 8.5 Tf 1 0 0 1 101 768 Tm (KAEC School Intelligence - Action & Intervention) Tj ET",
+      `BT /F1 8.2 Tf 1 0 0 1 ${schoolX} 768 Tm (Action & Intervention | Powered by KSI | by KAEC-NG) Tj ET`,
     );
     this.current.push(rgb(GREEN));
     this.current.push("54 746 487 1.3 re f");
@@ -214,8 +224,8 @@ class PdfComposer {
   }
 }
 
-function buildPdfObjects(pageCommands: string[][]) {
-  const logo = Buffer.from(KAEC_REPORT_LOGO_JPEG_BASE64, "base64");
+function buildPdfObjects(pageCommands: string[][], input: InterventionPdfInput) {
+  const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
   const pageRefs = pageCommands.map((_, index) => 7 + index * 2);
@@ -232,7 +242,7 @@ function buildPdfObjects(pageCommands: string[][]) {
   );
   objects[5] = Buffer.concat([
     Buffer.from(
-      `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
+      `<< /Type /XObject /Subtype /Image /Width ${input.hasSchoolLogo ? 480 : 1} /Height ${input.hasSchoolLogo ? 480 : 1} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`,
     ),
     logo,
     Buffer.from("\nendstream"),
@@ -243,7 +253,7 @@ function buildPdfObjects(pageCommands: string[][]) {
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (KAEC-NG | Action & Intervention | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Intervention | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "latin1");
@@ -298,7 +308,7 @@ export function createInterventionPdf(input: InterventionPdfInput) {
   if (!input.priorityGrowthTarget.trim()) {
     throw new Error("An intervention PDF requires a priority growth target.");
   }
-  return serializePdf(buildPdfObjects(new PdfComposer(input).compose()));
+  return serializePdf(buildPdfObjects(new PdfComposer(input).compose(), input));
 }
 
 export function safeInterventionPdfFilename(studentName: string) {
