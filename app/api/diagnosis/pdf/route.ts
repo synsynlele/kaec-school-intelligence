@@ -157,11 +157,8 @@ export async function GET(request: Request) {
     }
 
     const branding = resolvePdfBranding(workspaceResult.data.logo_url);
-    const bytes = createDiagnosisPdf(
-      pdfSafeValue({
+    const safeInput = pdfSafeValue({
         workspaceName: workspaceResult.data.name,
-        brandLogoJpegBase64: branding.logoJpegBase64,
-        hasSchoolLogo: branding.hasSchoolLogo,
         studentName: studentResult.data.display_name,
         className,
         academicSession,
@@ -171,8 +168,12 @@ export async function GET(request: Request) {
         diagnosis: diagnosisFromRow(diagnosis),
         reviewedAt: diagnosis.reviewed_at,
         finalisedAt: diagnosis.finalised_at,
-      }),
-    );
+      });
+    const bytes = createDiagnosisPdf({
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    });
 
     return new Response(bytes as BodyInit, {
       status: 200,
