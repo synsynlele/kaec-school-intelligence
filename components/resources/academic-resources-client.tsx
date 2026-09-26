@@ -98,6 +98,13 @@ function sameClassLabel(left: string, right: string) {
   return normaliseClassLabel(left) === normaliseClassLabel(right);
 }
 
+function schemeClassFilter(value: string) {
+  const normalized = normaliseClassLabel(value);
+  return /^(jss[123]|ss[123])$/.test(normalized)
+    ? normalized.toUpperCase()
+    : value;
+}
+
 function isLegacyClassFilterError(caught: unknown) {
   const message =
     caught instanceof Error
@@ -207,7 +214,7 @@ async function loadBaseContext(supabase: SupabaseClient): Promise<Context | null
   if (firstClass && firstSubject) {
     const { data, error } = await supabase.rpc("get_academic_resource_catalog", {
       target_workspace_id: workspaceId,
-      target_class_level: firstClass,
+      target_class_level: schemeClassFilter(firstClass),
       target_subject: firstSubject,
       target_term: DEFAULT_TERM,
     });
@@ -330,7 +337,7 @@ export function AcademicResourcesClient() {
           "get_academic_resource_catalog",
           {
             target_workspace_id: context.workspaceId,
-            target_class_level: nextClass,
+            target_class_level: schemeClassFilter(nextClass),
             target_subject: nextSubject,
             target_term: nextTerm,
           },
