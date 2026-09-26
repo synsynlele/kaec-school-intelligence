@@ -232,7 +232,8 @@ class PdfComposer {
   }
 
   private sectionHeading(index: number, title: string, instruction: string) {
-    this.ensure(42);
+    // Keep the heading with the start of the first question.
+    this.ensure(100);
     const letter = String.fromCharCode(65 + index);
     this.current.push(rgb(NAVY));
     this.current.push(`${LEFT} ${(this.y - 24).toFixed(1)} ${CONTENT_WIDTH} 31 re f`);
@@ -245,6 +246,25 @@ class PdfComposer {
       `BT /F1 8 Tf 1 0 0 1 ${LEFT + 12} ${(this.y - 18).toFixed(1)} Tm (${pdfEscape(instruction)}) Tj ET`,
     );
     this.y -= 42;
+  }
+
+  private answerSpace(marks: number, practical: boolean) {
+    const lines = practical ? 4 : Math.min(12, Math.max(3, Math.ceil(marks / 2)));
+    this.line(practical ? "Working / notes:" : "Answer:", {
+      size: 8.5,
+      color: MUTED,
+      gapBefore: 4,
+      gapAfter: 2,
+    });
+    for (let index = 0; index < lines; index += 1) {
+      this.ensure(25);
+      this.y -= 17;
+      this.current.push("0.790 0.820 0.850 RG 0.45 w");
+      this.current.push(
+        `${LEFT + 10} ${this.y.toFixed(1)} m ${PAGE_WIDTH - RIGHT} ${this.y.toFixed(1)} l S`,
+      );
+      this.y -= 7;
+    }
   }
 
   private examFrontMatter() {
@@ -286,6 +306,10 @@ class PdfComposer {
     });
     this.line(assessment.studentInstructions || "Answer all questions as instructed.", {
       size: 9.1,
+      gapAfter: 4,
+    });
+    this.line("Use the spaces provided for written answers. If you need more room, continue on a separate sheet and write the question number.", {
+      size: 8.8,
       gapAfter: 7,
     });
     this.rule();
@@ -320,7 +344,11 @@ class PdfComposer {
       });
     }
 
-    this.y -= 4;
+    if (item.itemType !== "objective") {
+      this.answerSpace(item.marks, item.itemType === "project");
+    } else {
+      this.y -= 4;
+    }
   }
 
   private addExam() {
