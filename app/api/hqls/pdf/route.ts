@@ -108,11 +108,8 @@ export async function POST(request: Request) {
       parseHqlsStageContent(stage.content, index + 1),
     );
     const branding = resolvePdfBranding(workspaceResult.data.logo_url);
-    const pdf = createHqlsLessonPdf(
-      pdfSafeValue({
+    const safeInput = pdfSafeValue({
         workspaceName: workspaceResult.data.name,
-        brandLogoJpegBase64: branding.logoJpegBase64,
-        hasSchoolLogo: branding.hasSchoolLogo,
         title: lesson.title,
         subject: subjectResult.data?.name ?? "General",
         classLevel: classResult.data?.name ?? "Not linked",
@@ -123,8 +120,12 @@ export async function POST(request: Request) {
         fidelityScore: Number(fidelityResult.data.score ?? 0),
         sources: sourceLabels(lesson.source_context),
         stages,
-      }),
-    );
+      });
+    const pdf = createHqlsLessonPdf({
+      ...safeInput,
+      brandLogoJpegBase64: branding.logoJpegBase64,
+      hasSchoolLogo: branding.hasSchoolLogo,
+    });
     return new Response(pdf, {
       status: 200,
       headers: {
