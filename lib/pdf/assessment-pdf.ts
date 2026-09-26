@@ -153,6 +153,31 @@ function groupedItems(assessment: GeneratedAssessment) {
   })).filter((section) => section.items.length > 0);
 }
 
+export function assessmentAnswerLines(item: GeneratedAssessmentItem) {
+    const marks = Math.max(1, Math.min(30, Number(item.marks) || 1));
+    const evidencePoints = Math.max(
+      item.expectedEvidence.length,
+      item.markingGuide.length,
+    );
+    const extendedResponse =
+      /\b(explain|discuss|justify|evaluate|analyse|analyze|compare|design|propose|develop|write|solve|show your work)\b/i.test(item.prompt);
+    const shortResponse =
+      marks <= 4 &&
+      /\b(state|list|name|identify|define|give one|mention)\b/i.test(item.prompt) &&
+      evidencePoints <= 2;
+    const multiplier =
+      item.itemType === "project" ? 1.6 :
+      item.itemType === "critical_thinking" ? 1.4 : 1.1;
+    let lines = Math.max(
+      item.itemType === "project" ? 12 : item.itemType === "critical_thinking" ? 6 : 3,
+      Math.ceil(marks * multiplier) + (extendedResponse ? 3 : 0),
+      evidencePoints * 3,
+    );
+    if (shortResponse) lines = Math.min(lines, Math.max(4, marks + 3));
+    return Math.min(42, lines);
+
+}
+
 class PdfComposer {
   private pages: string[][] = [];
   private current: string[] = [];
@@ -248,16 +273,26 @@ class PdfComposer {
     this.y -= 42;
   }
 
-  private answerSpace(marks: number, practical: boolean) {
-    const lines = practical ? 4 : Math.min(12, Math.max(3, Math.ceil(marks / 2)));
-    this.line(practical ? "Working / notes:" : "Answer:", {
+  private answerSpace(item: GeneratedAssessmentItem) {
+    const lines = assessmentAnswerLines(item);
+    // Start with enough room for the label and several answer lines.
+    this.ensure(100);
+    this.line(item.itemType === "project" ? "Working / planning space:" : "Answer:", {
       size: 8.5,
       color: MUTED,
       gapBefore: 4,
       gapAfter: 2,
     });
     for (let index = 0; index < lines; index += 1) {
-      this.ensure(25);
+      if (this.y - 25 < BOTTOM + 18) {
+        this.newPage();
+        this.line(`Question ${item.position} - answer continued`, {
+          bold: true,
+          size: 8.5,
+          color: NAVY,
+          gapAfter: 5,
+        });
+      }
       this.y -= 17;
       this.current.push("0.790 0.820 0.850 RG 0.45 w");
       this.current.push(
@@ -316,6 +351,7 @@ class PdfComposer {
   }
 
   private examQuestion(item: GeneratedAssessmentItem) {
+    this.ensure(item.itemType === "objective" ? 65 : 110);
     this.line(
       `${item.position}. ${item.prompt} [${item.marks} mark${item.marks === 1 ? "" : "s"}]`,
       {
@@ -345,7 +381,7 @@ class PdfComposer {
     }
 
     if (item.itemType !== "objective") {
-      this.answerSpace(item.marks, item.itemType === "project");
+      this.answerSpace(item);
     } else {
       this.y -= 4;
     }
