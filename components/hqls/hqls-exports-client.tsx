@@ -183,7 +183,7 @@ export function HqlsExportsClient() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Download HQLS lesson PDFs</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          PDFs are prepared from the final saved lesson, use the active school's branding with KSI endorsement, and are available only when the lesson has a passing HQLS fidelity record.
+          PDFs are prepared from the final saved lesson, use the active school’s branding with KSI endorsement, and are available only when the lesson has a passing HQLS fidelity record.
         </p>
 
         {state ? (
