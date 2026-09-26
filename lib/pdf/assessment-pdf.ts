@@ -50,7 +50,6 @@ const NAVY: [number, number, number] = [0.043, 0.196, 0.408];
 const TEAL: [number, number, number] = [0.063, 0.725, 0.604];
 const TEXT: [number, number, number] = [0.11, 0.12, 0.14];
 const MUTED: [number, number, number] = [0.38, 0.4, 0.44];
-const LIGHT: [number, number, number] = [0.94, 0.95, 0.96];
 const GREEN: [number, number, number] = [0.02, 0.42, 0.25];
 
 const SECTIONS: SectionDefinition[] = [
