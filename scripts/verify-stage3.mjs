@@ -130,7 +130,7 @@ for (const required of [
   "Critical Thinking",
   "Project",
   "Save edits",
-  "Download PDF",
+  "Download Exam PDF",
   "sm:grid-cols-2",
 ]) {
   assert(client.includes(required), `Stage 3 v1.1 UI is missing ${required}.`);
