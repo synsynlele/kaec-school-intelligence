@@ -21,8 +21,8 @@ type SchemeDocument = {
 
 type Summary = {
   documents: number;
-  junior_documents: number;
-  senior_documents: number;
+  junior_documents?: number;
+  senior_documents?: number;
   entries: number;
   pending_review: number;
   approved_entries: number;
@@ -263,6 +263,14 @@ export function SchemeIngestionClient() {
   }
 
   const { summary } = context.scheme;
+  const educationLevelCount = new Set(
+    context.scheme.documents
+      .map((document) => document.education_level.trim())
+      .filter(Boolean),
+  ).size;
+  const classCount = new Set(
+    context.scheme.documents.flatMap((document) => document.class_scope),
+  ).size;
   const promotionEntry = promotionId
     ? context.queue.entries.find((entry) => entry.id === promotionId) ?? null
     : null;
@@ -302,8 +310,8 @@ export function SchemeIngestionClient() {
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Metric label="Scheme PDFs" value={summary.documents} />
-        <Metric label="Junior" value={summary.junior_documents} />
-        <Metric label="Senior" value={summary.senior_documents} />
+        <Metric label="Education levels" value={educationLevelCount} />
+        <Metric label="Source classes" value={classCount} />
         <Metric label="Staged rows" value={summary.entries} />
         <Metric label="Pending review" value={summary.pending_review} />
         <Metric label="Approved" value={summary.approved_entries} />
