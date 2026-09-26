@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { KaecBrand } from "@/components/branding/kaec-brand";
+import { KsiBrand } from "@/components/branding/ksi-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   announceKsiWorkspaceChange,
@@ -19,6 +20,7 @@ type State = {
   displayName: string;
   email: string;
   activeWorkspaceId: string;
+  schoolLogoUrl: string | null;
   schools: SchoolWorkspace[];
   metrics: Metrics;
 };
@@ -93,19 +95,21 @@ export function SchoolDashboardClient() {
         }));
 
       const activeWorkspaceId = access.activeSchool.workspace_id;
-      const [lessonResult, assessmentResult, diagnosisResult, interventionResult] = await Promise.all([
+      const [lessonResult, assessmentResult, diagnosisResult, interventionResult, workspaceResult] = await Promise.all([
         supabase.from("lessons").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("assessments").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("diagnoses").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("intervention_handoffs").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
+        supabase.from("workspaces").select("logo_url").eq("id", activeWorkspaceId).single(),
       ]);
-      const metricError = lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error ?? interventionResult.error;
+      const metricError = lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error ?? interventionResult.error ?? workspaceResult.error;
       if (metricError) throw metricError;
 
       setState({
         displayName: access.displayName,
         email: access.email,
         activeWorkspaceId,
+        schoolLogoUrl: workspaceResult.data?.logo_url ?? null,
         schools,
         metrics: {
           lessons: lessonResult.count ?? 0,
@@ -163,7 +167,7 @@ export function SchoolDashboardClient() {
     return (
       <main className="min-h-screen bg-stone-50 px-5 py-10 sm:px-8">
         <div className="mx-auto max-w-4xl rounded-3xl border border-amber-200 bg-white p-7 shadow-sm">
-          <KaecBrand />
+          <KsiBrand />
           <h1 className="mt-7 text-2xl font-semibold text-zinc-950">Dashboard check interrupted</h1>
           <p className="mt-3 text-sm leading-6 text-red-700">{error ?? "KSI could not finish loading this school workspace."}</p>
           <p className="mt-3 text-sm leading-6 text-zinc-600">KSI will not interpret a dashboard-loading error as missing school membership or send you back to an access code.</p>
@@ -200,7 +204,16 @@ export function SchoolDashboardClient() {
         <header className="rounded-[2rem] border border-emerald-950/10 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <KaecBrand compact />
+              <div className="flex items-center gap-3">
+                {state.schoolLogoUrl ? (
+                  <Image src={state.schoolLogoUrl} alt={`${activeSchool.name} logo`} width={64} height={64} unoptimized className="h-16 w-16 shrink-0 rounded-2xl border border-zinc-200 bg-white object-contain p-1" />
+                ) : (
+                  <span aria-hidden="true" className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[#0B3268] text-lg font-black text-white">
+                    {activeSchool.name.split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase()}
+                  </span>
+                )}
+                <span className="text-sm font-semibold text-zinc-600">School workspace</span>
+              </div>
               <p className="mt-6 text-xs font-bold uppercase tracking-[0.17em] text-emerald-800">{isTeacher ? "Teacher workspace" : "Leadership workspace"}</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">{activeSchool.name}</h1>
               <p className="mt-2 text-sm text-zinc-500">{roleLabel(activeSchool.role)} · {state.displayName}{state.email ? ` · ${state.email}` : ""}</p>
