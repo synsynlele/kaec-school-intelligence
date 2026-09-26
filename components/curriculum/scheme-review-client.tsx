@@ -40,6 +40,7 @@ type SchemeDocument = {
 type ReviewConsolePayload = {
   summary: ReviewSummary;
   documents: SchemeDocument[];
+  class_levels?: string[];
 };
 
 type SchemeEntry = {
@@ -211,6 +212,25 @@ export function SchemeReviewClient() {
   const [restricted, setRestricted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const classOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const level of consoleData?.class_levels ?? []) {
+      if (level.trim()) values.add(level.trim());
+    }
+    for (const document of consoleData?.documents ?? []) {
+      for (const level of document.class_scope ?? []) {
+        if (level.trim()) values.add(level.trim());
+      }
+    }
+    for (const entry of pageData?.entries ?? []) {
+      if (entry.class_level.trim()) values.add(entry.class_level.trim());
+    }
+    if (editing?.classLevel.trim()) values.add(editing.classLevel.trim());
+    return [...values].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    );
+  }, [consoleData?.class_levels, consoleData?.documents, editing?.classLevel, pageData?.entries]);
 
   async function fetchConsole(activeWorkspaceId: string) {
     const supabase = getBrowserSupabaseClient();
@@ -724,7 +744,7 @@ export function SchemeReviewClient() {
                 className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-700"
               >
                 <option value="">All classes</option>
-                {['JSS1','JSS2','JSS3','SS1','SS2','SS3'].map((level) => (
+                {classOptions.map((level) => (
                   <option key={level} value={level}>{level}</option>
                 ))}
               </select>
@@ -1019,7 +1039,9 @@ export function SchemeReviewClient() {
                   onChange={(event) => setEditing({ ...editing, classLevel: event.target.value })}
                   className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2.5"
                 >
-                  {['JSS1','JSS2','JSS3','SS1','SS2','SS3'].map((level) => <option key={level}>{level}</option>)}
+                  {classOptions.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
                 </select>
               </label>
               <label className="text-sm font-medium text-zinc-700">
