@@ -2,16 +2,19 @@
 -- Student-related counts are withheld for schools with fewer than five active learners.
 create or replace function public.get_platform_school_overview()
 returns jsonb
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  with authorised as (
-    select 1
-    where (select auth.uid()) is not null
-      and (select private.is_platform_access_admin())
-  ), school_metrics as (
+declare
+  overview jsonb;
+begin
+  if (select auth.uid()) is null or not (select private.is_platform_access_admin()) then
+    raise exception 'Platform administrator permission required.';
+  end if;
+
+  with school_metrics as (
     select
       w.id, w.name, w.access_status, w.created_at,
       coalesce(st.active_students, 0) as active_students,
@@ -29,7 +32,6 @@ as $$
       case when coalesce(st.active_students, 0) >= 5 then i.confirmed_total else null end as confirmed_interventions,
       case when coalesce(st.active_students, 0) >= 5 then gap.outstanding else null end as latest_final_without_intervention
     from public.workspaces w
-    cross join authorised
     left join lateral (
       select count(*)::int as active_students from public.students s
       where s.workspace_id = w.id and s.active
@@ -86,7 +88,10 @@ as $$
     'confirmed_interventions', confirmed_interventions,
     'latest_final_without_intervention', latest_final_without_intervention
   ) order by name), '[]'::jsonb)
+  into overview
   from school_metrics;
+  return overview;
+end;
 $$;
 
 revoke all on function public.get_platform_school_overview() from public, anon;
