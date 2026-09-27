@@ -47,9 +47,9 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 4,
     key: "trial_first",
     title: "Trial — First Attempt",
-    purpose: "Let learners try before full teaching so their gaps and difficulties become clear.",
+    purpose: "Let learners work together on a first attempt before full teaching so their ideas and gaps become clear.",
     nonNegotiable:
-      "Students attempt before full explanation. The teacher does not rescue, solve or remove meaningful cognitive effort.",
+      "Pairs or small teams combine every learner's contribution into a shared first attempt before full explanation. The teacher does not rescue, solve or remove meaningful cognitive effort.",
   },
   {
     index: 5,

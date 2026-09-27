@@ -391,9 +391,9 @@ class PdfComposer {
         gapAfter: 3,
       });
       if (stage.stageNumber === 1) {
-        this.detailSection("Teacher says / shows", stage.experience);
-        this.detailSection("Questions to open the lesson", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Learners respond", stage.learnerActions, { bullets: true });
+        this.detailSection("Curiosity hook - teacher says / shows", stage.experience);
+        this.detailSection("One question to leave open", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Learners notice / wonder", stage.learnerActions, { bullets: true });
       } else if (stage.stageNumber === 2) {
         this.detailSection("What learners already think", stage.experience);
         this.detailSection("Ask briefly (no task yet)", stage.teacherPrompts, { bullets: true });
@@ -403,8 +403,8 @@ class PdfComposer {
         this.detailSection("Only the clarity needed to continue", stage.experience);
         this.detailSection("Teacher says", stage.teacherPrompts, { bullets: true });
       } else if (stage.stageNumber === 4) {
-        this.detailSection("First attempt - task", stage.experience);
-        this.detailSection("What learners produce", stage.learnerActions, { bullets: true });
+        this.detailSection("Team first attempt - shared task", stage.experience);
+        this.detailSection("How everyone contributes / shared output", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Expected struggle", value: stage.productiveStruggle, labelColor: RED },
           { label: "What the teacher must not do", value: stage.guideGuardrails, labelColor: RED },

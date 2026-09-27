@@ -230,9 +230,9 @@ function ClassroomStage({ stage }: { stage: HqlsStageContent }) {
     <>
       <div className={`mt-5 grid gap-4 ${stage.stageNumber === 5 ? "" : "md:grid-cols-2"}`}>
         {stage.stageNumber === 1 ? <>
-          <ResultBlock title="Teacher says / shows" text={stage.experience} />
-          <ResultList title="Questions to open the lesson" items={stage.teacherPrompts} />
-          <ResultList title="Learners respond" items={stage.learnerActions} />
+          <ResultBlock title="Curiosity hook - teacher says / shows" text={stage.experience} />
+          <ResultList title="One question to leave open" items={stage.teacherPrompts} />
+          <ResultList title="Learners notice / wonder" items={stage.learnerActions} />
         </> : null}
         {stage.stageNumber === 2 ? <>
           <ResultBlock title="What learners already think" text={stage.experience} />
@@ -245,8 +245,8 @@ function ClassroomStage({ stage }: { stage: HqlsStageContent }) {
           <ResultList title="Teacher says" items={stage.teacherPrompts} />
         </> : null}
         {stage.stageNumber === 4 ? <>
-          <ResultBlock title="First attempt - task" text={stage.experience} />
-          <ResultList title="What learners produce" items={stage.learnerActions} />
+          <ResultBlock title="Team first attempt - shared task" text={stage.experience} />
+          <ResultList title="How everyone contributes / shared output" items={stage.learnerActions} />
           <ResultBlock title="Expected struggle" text={stage.productiveStruggle} />
           <ResultList title="What the teacher must not do" items={stage.guideGuardrails} />
         </> : null}
