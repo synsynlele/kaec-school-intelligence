@@ -18,7 +18,7 @@ for (const required of [
   "Curiosity hook - teacher says / shows",
   "Teacher asks",
   "Only the clarity needed to continue",
-  "First attempt - task",
+  "Team first attempt - shared task",
   "Second attempt - improve the first work",
   "What learners do differently",
   "Expected struggle",
