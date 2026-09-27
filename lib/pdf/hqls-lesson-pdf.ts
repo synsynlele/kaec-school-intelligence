@@ -288,52 +288,83 @@ class PdfComposer {
       ),
     }));
 
-    const height =
-      27 +
-      rows.reduce(
+    const drawPanel = (panelRows: typeof rows, continued: boolean) => {
+      const height = 27 + panelRows.reduce(
         (total, row) => total + 8 + row.lines.length * bodyLeading + 4,
         0,
       );
+      const top = this.y;
+      const bottom = top - height;
 
-    this.ensure(height + 8);
-
-    const top = this.y;
-    const bottom = top - height;
-
-    this.current.push("q 0.970 0.981 0.985 rg");
-    this.current.push(
-      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re f Q`,
-    );
-    this.current.push(`q ${strokeRgb([0.80, 0.87, 0.89])} 0.7 w`);
-    this.current.push(
-      `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re S Q`,
-    );
-
-    let cursor = top - 12;
-    this.current.push(rgb(NAVY));
-    this.current.push(
-      `BT /F2 8 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (SUPPORT CUES  |  Teacher reference) Tj ET`,
-    );
-    cursor -= 13;
-
-    for (const row of rows) {
-      this.current.push(rgb(row.labelColor ?? MUTED));
+      this.current.push("q 0.970 0.981 0.985 rg");
       this.current.push(
-        `BT /F2 7.3 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
+        `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re f Q`,
       );
-      cursor -= 9;
+      this.current.push(`q ${strokeRgb([0.80, 0.87, 0.89])} 0.7 w`);
+      this.current.push(
+        `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re S Q`,
+      );
 
-      this.current.push(rgb(TEXT));
-      for (const line of row.lines) {
+      let cursor = top - 12;
+      this.current.push(rgb(NAVY));
+      this.current.push(
+        `BT /F2 8 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (SUPPORT CUES  |  Teacher reference${continued ? " continued" : ""}) Tj ET`,
+      );
+      cursor -= 13;
+
+      for (const row of panelRows) {
+        this.current.push(rgb(row.labelColor ?? MUTED));
         this.current.push(
-          `BT /F1 ${bodySize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
+          `BT /F2 7.3 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
         );
-        cursor -= bodyLeading;
-      }
-      cursor -= 4;
-    }
+        cursor -= 9;
 
-    this.y = bottom - 7;
+        this.current.push(rgb(TEXT));
+        for (const line of row.lines) {
+          this.current.push(
+            `BT /F1 ${bodySize.toFixed(1)} Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
+          );
+          cursor -= bodyLeading;
+        }
+        cursor -= 4;
+      }
+
+      this.y = bottom - 7;
+    };
+
+    const pending = [...rows];
+    let continued = false;
+    while (pending.length) {
+      const pageRoom = this.y - (BOTTOM + 20);
+      const panelRows: typeof rows = [];
+      let used = 27 + 7;
+
+      while (pending.length) {
+        const row = pending[0];
+        const rowHeight = 12 + row.lines.length * bodyLeading;
+        if (used + rowHeight <= pageRoom) {
+          panelRows.push(row);
+          used += rowHeight;
+          pending.shift();
+          continue;
+        }
+
+        if (!panelRows.length) {
+          const linesThatFit = Math.floor((pageRoom - used - 12) / bodyLeading);
+          if (linesThatFit > 0 && row.lines.length > linesThatFit) {
+            panelRows.push({ ...row, lines: row.lines.slice(0, linesThatFit) });
+            pending[0] = { ...row, label: `${row.label} (continued)`, lines: row.lines.slice(linesThatFit) };
+          }
+        }
+        break;
+      }
+
+      if (panelRows.length) drawPanel(panelRows, continued);
+      if (pending.length) {
+        this.newPage();
+        continued = true;
+      }
+    }
   }
 
   addLesson() {
@@ -388,20 +419,7 @@ class PdfComposer {
     this.rule();
 
     for (const stage of this.input.stages) {
-      const previousPages = this.pages.length;
-      const previousPage = [...this.current];
-      const previousY = this.y;
       this.addStage(stage);
-
-      // Keep a short classroom stage and its support cues together when they
-      // fit on one fresh page. Full Illumination may span pages naturally.
-      if (stage.stageNumber !== 5 && previousY < 700 && this.pages.length > previousPages) {
-        this.pages.length = previousPages;
-        this.current = previousPage;
-        this.y = previousY;
-        this.newPage();
-        this.addStage(stage);
-      }
     }
 
     if (this.current.length) this.pages.push(this.current);
@@ -410,7 +428,7 @@ class PdfComposer {
 
   private addStage(stage: HqlsStageContent) {
       const definition = canonicalStageDefinition(stage.stageNumber);
-      this.ensure(115);
+      this.ensure(78);
       this.line(`STAGE ${stage.stageNumber} - ${definition.title}`, {
         bold: true,
         size: 13,
