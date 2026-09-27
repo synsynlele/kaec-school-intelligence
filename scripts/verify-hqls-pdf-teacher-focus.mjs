@@ -15,7 +15,7 @@ for (const required of [
   "teachingNote",
   "teacherFollowUpPanel",
   "Teacher follow-up guide",
-  "Teacher says / shows",
+  "Curiosity hook - teacher says / shows",
   "Teacher asks",
   "Only the clarity needed to continue",
   "First attempt - task",
