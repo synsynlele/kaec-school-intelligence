@@ -395,9 +395,9 @@ class PdfComposer {
         this.detailSection("Questions to open the lesson", stage.teacherPrompts, { bullets: true });
         this.detailSection("Learners respond", stage.learnerActions, { bullets: true });
       } else if (stage.stageNumber === 2) {
-        this.detailSection("Continue the opening - first ideas", stage.experience);
-        this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Learners say / try", stage.learnerActions, { bullets: true });
+        this.detailSection("What learners already think", stage.experience);
+        this.detailSection("Ask briefly (no task yet)", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Crude ideas to listen for", stage.learnerActions, { bullets: true });
         this.detailSection("Do not correct yet", stage.guideGuardrails, { bullets: true });
       } else if (stage.stageNumber === 3) {
         this.detailSection("Only the clarity needed to continue", stage.experience);
