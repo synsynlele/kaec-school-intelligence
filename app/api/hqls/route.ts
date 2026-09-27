@@ -620,6 +620,17 @@ function configuredHqlsReasoningEffort(model: string) {
   return model.startsWith("gpt-5.6") ? ("none" as const) : ("low" as const);
 }
 
+function keepOneAwakeningQuestion(lesson: GeneratedHqlsLesson): GeneratedHqlsLesson {
+  return {
+    ...lesson,
+    stages: lesson.stages.map((stage) =>
+      stage.stageNumber === 1
+        ? { ...stage, teacherPrompts: stage.teacherPrompts.slice(0, 1) }
+        : stage,
+    ),
+  };
+}
+
 async function handleGenerate(
   supabase: KsiSupabaseClient,
   userId: string,
@@ -687,7 +698,7 @@ async function handleGenerate(
       maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
     });
 
-    let lesson = parseGeneratedHqlsLesson(generated.data);
+    let lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(generated.data));
     let validation = validateHqlsLesson(lesson);
     let repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson" = "none";
     let repairDurationMs = 0;
@@ -735,12 +746,12 @@ ${(
           return parseHqlsStageContent(repaired.data, targetStage.stageNumber);
         }));
         repairDurationMs = Date.now() - repairStartedAt;
-        lesson = {
+        lesson = keepOneAwakeningQuestion({
           ...lesson,
           stages: lesson.stages.map((stage) =>
             replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage,
           ),
-        };
+        });
         validation = validateHqlsLesson(lesson);
       } else {
         repairMode = "full_lesson";
@@ -760,7 +771,7 @@ ${(
           maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
         });
         repairDurationMs = repaired.durationMs;
-        lesson = parseGeneratedHqlsLesson(repaired.data);
+        lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(repaired.data));
         validation = validateHqlsLesson(lesson);
       }
     }
