@@ -152,7 +152,7 @@ export function SchoolAccessRequests() {
                 <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
                   <div>
                     <h3 className="text-lg font-bold text-zinc-950">{request.school_name}</h3>
-                    <p className="mt-1 text-xs font-semibold text-amber-800">Waiting {Math.max(0, Math.floor((Date.now() - new Date(request.requested_at).getTime()) / 86400000))} days · oldest requests first</p>
+                    <p className="mt-1 text-xs font-semibold text-amber-800">Waiting {request.waiting_days} days · oldest requests first</p>
                     <dl className="mt-3 space-y-1.5 text-sm text-zinc-600">
                       <div><dt className="inline font-semibold text-zinc-800">Owner email:</dt> <dd className="inline">{request.requester_email}</dd></div>
                       <div><dt className="inline font-semibold text-zinc-800">Location:</dt> <dd className="inline">{request.school_location}</dd></div>
