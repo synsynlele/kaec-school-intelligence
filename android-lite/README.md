@@ -6,13 +6,15 @@ KSI Lite is a Trusted Web Activity (TWA) wrapper around the production KSI web a
 
 - Display name: `KSI`
 - Package ID: `ng.name.ksi.lite`
-- Current version: `1.0.3`
-- Version code: `4`
+- Current version: `1.0.4`
+- Version code: `5`
 - Production origin: `https://www.ksi.name.ng`
 - Start route: `/auth/resolve`
 - Minimum Android API: 21
 - Bubblewrap toolchain: `1.25.0`
 - Stable public APK URL: `https://github.com/synsynlele/kaec-school-intelligence/releases/latest/download/KSI-Lite.apk`
+
+The 1.0.4 Android release packages the current KSI product mark as its launcher icon. Existing 1.0.3 installations need the new signed APK to update their launcher icon.
 
 Normal KSI product, backend and AI changes remain web-first. The TWA loads the live KSI origin, so routine product releases do not require a new Android binary.
 
