@@ -391,9 +391,9 @@ class PdfComposer {
         gapAfter: 3,
       });
       if (stage.stageNumber === 1) {
-        this.detailSection("Teacher says / shows", stage.experience);
-        this.detailSection("Questions to open the lesson", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Learners respond", stage.learnerActions, { bullets: true });
+        this.detailSection("Curiosity hook - teacher says / shows", stage.experience);
+        this.detailSection("One question to leave open", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Learners notice / wonder", stage.learnerActions, { bullets: true });
       } else if (stage.stageNumber === 2) {
         this.detailSection("What learners already think", stage.experience);
         this.detailSection("Ask briefly (no task yet)", stage.teacherPrompts, { bullets: true });
