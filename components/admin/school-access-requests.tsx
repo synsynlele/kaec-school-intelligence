@@ -16,6 +16,7 @@ type AccessRequest = {
   reviewed_at: string | null;
   review_note: string | null;
   workspace_id: string | null;
+  waiting_days: number;
 };
 
 function messageFrom(caught: unknown, fallback: string) {
@@ -34,7 +35,10 @@ function messageFrom(caught: unknown, fallback: string) {
 async function fetchRequests(supabase: SupabaseClient) {
   const { data, error } = await supabase.rpc("get_school_access_requests");
   if (error) throw error;
-  return (data ?? []) as AccessRequest[];
+  return ((data ?? []) as Omit<AccessRequest, "waiting_days">[]).map((request) => ({
+    ...request,
+    waiting_days: Math.max(0, Math.floor((Date.now() - new Date(request.requested_at).getTime()) / 86400000)),
+  }));
 }
 
 export function SchoolAccessRequests() {
@@ -71,9 +75,7 @@ export function SchoolAccessRequests() {
     [requests],
   );
 
-  const oldestPendingDays = pending.length
-    ? Math.max(0, Math.floor((Date.now() - new Date(pending[0].requested_at).getTime()) / 86400000))
-    : 0;
+  const oldestPendingDays = pending[0]?.waiting_days ?? 0;
 
   async function approve(event: FormEvent<HTMLFormElement>, request: AccessRequest) {
     event.preventDefault();
