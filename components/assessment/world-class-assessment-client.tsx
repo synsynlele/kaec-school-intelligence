@@ -237,7 +237,7 @@ function requestedWorkflowId(key: "lesson" | "assessment") {
   return value || null;
 }
 
-async function loadWorkspaceState(): Promise<WorkspaceState | null> {
+async function loadWorkspaceState(editorOnly = false): Promise<WorkspaceState | null> {
   const supabase = getBrowserSupabaseClient();
   const {
     data: { user },
@@ -257,6 +257,10 @@ async function loadWorkspaceState(): Promise<WorkspaceState | null> {
   }
 
   const workspaceId = profile.default_workspace_id;
+  const assessmentQuery = supabase
+    .from("assessments")
+    .select("id,title,assessment_mode,status,source_lesson_id,class_id,subject_id,blueprint,source_context,updated_at")
+    .eq("workspace_id", workspaceId);
   const [
     workspaceResult,
     subjectResult,
@@ -294,13 +298,9 @@ async function loadWorkspaceState(): Promise<WorkspaceState | null> {
       .eq("workspace_id", workspaceId)
       .eq("status", "validated")
       .order("updated_at", { ascending: false }),
-    supabase
-      .from("assessments")
-      .select(
-        "id,title,assessment_mode,status,source_lesson_id,class_id,subject_id,blueprint,source_context,updated_at",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("updated_at", { ascending: false }),
+    editorOnly
+      ? assessmentQuery.eq("id", requestedWorkflowId("assessment") ?? "")
+      : assessmentQuery.order("updated_at", { ascending: false }),
   ]);
 
   const firstError =
@@ -327,7 +327,7 @@ async function loadWorkspaceState(): Promise<WorkspaceState | null> {
   };
 }
 
-export function WorldClassAssessmentClient() {
+export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<WorkspaceState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -365,6 +365,7 @@ export function WorldClassAssessmentClient() {
 
   const [selectedAssessment, setSelectedAssessment] =
     useState<AssessmentSummary | null>(null);
+  const [editTerm, setEditTerm] = useState("");
   const [editor, setEditor] = useState<GeneratedAssessment | null>(null);
   const [validation, setValidation] = useState<AssessmentValidation | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -471,7 +472,7 @@ export function WorldClassAssessmentClient() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadWorkspaceState()
+    void loadWorkspaceState(editorOnly)
       .then((next) => {
         if (cancelled) return;
         if (!next) {
@@ -769,18 +770,15 @@ export function WorldClassAssessmentClient() {
       );
       const blueprint = isRecord(summary.blueprint) ? summary.blueprint : {};
       setSelectedAssessment(summary);
+      setEditTerm(typeof blueprint.term === "string" ? blueprint.term : "");
       setEditor(nextEditor);
       setValidation(readValidation(blueprint.validation));
       setDirty(false);
-      router.replace(
-        `/assessment?assessment=${encodeURIComponent(assessmentId)}`,
-        { scroll: false },
-      );
-      window.setTimeout(() => {
-        document
-          .getElementById("assessment-selected")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
+      if (editorOnly) {
+        router.replace(`/assessment/edit?assessment=${encodeURIComponent(assessmentId)}`, { scroll: false });
+      } else {
+        router.replace(`/assessment/result?assessment=${encodeURIComponent(assessmentId)}`);
+      }
       return true;
     } catch (caught) {
       setError(
@@ -830,12 +828,13 @@ export function WorldClassAssessmentClient() {
         action: "save_edits",
         assessmentId: selectedAssessment.id,
         assessment: editor,
+        term: editTerm,
       });
       const validationRow = isRecord(payload.validation)
         ? readValidation(payload.validation)
         : null;
       setValidation(validationRow);
-      await refreshAssessments();
+      if (!editorOnly) await refreshAssessments();
       await openAssessment(selectedAssessment.id);
       setNotice(
         "Assessment edits were saved as a new version and revalidated against the world-class blueprint.",
@@ -950,7 +949,7 @@ export function WorldClassAssessmentClient() {
               Assessment Intelligence v1.1
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-              Build assessments that measure what matters
+              {editorOnly ? "Edit assessment" : "Build assessments that measure what matters"}
             </h1>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-stone-50 px-4 py-3 text-sm">
@@ -966,7 +965,7 @@ export function WorldClassAssessmentClient() {
         {error ? <Message tone="error">{error}</Message> : null}
         {notice ? <Message tone="success">{notice}</Message> : null}
 
-        <section className="grid gap-6 lg:grid-cols-[1.55fr_0.75fr]">
+        {!editorOnly ? <section className="grid gap-6 lg:grid-cols-[1.55fr_0.75fr]">
           <form
             onSubmit={generateAssessment}
             className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8"
@@ -1315,10 +1314,9 @@ export function WorldClassAssessmentClient() {
                       ? blueprint.overallDifficulty
                       : "—";
                   return (
-                    <button
+                    <Link
                       key={assessment.id}
-                      type="button"
-                      onClick={() => void openAssessment(assessment.id)}
+                      href={`/assessment/edit?assessment=${encodeURIComponent(assessment.id)}`}
                       className={`rounded-2xl border p-3 text-left transition ${
                         selectedAssessment?.id === assessment.id
                           ? "border-emerald-700 bg-emerald-50"
@@ -1331,7 +1329,7 @@ export function WorldClassAssessmentClient() {
                       <span className="mt-1 block text-xs capitalize text-zinc-500">
                         {kind} · {difficulty} · {assessment.status}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })
               ) : (
@@ -1343,12 +1341,12 @@ export function WorldClassAssessmentClient() {
               )}
             </div>
           </aside>
-        </section>
+        </section> : null}
 
         {selectedAssessment && editor ? (
           <section
             id="assessment-selected"
-            className="mt-8 scroll-mt-6 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8"
+            className={`${editorOnly ? "" : "mt-8"} scroll-mt-6 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8`}
           >
             <div className="flex flex-col gap-4 border-b border-zinc-200 pb-5 md:flex-row md:items-start md:justify-between">
               <div>
@@ -1382,7 +1380,7 @@ export function WorldClassAssessmentClient() {
                 <button
                   type="button"
                   onClick={() => void saveEdits()}
-                  disabled={saving || !dirty}
+                  disabled={saving || !dirty || !editTerm}
                   className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {saving ? "Saving…" : "Save edits"}
@@ -1398,6 +1396,19 @@ export function WorldClassAssessmentClient() {
                 <button type="button" onClick={() => void downloadPdf("docx")} disabled={downloading} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Exam Word</button>
               </div>
             </div>
+
+            <label className="mt-5 block max-w-xs text-sm font-medium text-zinc-800">
+              Academic term
+              <select
+                value={editTerm}
+                onChange={(event) => { setEditTerm(event.target.value); setDirty(true); }}
+                className="mt-2 block min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm"
+              >
+                <option value="">Select the assessment term</option>
+                {TERMS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              {!editTerm ? <span className="mt-2 block text-amber-700">Choose a term before saving this assessment.</span> : null}
+            </label>
 
             {validation ? (
               <div
