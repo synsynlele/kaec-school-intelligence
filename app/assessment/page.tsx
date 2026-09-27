@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import { WorldClassAssessmentClient } from "@/components/assessment/world-class-assessment-client";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { ArtifactResultRedirect } from "@/components/workflow/artifact-result-redirect";
 
-export default function AssessmentPage() {
+export default async function AssessmentPage({ searchParams }: { searchParams: Promise<{ assessment?: string; edit?: string }> }) {
+  const { assessment, edit } = await searchParams;
+  if (assessment && edit === "1") redirect(`/assessment/edit?assessment=${encodeURIComponent(assessment)}`);
   return (
     <div className="ksi-assessment-shell min-h-screen min-w-0 max-w-full overflow-x-hidden bg-stone-50">
       <Suspense fallback={null}>
