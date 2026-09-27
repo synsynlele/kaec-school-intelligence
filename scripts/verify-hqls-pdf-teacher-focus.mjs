@@ -14,7 +14,7 @@ for (const required of [
   "detailSection",
   "teachingNote",
   "teacherFollowUpPanel",
-  "Teacher follow-up guide",
+  "SUPPORT CUES  |  Teacher reference",
   "Curiosity hook - teacher says / shows",
   "Teacher asks",
   "Only the clarity needed to continue",
@@ -55,6 +55,14 @@ assert(
     pdf.includes('label: "What the teacher must not do"') &&
     pdf.includes('label: "What the teacher should look for"'),
   "Full teaching content and the first-attempt teacher guardrails must remain visible in the classroom map.",
+);
+
+assert(
+  (pdf.match(/this\.teacherFollowUpPanel\(\[/g) ?? []).length === 7 &&
+    pdf.includes("this.addStage(stage)") &&
+    pdf.includes("const previousPage = [...this.current]") &&
+    pdf.includes("const schoolX = 108"),
+  "Each stage needs compact support cues, short stages must stay together, and the fallback header must not overlap the school name.",
 );
 
 assert(

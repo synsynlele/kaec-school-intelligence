@@ -131,20 +131,27 @@ class PdfComposer {
       this.current.push("q 42 0 0 42 54 760 cm /Im1 Do Q");
     } else {
       this.current.push(rgb(NAVY));
-      this.current.push("BT /F2 17 Tf 1 0 0 1 54 781 Tm (KSI) Tj ET");
+      this.current.push("BT /F2 17 Tf 1 0 0 1 54 788 Tm (KSI) Tj ET");
     }
-    const schoolX = this.input.hasSchoolLogo ? 108 : 54;
+    const schoolX = 108;
+    const schoolName = ascii(this.input.workspaceName.toUpperCase());
+    const schoolWidth = PAGE_WIDTH - schoolX - RIGHT - 8;
+    const schoolSize = wrapText(schoolName, schoolWidth, 12.2, true).length > 2 ? 10.5 : 12.2;
+    const schoolLines = wrapText(schoolName, schoolWidth, schoolSize, true);
     this.current.push(rgb(NAVY));
-    this.current.push(
-      `BT /F2 13 Tf 1 0 0 1 ${schoolX} 783 Tm (${pdfEscape(this.input.workspaceName.toUpperCase())}) Tj ET`,
-    );
+    schoolLines.forEach((line, index) => {
+      this.current.push(
+        `BT /F2 ${schoolSize.toFixed(1)} Tf 1 0 0 1 ${schoolX} ${(789 - index * 14).toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
+      );
+    });
+    const subtitleY = 789 - schoolLines.length * 14 - 1;
     this.current.push(rgb(MUTED));
     this.current.push(
-      `BT /F1 8.2 Tf 1 0 0 1 ${schoolX} 768 Tm (HQLS Lesson | Powered by KSI | by KAEC-NG) Tj ET`,
+      `BT /F1 8.2 Tf 1 0 0 1 ${schoolX} ${subtitleY.toFixed(1)} Tm (HQLS Lesson | Powered by KSI | by KAEC-NG) Tj ET`,
     );
     this.current.push(rgb(BLUE));
-    this.current.push("54 752 487 1.4 re f");
-    this.y = 729;
+    this.current.push(`54 ${(subtitleY - 16).toFixed(1)} 487 1.4 re f`);
+    this.y = subtitleY - 39;
   }
 
   private newPage() {
@@ -269,8 +276,8 @@ class PdfComposer {
 
     if (!prepared.length) return;
 
-    const bodySize = 7.8;
-    const bodyLeading = 10.4;
+    const bodySize = 7.5;
+    const bodyLeading = 9.4;
     const innerWidth = CONTENT_WIDTH - 24;
     const rows = prepared.map((section) => ({
       ...section,
@@ -282,9 +289,9 @@ class PdfComposer {
     }));
 
     const height =
-      28 +
+      27 +
       rows.reduce(
-        (total, row) => total + 10 + row.lines.length * bodyLeading + 6,
+        (total, row) => total + 8 + row.lines.length * bodyLeading + 4,
         0,
       );
 
@@ -293,28 +300,28 @@ class PdfComposer {
     const top = this.y;
     const bottom = top - height;
 
-    this.current.push("q 0.973 0.978 0.982 rg");
+    this.current.push("q 0.970 0.981 0.985 rg");
     this.current.push(
       `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re f Q`,
     );
-    this.current.push(`q ${strokeRgb([0.82, 0.84, 0.87])} 0.7 w`);
+    this.current.push(`q ${strokeRgb([0.80, 0.87, 0.89])} 0.7 w`);
     this.current.push(
       `${LEFT} ${bottom.toFixed(1)} ${CONTENT_WIDTH} ${height.toFixed(1)} re S Q`,
     );
 
-    let cursor = top - 13;
+    let cursor = top - 12;
     this.current.push(rgb(NAVY));
     this.current.push(
-      `BT /F2 8.4 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (Teacher follow-up guide) Tj ET`,
+      `BT /F2 8 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (SUPPORT CUES  |  Teacher reference) Tj ET`,
     );
-    cursor -= 15;
+    cursor -= 13;
 
     for (const row of rows) {
       this.current.push(rgb(row.labelColor ?? MUTED));
       this.current.push(
-        `BT /F2 7.6 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
+        `BT /F2 7.3 Tf 1 0 0 1 ${(LEFT + 10).toFixed(1)} ${cursor.toFixed(1)} Tm (${pdfEscape(row.label)}) Tj ET`,
       );
-      cursor -= 10;
+      cursor -= 9;
 
       this.current.push(rgb(TEXT));
       for (const line of row.lines) {
@@ -323,7 +330,7 @@ class PdfComposer {
         );
         cursor -= bodyLeading;
       }
-      cursor -= 5;
+      cursor -= 4;
     }
 
     this.y = bottom - 7;
@@ -381,6 +388,27 @@ class PdfComposer {
     this.rule();
 
     for (const stage of this.input.stages) {
+      const previousPages = this.pages.length;
+      const previousPage = [...this.current];
+      const previousY = this.y;
+      this.addStage(stage);
+
+      // Keep a short classroom stage and its support cues together when they
+      // fit on one fresh page. Full Illumination may span pages naturally.
+      if (stage.stageNumber !== 5 && previousY < 700 && this.pages.length > previousPages) {
+        this.pages.length = previousPages;
+        this.current = previousPage;
+        this.y = previousY;
+        this.newPage();
+        this.addStage(stage);
+      }
+    }
+
+    if (this.current.length) this.pages.push(this.current);
+    return this.pages;
+  }
+
+  private addStage(stage: HqlsStageContent) {
       const definition = canonicalStageDefinition(stage.stageNumber);
       this.ensure(115);
       this.line(`STAGE ${stage.stageNumber} - ${definition.title}`, {
@@ -392,20 +420,35 @@ class PdfComposer {
       });
       if (stage.stageNumber === 1) {
         this.detailSection("Curiosity hook - teacher says / shows", stage.experience);
-        this.detailSection("One question to leave open", stage.teacherPrompts, { bullets: true });
+        this.detailSection(stage.teacherPrompts.length > 1 ? "Curiosity questions" : "One question to leave open", stage.teacherPrompts, { bullets: true });
         this.detailSection("Learners notice / wonder", stage.learnerActions, { bullets: true });
+        this.teacherFollowUpPanel([
+          { label: "Notice", value: stage.evidenceToNotice },
+          { label: "Avoid", value: stage.guideGuardrails, labelColor: RED },
+          { label: "Likely hesitation", value: stage.productiveStruggle },
+        ]);
       } else if (stage.stageNumber === 2) {
         this.detailSection("What learners already think", stage.experience);
         this.detailSection("Ask briefly (no task yet)", stage.teacherPrompts, { bullets: true });
         this.detailSection("Crude ideas to listen for", stage.learnerActions, { bullets: true });
-        this.detailSection("Do not correct yet", stage.guideGuardrails, { bullets: true });
+        this.teacherFollowUpPanel([
+          { label: "Notice", value: stage.evidenceToNotice },
+          { label: "Do not correct yet", value: stage.guideGuardrails, labelColor: RED },
+          { label: "Likely uncertainty", value: stage.productiveStruggle },
+        ]);
       } else if (stage.stageNumber === 3) {
         this.detailSection("Only the clarity needed to continue", stage.experience);
         this.detailSection("Teacher says", stage.teacherPrompts, { bullets: true });
+        this.teacherFollowUpPanel([
+          { label: "Learners then", value: stage.learnerActions },
+          { label: "Notice", value: stage.evidenceToNotice },
+          { label: "Keep it brief", value: stage.guideGuardrails, labelColor: RED },
+        ]);
       } else if (stage.stageNumber === 4) {
         this.detailSection("Team first attempt - shared task", stage.experience);
         this.detailSection("How everyone contributes / shared output", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
+          { label: "Teacher prompts", value: stage.teacherPrompts },
           { label: "Expected struggle", value: stage.productiveStruggle, labelColor: RED },
           { label: "What the teacher must not do", value: stage.guideGuardrails, labelColor: RED },
           { label: "What the teacher should look for", value: stage.evidenceToNotice },
@@ -424,11 +467,21 @@ class PdfComposer {
           gapAfter: 4,
         });
         this.teachingNote(stage.teachingContent);
+        this.teacherFollowUpPanel([
+          { label: "Connect to the first attempt", value: stage.respondsToFirstAttempt },
+          { label: "Notice", value: stage.evidenceToNotice },
+          { label: "Teacher reminder", value: stage.guideGuardrails },
+        ]);
       } else if (stage.stageNumber === 6) {
         this.detailSection("Second attempt - improve the first work", stage.experience);
         this.detailSection("What learners do differently", stage.learnerActions, { bullets: true });
         this.detailSection("Teacher feedback / questions", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Improvement to notice", stage.evidenceToNotice, { bullets: true });
+        this.teacherFollowUpPanel([
+          { label: "Improvement to notice", value: stage.evidenceToNotice },
+          { label: "Link to first attempt", value: stage.respondsToFirstAttempt },
+          { label: "Let learners improve", value: stage.guideGuardrails, labelColor: RED },
+          { label: "Likely struggle", value: stage.productiveStruggle },
+        ]);
       } else if (stage.stageNumber === 7) {
         this.detailSection("Bring the learning together", stage.experience);
         this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
@@ -437,12 +490,13 @@ class PdfComposer {
           "Real-life assignment / transfer task",
           stage.transferTask,
         );
+        this.teacherFollowUpPanel([
+          { label: "Learners show", value: stage.learnerActions },
+          { label: "Notice", value: stage.evidenceToNotice },
+          { label: "Teacher reminder", value: stage.guideGuardrails },
+        ]);
       }
       this.rule();
-    }
-
-    if (this.current.length) this.pages.push(this.current);
-    return this.pages;
   }
 }
 
