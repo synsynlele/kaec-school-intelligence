@@ -21,7 +21,7 @@ for (const requirement of [
   "configuredHqlsReasoningEffort",
   "promptCacheKey",
   'textVerbosity: "low"',
-  'repairMode: "none" | "single_stage" | "full_lesson"',
+  'repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson"',
   "KSI_HQLS_TIMING",
 ]) {
   assert(route.includes(requirement), `HQLS performance requirement missing: ${requirement}`);
