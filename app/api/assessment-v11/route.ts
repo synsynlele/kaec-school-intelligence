@@ -73,6 +73,7 @@ type SaveEditsBody = {
   action: "save_edits";
   assessmentId: string;
   assessment: unknown;
+  term?: string;
 };
 type AssessmentBody = GenerateBody | SaveEditsBody;
 
@@ -917,6 +918,13 @@ async function handleSaveEdits(
       typeof blueprint.classLevel === "string" ? blueprint.classLevel : "Class",
     ageRange:
       typeof blueprint.ageRange === "string" ? blueprint.ageRange : "Not specified",
+    // Edits reuse the original assessment context; the generation validator
+    // requires the term even though it is not an editable question field.
+    term: body.term ?? blueprint.term,
+    academicSession:
+      typeof blueprint.academicSession === "string"
+        ? blueprint.academicSession
+        : "",
     title: edited.title,
     topics,
     assessmentKind:
@@ -969,6 +977,8 @@ async function handleSaveEdits(
         subject: request.subject,
         classLevel: request.classLevel,
         ageRange: request.ageRange,
+        term: request.term,
+        academicSession: request.academicSession,
         topic: request.topic,
         objective: request.objective,
         durationMinutes: request.durationMinutes,
