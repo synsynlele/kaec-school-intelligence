@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.7";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.8";
 
 export type HqlsStageAction =
   | "improve"
@@ -137,7 +137,7 @@ The exact lesson sequence is immutable:
 STAGES 1–4:
 - Do not start with definitions, notes, formulas, rules, laws or topic explanation.
 - Do not give full explanations before learners make a meaningful first attempt.
-- Exploration allows crude, incomplete or wrong thinking without premature correction.
+- Exploration briefly elicits learners' crude, incomplete or wrong prior ideas about the same situation, problem or misconception from Awakening. It does not set a task, require an output or correct them yet.
 - Micro-Illumination gives only minimal orientation, never a worked solution or full lecture.
 - Trial 1 requires real cognitive effort. The teacher does not rescue, solve or correct during the attempt.
 
@@ -161,7 +161,7 @@ Return a practical teacher-ready HQLS lesson as structured data.
 PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Write so a teacher can understand the plan immediately without knowing HQLS jargon.
 - Use short, direct sentences and everyday words. Avoid vague academic phrases such as "facilitate discussion", "activate prior knowledge", "promote metacognition" or "engage learners" unless you explain exactly what the teacher should do.
-- Make every instruction concrete. Say what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for.
+- Make every instruction concrete. Say what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for. Exploration is an oral prior-thinking check, not an activity or a product to make.
 - teacherPrompts must be exact words or actions the teacher can use in class, not abstract labels.
 - learnerActions must describe visible learner behaviour using simple verbs such as say, compare, write, draw, solve, explain, choose, build or present.
 - guideGuardrails must be simple "Do not..." instructions.
@@ -169,7 +169,7 @@ PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - productiveStruggle must explain the likely difficulty in plain English and why the teacher should allow learners to work through it.
 
 For Stages 1, 2, 3, 4, 6 and 7:
-- give a clear learning experience/task in 2–4 short sentences;
+- give a clear classroom moment in 2–4 short sentences; only the Trial stages need a task and an expected product;
 - use no more than 4 exact teacher prompts/actions where useful;
 - use no more than 4 expected learner actions;
 - use no more than 3 Guide Guardrails;
@@ -181,7 +181,7 @@ Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
 STAGE-SPECIFIC CLARITY:
 - Stage 1 Awakening: start with a familiar situation, problem or provocative question that makes the topic matter. Do not teach the content yet.
-- Stage 2 Exploration: continue the same situation or question introduced in Stage 1. Ask clear questions that reveal what learners already think about it. Do not start a separate activity, repeat the hook or correct wrong or incomplete answers yet.
+- Stage 2 Exploration: stay with the exact situation, problem or misconception from Stage 1. Briefly invite learners to say what they already believe, have seen or think might explain it. Use at most one or two open oral prompts, with no fixed number of answers. Record or notice their crude ideas without judging them. Do not ask them to list items, compare examples, write, draw, solve, make a product, discuss in assigned groups or begin the first attempt. Stage 4 is where the first task begins.
 - Stage 3 Micro-Illumination: give only the small clarification learners need to continue. State the limited clarification plainly and keep it short.
 - Stage 4 Trial — First Attempt: give a precise task. Make the expected output clear. State the likely struggle and state plainly what the teacher must not do. Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving.
 - Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
@@ -258,7 +258,7 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
-Awakening and Exploration form one continuous opening: Stage 2 draws first ideas from the exact situation or question set up in Stage 1. Stage 6 returns to the same work learners attempted in Stage 4 and improves it after Stage 5.
+Awakening and Exploration form one continuous opening: Stage 1 creates curiosity; Stage 2 checks learners' uncorrected prior thinking about that same situation without a task or expected output. Stage 4 is their first attempt. Stage 6 returns to the same work learners attempted in Stage 4 and improves it after Stage 5.
 
 IMPORTANT: Write every stage in simple plain English that a teacher can use immediately. Avoid vague directions. Say exactly what happens, what the teacher says or does, what learners do, what struggle is expected, and what the teacher should notice.
 
@@ -322,7 +322,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1 or 2, keep Awakening and Exploration complementary parts of the same opening situation. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1 or 2, keep Awakening and Exploration complementary parts of the same opening situation. For Stage 2, ask at most two brief oral prompts about learners' existing ideas, experiences or misconceptions; do not set a task, list, comparison, group work or written output. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
 `;
 }
 
@@ -504,6 +504,21 @@ export function validateHqlsLesson(
 
   const exploration = lesson.stages[1];
   const explorationText = [exploration.experience, ...exploration.teacherPrompts].join(" ");
+  const explorationDirections = [exploration.experience, ...exploration.teacherPrompts, ...exploration.learnerActions].join(" ");
+  if (
+    exploration.teacherPrompts.length > 2 ||
+    includesAny(explorationDirections, [
+      /\b(?:list|write|draw|solve|calculate|draft|design|complete|produce)\b/i,
+      /\b(?:in pairs|in groups|work in pairs|work in groups)\b/i,
+      /\b(?:compare|create|make|build)\s+(?:a|an|the|your|their|letter|examples|answers|ideas)\b/i,
+    ])
+  ) {
+    fail(
+      "exploration",
+      "exploration_becomes_task",
+      "Exploration should briefly hear learners' existing ideas, not assign group work, a list, a comparison, a solution or a product. Save the first task for Trial 1.",
+    );
+  }
   if (
     includesAny(explorationText, [
       /that(?:'s| is) wrong/i,

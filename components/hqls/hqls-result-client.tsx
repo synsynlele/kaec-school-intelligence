@@ -235,9 +235,9 @@ function ClassroomStage({ stage }: { stage: HqlsStageContent }) {
           <ResultList title="Learners respond" items={stage.learnerActions} />
         </> : null}
         {stage.stageNumber === 2 ? <>
-          <ResultBlock title="Continue the opening - first ideas" text={stage.experience} />
-          <ResultList title="Teacher asks" items={stage.teacherPrompts} />
-          <ResultList title="Learners say / try" items={stage.learnerActions} />
+          <ResultBlock title="What learners already think" text={stage.experience} />
+          <ResultList title="Ask briefly (no task yet)" items={stage.teacherPrompts} />
+          <ResultList title="Crude ideas to listen for" items={stage.learnerActions} />
           <ResultList title="Do not correct yet" items={stage.guideGuardrails} />
         </> : null}
         {stage.stageNumber === 3 ? <>
