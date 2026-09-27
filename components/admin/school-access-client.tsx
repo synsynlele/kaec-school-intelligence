@@ -215,7 +215,7 @@ export function SchoolAccessClient() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <main id="school-access-controls" className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
           <p className="text-sm font-semibold text-zinc-600">Loading school access controls…</p>
         </div>

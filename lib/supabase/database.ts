@@ -123,6 +123,10 @@ type FinalStageFunctions = Omit<
   GeneratedDatabase["public"]["Functions"],
   "review_diagnosis" | "finalise_diagnosis"
 > & {
+  get_platform_school_overview: {
+    Args: Record<PropertyKey, never>;
+    Returns: Json;
+  };
   create_hqls_lesson_draft: {
     Args: {
       target_workspace_id: string;
