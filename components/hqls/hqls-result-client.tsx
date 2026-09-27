@@ -194,7 +194,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
               <Link href={`/assessment?lesson=${encodeURIComponent(state.lesson.id)}`} className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-center text-sm font-semibold text-white">Build Assessment</Link>
             ) : null}
             {state.lesson.status !== "archived" ? (
-              <Link href={`/hqls?lesson=${encodeURIComponent(state.lesson.id)}&edit=1`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit / Improve</Link>
+              <Link href={`/hqls/edit?lesson=${encodeURIComponent(state.lesson.id)}`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit / Improve</Link>
             ) : null}
             <Link href="/hqls" className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">New Lesson</Link>
           </div>

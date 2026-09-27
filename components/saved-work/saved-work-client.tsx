@@ -342,10 +342,20 @@ export function SavedWorkClient() {
             <>
               {item.artifactType === "lesson" ? (
                 <Link
-                  href={`/hqls?lesson=${encodeURIComponent(item.artifactId)}`}
+                  href={`/hqls/result?lesson=${encodeURIComponent(item.artifactId)}`}
                   className="min-h-10 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
                 >
                   Open HQLS
+                </Link>
+              ) : null}
+              {item.canManage ? (
+                <Link
+                  href={item.artifactType === "lesson"
+                    ? `/hqls/edit?lesson=${encodeURIComponent(item.artifactId)}`
+                    : `/assessment/edit?assessment=${encodeURIComponent(item.artifactId)}`}
+                  className="min-h-10 rounded-xl border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900"
+                >
+                  Edit
                 </Link>
               ) : null}
               <button

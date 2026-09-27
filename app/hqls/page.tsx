@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import { KsiBrand } from "@/components/branding/ksi-brand";
 import { HqlsClient } from "@/components/hqls/hqls-client";
 import { SchemePrefillBridge } from "@/components/hqls/scheme-prefill-bridge";
 import { ArtifactResultRedirect } from "@/components/workflow/artifact-result-redirect";
 
-export default function HqlsPage() {
+export default async function HqlsPage({ searchParams }: { searchParams: Promise<{ lesson?: string; edit?: string }> }) {
+  const { lesson, edit } = await searchParams;
+  if (lesson && edit === "1") redirect(`/hqls/edit?lesson=${encodeURIComponent(lesson)}`);
   return (
     <>
       <Suspense fallback={null}>
