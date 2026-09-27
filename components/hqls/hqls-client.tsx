@@ -133,7 +133,7 @@ function requestedLessonId() {
   return value || null;
 }
 
-async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
+async function loadWorkspaceState(editorOnly = false): Promise<HqlsWorkspaceState | null> {
   const supabase = getBrowserSupabaseClient();
   const {
     data: { user },
@@ -153,6 +153,10 @@ async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
   }
 
   const workspaceId = profile.default_workspace_id;
+  const lessonQuery = supabase
+    .from("lessons")
+    .select("id,title,topic,objective,status,age_range,duration_minutes,class_id,subject_id,source_context,updated_at")
+    .eq("workspace_id", workspaceId);
   const [
     workspaceResult,
     subjectResult,
@@ -183,13 +187,9 @@ async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
       .eq("workspace_id", workspaceId)
       .in("status", ["uploaded", "ready"])
       .order("created_at", { ascending: false }),
-    supabase
-      .from("lessons")
-      .select(
-        "id,title,topic,objective,status,age_range,duration_minutes,class_id,subject_id,source_context,updated_at",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("updated_at", { ascending: false }),
+    editorOnly
+      ? lessonQuery.eq("id", requestedLessonId() ?? "")
+      : lessonQuery.order("updated_at", { ascending: false }),
   ]);
 
   const firstError =
@@ -214,7 +214,7 @@ async function loadWorkspaceState(): Promise<HqlsWorkspaceState | null> {
   };
 }
 
-export function HqlsClient() {
+export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<HqlsWorkspaceState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -334,7 +334,7 @@ const refreshLessons = useCallback(async () => {
 
   useEffect(() => {
     let cancelled = false;
-    void loadWorkspaceState()
+    void loadWorkspaceState(editorOnly)
       .then((next) => {
         if (cancelled) return;
         if (!next) {
@@ -477,14 +477,11 @@ const refreshLessons = useCallback(async () => {
         setValidation(null);
       }
 
-      router.replace(`/hqls?lesson=${encodeURIComponent(lessonId)}`, {
-        scroll: false,
-      });
-      window.setTimeout(() => {
-        document
-          .getElementById("hqls-selected-lesson")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
+      if (editorOnly) {
+        router.replace(`/hqls/edit?lesson=${encodeURIComponent(lessonId)}`, { scroll: false });
+      } else {
+        router.replace(`/hqls/result?lesson=${encodeURIComponent(lessonId)}`);
+      }
       return true;
     } catch (caught) {
       setError(
@@ -639,7 +636,7 @@ const refreshLessons = useCallback(async () => {
         lessonId: selectedLesson.id,
         stages: editorStages,
       });
-      await refreshLessons();
+      if (!editorOnly) await refreshLessons();
       await openLesson(selectedLesson.id);
       setNotice(
         "Your edits were saved as a new lesson version and checked for HQLS fidelity.",
@@ -721,7 +718,7 @@ const refreshLessons = useCallback(async () => {
               HQLS Lesson Intelligence
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-              Design the learning
+              {editorOnly ? "Edit HQLS lesson" : "Design the learning"}
             </h1>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-stone-50 px-4 py-3 text-sm">
@@ -737,7 +734,7 @@ const refreshLessons = useCallback(async () => {
         {error ? <Message tone="error">{error}</Message> : null}
         {notice ? <Message tone="success">{notice}</Message> : null}
 
-        <section className="grid gap-6 lg:grid-cols-[1.55fr_0.75fr]">
+        {!editorOnly ? <section className="grid gap-6 lg:grid-cols-[1.55fr_0.75fr]">
           <form
             onSubmit={generateLesson}
             className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8"
@@ -979,10 +976,9 @@ const refreshLessons = useCallback(async () => {
             <div className="mt-4 space-y-2">
               {visibleLessons.length ? (
                 visibleLessons.map((lesson) => (
-                  <button
+                  <Link
                     key={lesson.id}
-                    type="button"
-                    onClick={() => void openLesson(lesson.id)}
+                    href={`/hqls/edit?lesson=${encodeURIComponent(lesson.id)}`}
                     className={`w-full rounded-2xl border p-4 text-left transition ${selectedLesson?.id === lesson.id ? "border-emerald-800 bg-emerald-50" : "border-zinc-200 hover:border-zinc-300 hover:bg-stone-50"}`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -993,7 +989,7 @@ const refreshLessons = useCallback(async () => {
                     <p className="mt-2 text-[11px] text-zinc-400">
                       Updated {new Date(lesson.updated_at).toLocaleDateString()}
                     </p>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <div className="rounded-2xl bg-stone-50 p-4 text-sm leading-6 text-zinc-500">
@@ -1004,10 +1000,10 @@ const refreshLessons = useCallback(async () => {
               )}
             </div>
           </aside>
-        </section>
+        </section> : null}
 
         {selectedLesson && editorStages.length === 7 ? (
-          <section id="hqls-selected-lesson" className="mt-8 scroll-mt-6">
+          <section id="hqls-selected-lesson" className={`${editorOnly ? "" : "mt-8"} scroll-mt-6`}>
             <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200 bg-white p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
               <div className="max-w-3xl">
                 <div className="flex flex-wrap items-center gap-2">
