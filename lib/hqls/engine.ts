@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.9";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.10";
 
 export type HqlsStageAction =
   | "improve"
@@ -140,7 +140,7 @@ STAGES 1–4:
 - Awakening presents one vivid unresolved situation and one curiosity question. Learners react or wonder; the teacher does not ask them to explain or solve it yet.
 - Exploration briefly elicits learners' crude, incomplete or wrong prior ideas about the same situation, problem or misconception from Awakening. It does not set a task, require an output or correct them yet.
 - Micro-Illumination gives only minimal orientation, never a worked solution or full lecture.
-- Trial 1 requires real cognitive effort. The teacher does not rescue, solve or correct during the attempt.
+- Trial 1 requires real cognitive effort through a small-team first attempt. Every learner contributes to a shared response, decision or product; the teacher does not rescue, solve or correct during the attempt.
 
 STAGE 5 — FULL ILLUMINATION:
 - Full Illumination occurs after Trial 1.
@@ -184,7 +184,7 @@ STAGE-SPECIFIC CLARITY:
 - Stage 1 Awakening: show or tell one short, familiar situation with a surprise, tension, dilemma or gap that makes learners want to know more. Use at most one compelling question that leaves the problem open. Learners may react, notice or wonder; do not ask what they already know, demand an answer, assign an activity or give topic content yet. Stage 2 will invite their crude prior ideas about this same situation.
 - Stage 2 Exploration: stay with the exact situation, problem or misconception from Stage 1. Briefly invite learners to say what they already believe, have seen or think might explain it. Use at most one or two open oral prompts, with no fixed number of answers. Record or notice their crude ideas without judging them. Do not ask them to list items, compare examples, write, draw, solve, make a product, discuss in assigned groups or begin the first attempt. Stage 4 is where the first task begins.
 - Stage 3 Micro-Illumination: give only the small clarification learners need to continue. State the limited clarification plainly and keep it short.
-- Stage 4 Trial — First Attempt: give a precise task. Make the expected output clear. State the likely struggle and state plainly what the teacher must not do. Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving.
+- Stage 4 Trial — First Attempt: give a precise collaborative task in pairs or small teams. Every learner should contribute an idea or part of the work and the team should negotiate one shared response, decision or product. Make that shared output clear. Do not substitute simultaneous individual work for teamwork. State the likely struggle and what the teacher must not do. Guide Guardrails must protect the team's first attempt from teacher rescue, premature correction or solution-giving.
 - Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
 - Stage 7 Integration: include 3–5 simple reflection questions in reflectionPrompt and a practical real-life follow-up task in transferTask.
 
@@ -259,7 +259,7 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
-Awakening and Exploration form one continuous opening: Stage 1 presents one vivid unresolved situation and leaves learners curious, without asking them to solve or explain it. Stage 2 checks their uncorrected prior thinking about that exact situation without a task or expected output. Stage 4 is their first attempt. Stage 6 returns to the same work learners attempted in Stage 4 and improves it after Stage 5.
+Awakening and Exploration form one continuous opening: Stage 1 presents one vivid unresolved situation and leaves learners curious, without asking them to solve or explain it. Stage 2 checks their uncorrected prior thinking about that exact situation without a task or expected output. Stage 4 is the first task: pairs or small teams combine each learner's contribution into a shared attempt. Stage 6 returns to that work and improves it after Stage 5.
 
 IMPORTANT: Write every stage in simple plain English that a teacher can use immediately. Avoid vague directions. Say exactly what happens, what the teacher says or does, what learners do, what struggle is expected, and what the teacher should notice.
 
@@ -323,7 +323,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1, show one vivid unresolved situation with at most one curiosity question; learners react or wonder rather than explain or solve. If the target is Stage 2, continue that same situation and ask at most two brief oral prompts about learners' existing ideas, experiences or misconceptions; do not set a task, list, comparison, group work or written output. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1, show one vivid unresolved situation with at most one curiosity question; learners react or wonder rather than explain or solve. If the target is Stage 2, continue that same situation and ask at most two brief oral prompts about learners' existing ideas, experiences or misconceptions; do not set a task, list, comparison, group work or written output. If the target is Stage 4, pairs or small teams must combine each learner's contribution into a shared first attempt; do not assign independent individual work. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
 `;
 }
 
@@ -562,6 +562,18 @@ export function validateHqlsLesson(
   );
 
   const trialFirst = lesson.stages[3];
+  const firstAttemptText = [trialFirst.experience, ...trialFirst.teacherPrompts, ...trialFirst.learnerActions].join(" ");
+  if (
+    !includesAny(firstAttemptText, [/\b(?:pairs?|teams?|groups?|partners?)\b/i]) ||
+    !includesAny(firstAttemptText, [/\b(?:each|every|share|discuss|agree|joint|together|contribut\w*|take turns|members?)\b/i]) ||
+    !includesAny(firstAttemptText, [/\b(?:shared|joint|group|team|together|collaborat\w*)\b/i])
+  ) {
+    fail(
+      "trial_first",
+      "trial_first_lacks_teamwork",
+      "Trial 1 must give pairs or small teams one shared first attempt with a contribution from every learner.",
+    );
+  }
   if (trialFirst.productiveStruggle.length < 20) {
     fail(
       "trial_first",
