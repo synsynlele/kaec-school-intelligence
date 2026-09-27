@@ -79,12 +79,12 @@ export function PlatformSchoolOverview() {
   }, [schools, loadedAt, onlyAttention]);
 
   return (
-    <section className="mx-auto max-w-7xl px-5 pt-8 sm:px-8" aria-labelledby="platform-overview-heading">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-7">
+    <section className="mx-auto max-w-7xl px-4 pt-5 sm:px-8 sm:pt-8" aria-labelledby="platform-overview-heading">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Platform operations</p>
-            <h2 id="platform-overview-heading" className="mt-2 text-2xl font-bold text-zinc-950">Learning workflow across schools</h2>
+            <h2 id="platform-overview-heading" className="mt-2 text-xl font-bold text-zinc-950 sm:text-2xl">Learning workflow across schools</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
               School-level counts from saved KSI records. Activity means a record was updated; it does not establish teaching quality or student progress.
             </p>
@@ -96,23 +96,23 @@ export function PlatformSchoolOverview() {
         {loadedAt === null && !error ? <p className="mt-6 text-sm text-zinc-500">Loading governed school signals…</p> : null}
         {loadedAt !== null ? (
           <>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-2xl font-bold">{view.active}</p><p className="text-xs text-emerald-900">Active schools</p></div>
-              <div className="rounded-2xl bg-amber-50 p-4"><p className="text-2xl font-bold">{view.attention}</p><p className="text-xs text-amber-900">Active schools to check</p></div>
-              <div className="rounded-2xl bg-blue-50 p-4"><p className="text-2xl font-bold">{view.updates}</p><p className="text-xs text-blue-900">Visible records updated in 30 days</p></div>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:grid-cols-3 sm:gap-3">
+              <div className="rounded-2xl bg-emerald-50 p-3 sm:p-4"><p className="text-xl font-bold sm:text-2xl">{view.active}</p><p className="text-xs text-emerald-900">Active schools</p></div>
+              <div className="rounded-2xl bg-amber-50 p-3 sm:p-4"><p className="text-xl font-bold sm:text-2xl">{view.attention}</p><p className="text-xs text-amber-900">Active schools to check</p></div>
+              <div className="col-span-2 rounded-2xl bg-blue-50 p-3 sm:col-span-1 sm:p-4"><p className="text-xl font-bold sm:text-2xl">{view.updates}</p><p className="text-xs text-blue-900">Visible records updated in 30 days</p></div>
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
                 <input type="checkbox" checked={onlyAttention} onChange={(event) => setOnlyAttention(event.target.checked)} />
                 Show schools to check
               </label>
-              <p className="text-xs text-zinc-500">As of {new Date(loadedAt).toLocaleString()} · learner-related counts withheld under 5 active learners</p>
+              <p className="text-xs text-zinc-500">As of {new Date(loadedAt).toLocaleString("en-NG")} · Diagnosis and intervention counts appear once a school has at least 5 active learner records entered in KSI</p>
             </div>
             {view.rows.length ? (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {view.rows.map((school) => {
                   const days = daysSince(school.last_learning_update_at, loadedAt);
-                  return <article key={school.id} className="rounded-2xl border border-zinc-200 p-4">
+                  return <article key={school.id} className="rounded-2xl border border-zinc-200 p-3 sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <h3 className="font-bold text-zinc-950">{school.name}</h3>
                       <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold capitalize text-zinc-600">{school.access_status}</span>
