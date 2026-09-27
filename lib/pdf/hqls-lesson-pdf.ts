@@ -403,8 +403,8 @@ class PdfComposer {
         this.detailSection("Only the clarity needed to continue", stage.experience);
         this.detailSection("Teacher says", stage.teacherPrompts, { bullets: true });
       } else if (stage.stageNumber === 4) {
-        this.detailSection("First attempt - task", stage.experience);
-        this.detailSection("What learners produce", stage.learnerActions, { bullets: true });
+        this.detailSection("Team first attempt - shared task", stage.experience);
+        this.detailSection("How everyone contributes / shared output", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Expected struggle", value: stage.productiveStruggle, labelColor: RED },
           { label: "What the teacher must not do", value: stage.guideGuardrails, labelColor: RED },
