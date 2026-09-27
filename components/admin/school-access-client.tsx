@@ -268,7 +268,11 @@ export function SchoolAccessClient() {
         </div>
       </section>
 
-      <section className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-7 rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm text-zinc-600">
+        <strong className="text-zinc-950">{schools.length} school workspaces</strong> · {summary.active} can currently access KSI; {summary.paused + summary.blocked + summary.disabled} cannot.
+        <span className="mt-1 block text-xs text-zinc-500">These are access states, not measures of teaching activity or learning quality.</span>
+      </div>
+      <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {SCHOOL_ACCESS_STATUSES.map((status) => (
           <article key={status} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{STATUS_LABEL[status]}</p>
@@ -297,6 +301,7 @@ export function SchoolAccessClient() {
                     </span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-zinc-600">{STATUS_HELP[school.access_status]}</p>
+                  {school.access_status_changed_at ? <p className="mt-2 text-xs text-zinc-500">Status last changed {new Date(school.access_status_changed_at).toLocaleDateString()}</p> : null}
                   {school.access_status_note ? <p className="mt-3 text-sm text-zinc-500">Latest note: {school.access_status_note}</p> : null}
                 </div>
 

@@ -16,6 +16,7 @@ type AccessRequest = {
   reviewed_at: string | null;
   review_note: string | null;
   workspace_id: string | null;
+  waiting_days: number;
 };
 
 function messageFrom(caught: unknown, fallback: string) {
@@ -34,7 +35,10 @@ function messageFrom(caught: unknown, fallback: string) {
 async function fetchRequests(supabase: SupabaseClient) {
   const { data, error } = await supabase.rpc("get_school_access_requests");
   if (error) throw error;
-  return (data ?? []) as AccessRequest[];
+  return ((data ?? []) as Omit<AccessRequest, "waiting_days">[]).map((request) => ({
+    ...request,
+    waiting_days: Math.max(0, Math.floor((Date.now() - new Date(request.requested_at).getTime()) / 86400000)),
+  }));
 }
 
 export function SchoolAccessRequests() {
@@ -67,9 +71,11 @@ export function SchoolAccessRequests() {
   }, []);
 
   const pending = useMemo(
-    () => requests.filter((request) => request.status === "pending"),
+    () => requests.filter((request) => request.status === "pending").sort((a, b) => new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime()),
     [requests],
   );
+
+  const oldestPendingDays = pending[0]?.waiting_days ?? 0;
 
   async function approve(event: FormEvent<HTMLFormElement>, request: AccessRequest) {
     event.preventDefault();
@@ -128,7 +134,10 @@ export function SchoolAccessRequests() {
             <h2 className="mt-2 text-2xl font-bold text-zinc-950">School access requests</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">Owners can create an identity and request access, but only KAEC can approve the request. Approval provisions the school in Paused state; activation remains a separate decision.</p>
           </div>
-          <span className="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">{pending.length} pending</span>
+          <div className="flex flex-wrap gap-2">
+            <span className="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">{pending.length} pending</span>
+            {pending.length ? <span className="w-fit rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-700">Oldest waiting {oldestPendingDays} {oldestPendingDays === 1 ? "day" : "days"}</span> : null}
+          </div>
         </div>
 
         {error ? <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
@@ -143,6 +152,7 @@ export function SchoolAccessRequests() {
                 <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
                   <div>
                     <h3 className="text-lg font-bold text-zinc-950">{request.school_name}</h3>
+                    <p className="mt-1 text-xs font-semibold text-amber-800">Waiting {request.waiting_days} days · oldest requests first</p>
                     <dl className="mt-3 space-y-1.5 text-sm text-zinc-600">
                       <div><dt className="inline font-semibold text-zinc-800">Owner email:</dt> <dd className="inline">{request.requester_email}</dd></div>
                       <div><dt className="inline font-semibold text-zinc-800">Location:</dt> <dd className="inline">{request.school_location}</dd></div>
