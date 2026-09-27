@@ -209,18 +209,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Stage {stage.stageNumber}</p>
               <h2 className="mt-1 text-xl font-semibold text-zinc-950 sm:text-2xl">{definition.title}</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{definition.purpose}</p>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <ResultBlock title="Learning experience" text={stage.experience} />
-                <ResultList title="Teacher prompts / actions" items={stage.teacherPrompts} />
-                <ResultList title="Expected learner actions" items={stage.learnerActions} />
-                <ResultList title="Evidence to notice" items={stage.evidenceToNotice} />
-                <ResultList title="Guide guardrails" items={stage.guideGuardrails} />
-                {stage.productiveStruggle ? <ResultBlock title="Productive struggle" text={stage.productiveStruggle} /> : null}
-                {stage.teachingContent ? <ResultBlock title="Full illumination" text={stage.teachingContent} /> : null}
-                {stage.respondsToFirstAttempt ? <ResultBlock title="Response to Trial 1" text={stage.respondsToFirstAttempt} /> : null}
-                {stage.reflectionPrompt ? <ResultBlock title="Reflection" text={stage.reflectionPrompt} /> : null}
-                {stage.transferTask ? <ResultBlock title="Real-life / future transfer" text={stage.transferTask} /> : null}
-              </div>
+              <ClassroomStage stage={stage} />
             </article>
           );
         })}
@@ -231,6 +220,60 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
         <Link href="/dashboard" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800">Dashboard</Link>
       </div>
     </main>
+  );
+}
+
+function ClassroomStage({ stage }: { stage: HqlsStageContent }) {
+  const hasGuidance = stage.evidenceToNotice.length > 0 || stage.guideGuardrails.length > 0 ||
+    Boolean(stage.respondsToFirstAttempt) || (stage.stageNumber !== 4 && Boolean(stage.productiveStruggle));
+  return (
+    <>
+      <div className={`mt-5 grid gap-4 ${stage.stageNumber === 5 ? "" : "md:grid-cols-2"}`}>
+        {stage.stageNumber === 1 ? <>
+          <ResultBlock title="Teacher says / shows" text={stage.experience} />
+          <ResultList title="Questions to open the lesson" items={stage.teacherPrompts} />
+          <ResultList title="Learners respond" items={stage.learnerActions} />
+        </> : null}
+        {stage.stageNumber === 2 ? <>
+          <ResultBlock title="Continue the opening - first ideas" text={stage.experience} />
+          <ResultList title="Teacher asks" items={stage.teacherPrompts} />
+          <ResultList title="Learners say / try" items={stage.learnerActions} />
+          <ResultList title="Do not correct yet" items={stage.guideGuardrails} />
+        </> : null}
+        {stage.stageNumber === 3 ? <>
+          <ResultBlock title="Only the clarity needed to continue" text={stage.experience} />
+          <ResultList title="Teacher says" items={stage.teacherPrompts} />
+        </> : null}
+        {stage.stageNumber === 4 ? <>
+          <ResultBlock title="First attempt - task" text={stage.experience} />
+          <ResultList title="What learners produce" items={stage.learnerActions} />
+          <ResultBlock title="Expected struggle" text={stage.productiveStruggle} />
+          <ResultList title="What the teacher must not do" items={stage.guideGuardrails} />
+        </> : null}
+        {stage.stageNumber === 5 ? <ResultBlock title="Complete teaching note" text={stage.teachingContent} /> : null}
+        {stage.stageNumber === 6 ? <>
+          <ResultBlock title="Second attempt - improve the first work" text={stage.experience} />
+          <ResultList title="What learners do differently" items={stage.learnerActions} />
+          <ResultList title="Teacher feedback / questions" items={stage.teacherPrompts} />
+          <ResultList title="Improvement to notice" items={stage.evidenceToNotice} />
+        </> : null}
+        {stage.stageNumber === 7 ? <>
+          <ResultBlock title="Bring the learning together" text={stage.experience} />
+          <ResultList title="Teacher asks" items={stage.teacherPrompts} />
+          <ResultBlock title="Reflection questions" text={stage.reflectionPrompt} />
+          <ResultBlock title="Real-life assignment / transfer task" text={stage.transferTask} />
+        </> : null}
+      </div>
+      {hasGuidance ? <details className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+        <summary className="cursor-pointer font-semibold text-emerald-900">More teaching guidance</summary>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <ResultList title="Evidence to notice" items={stage.evidenceToNotice} />
+          <ResultList title="Guide guardrails" items={stage.guideGuardrails} />
+          {stage.respondsToFirstAttempt ? <ResultBlock title="Connection to the first attempt" text={stage.respondsToFirstAttempt} /> : null}
+          {stage.productiveStruggle && stage.stageNumber !== 4 ? <ResultBlock title="Productive struggle" text={stage.productiveStruggle} /> : null}
+        </div>
+      </details> : null}
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.6";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.7";
 
 export type HqlsStageAction =
   | "improve"
@@ -181,10 +181,10 @@ Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
 STAGE-SPECIFIC CLARITY:
 - Stage 1 Awakening: start with a familiar situation, problem or provocative question that makes the topic matter. Do not teach the content yet.
-- Stage 2 Exploration: ask clear questions that let learners reveal what they already think. Allow wrong or incomplete answers without correcting them yet.
+- Stage 2 Exploration: continue the same situation or question introduced in Stage 1. Ask clear questions that reveal what learners already think about it. Do not start a separate activity, repeat the hook or correct wrong or incomplete answers yet.
 - Stage 3 Micro-Illumination: give only the small clarification learners need to continue. State the limited clarification plainly and keep it short.
 - Stage 4 Trial — First Attempt: give a precise task. Make the expected output clear. State the likely struggle and state plainly what the teacher must not do. Guide Guardrails must explicitly protect the first attempt from teacher rescue, premature correction or solution-giving.
-- Stage 6 Trial — Second Attempt: give a clear second task that uses the teaching from Stage 5. Make it obvious how the second attempt should be better than the first.
+- Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
 - Stage 7 Integration: include 3–5 simple reflection questions in reflectionPrompt and a practical real-life follow-up task in transferTask.
 
 FULL ILLUMINATION — NORMAL LESSON MODE:
@@ -258,6 +258,8 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
+Awakening and Exploration form one continuous opening: Stage 2 draws first ideas from the exact situation or question set up in Stage 1. Stage 6 returns to the same work learners attempted in Stage 4 and improves it after Stage 5.
+
 IMPORTANT: Write every stage in simple plain English that a teacher can use immediately. Avoid vague directions. Say exactly what happens, what the teacher says or does, what learners do, what struggle is expected, and what the teacher should notice.
 
 Stage 5 Full Illumination is NORMAL LESSON MODE. Write the complete teaching content inside teachingContent. Make it focused, objective-led and substantial enough to give the lesson serious meaning: clearly explain the central concept, include the key terms/rule/process or core facts, one useful example when needed, the main misconception to correct, a brief practical connection where useful, and a short takeaway. Use short paragraphs and simple labels with colons when they improve clarity. Develop the explanation enough that the teacher can teach confidently from it, but do not turn it into a long textbook chapter. Do not write placeholders such as “teacher explains”, and do not pad the lesson with repeated detail.
@@ -320,7 +322,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must remain a genuine re-application; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1 or 2, keep Awakening and Exploration complementary parts of the same opening situation. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
 `;
 }
 

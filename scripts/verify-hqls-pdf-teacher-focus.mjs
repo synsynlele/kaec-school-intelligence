@@ -15,14 +15,17 @@ for (const required of [
   "teachingNote",
   "teacherFollowUpPanel",
   "Teacher follow-up guide",
-  "What happens in this stage",
-  "What the teacher says or does",
-  "What learners should do",
+  "Teacher says / shows",
+  "Teacher asks",
+  "Only the clarity needed to continue",
+  "First attempt - task",
+  "Second attempt - improve the first work",
+  "What learners do differently",
   "Expected struggle",
   "What the teacher must not do",
   "What the teacher should look for",
   "Reflection questions",
-  "Real-life follow-up / transfer task",
+  "Real-life assignment / transfer task",
   "Full Illumination - complete teaching note",
   "this.teachingNote(stage.teachingContent)",
 ]) {
@@ -51,7 +54,7 @@ assert(
     pdf.includes('label: "Expected struggle"') &&
     pdf.includes('label: "What the teacher must not do"') &&
     pdf.includes('label: "What the teacher should look for"'),
-  "Full lesson content must remain prominent while teacher drift-check guidance is grouped in the compact follow-up box.",
+  "Full teaching content and the first-attempt teacher guardrails must remain visible in the classroom map.",
 );
 
 assert(
@@ -61,5 +64,5 @@ assert(
 );
 
 console.log(
-  "HQLS PDF teacher-focus verification passed: complete Full Illumination and plain-English lesson instructions stay prominent while teacher drift-check guidance is grouped in a compact follow-up box.",
+  "HQLS PDF teacher-focus verification passed: complete teaching note and the seven-stage classroom map remain intact.",
 );

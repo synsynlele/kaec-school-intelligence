@@ -42,7 +42,7 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.6') &&
+  engine.includes('HQLS_PROMPT_v1.7') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("teacherPrompts must be exact words or actions") &&
     engine.includes("roughly 350–550 words") &&

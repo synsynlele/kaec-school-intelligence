@@ -390,25 +390,27 @@ class PdfComposer {
         gapBefore: 7,
         gapAfter: 3,
       });
-      this.line(definition.purpose, {
-        size: 9,
-        color: MUTED,
-        gapAfter: 6,
-      });
-
-      if (stage.stageNumber !== 5 && stage.experience) {
-        this.detailSection("What happens in this stage", stage.experience);
-      }
-
-      if (stage.stageNumber !== 5 && stage.teacherPrompts.length) {
-        this.detailSection(
-          "What the teacher says or does",
-          stage.teacherPrompts,
-          { bullets: true },
-        );
-      }
-
-      if (stage.stageNumber === 5 && stage.teachingContent) {
+      if (stage.stageNumber === 1) {
+        this.detailSection("Teacher says / shows", stage.experience);
+        this.detailSection("Questions to open the lesson", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Learners respond", stage.learnerActions, { bullets: true });
+      } else if (stage.stageNumber === 2) {
+        this.detailSection("Continue the opening - first ideas", stage.experience);
+        this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Learners say / try", stage.learnerActions, { bullets: true });
+        this.detailSection("Do not correct yet", stage.guideGuardrails, { bullets: true });
+      } else if (stage.stageNumber === 3) {
+        this.detailSection("Only the clarity needed to continue", stage.experience);
+        this.detailSection("Teacher says", stage.teacherPrompts, { bullets: true });
+      } else if (stage.stageNumber === 4) {
+        this.detailSection("First attempt - task", stage.experience);
+        this.detailSection("What learners produce", stage.learnerActions, { bullets: true });
+        this.teacherFollowUpPanel([
+          { label: "Expected struggle", value: stage.productiveStruggle, labelColor: RED },
+          { label: "What the teacher must not do", value: stage.guideGuardrails, labelColor: RED },
+          { label: "What the teacher should look for", value: stage.evidenceToNotice },
+        ]);
+      } else if (stage.stageNumber === 5 && stage.teachingContent) {
         this.line("Full Illumination - complete teaching note", {
           bold: true,
           size: 10.4,
@@ -422,46 +424,17 @@ class PdfComposer {
           gapAfter: 4,
         });
         this.teachingNote(stage.teachingContent);
-      }
-
-      if (stage.respondsToFirstAttempt) {
-        this.detailSection(
-          "How this connects to the first attempt",
-          stage.respondsToFirstAttempt,
-        );
-      }
-
-      if (stage.learnerActions.length) {
-        this.detailSection(
-          "What learners should do",
-          stage.learnerActions,
-          { bullets: true },
-        );
-      }
-
-      this.teacherFollowUpPanel([
-        {
-          label: "Expected struggle",
-          value: stage.productiveStruggle,
-          labelColor: RED,
-        },
-        {
-          label: "What the teacher must not do",
-          value: stage.guideGuardrails,
-          labelColor: RED,
-        },
-        {
-          label: "What the teacher should look for",
-          value: stage.evidenceToNotice,
-        },
-      ]);
-
-      if (stage.reflectionPrompt) {
+      } else if (stage.stageNumber === 6) {
+        this.detailSection("Second attempt - improve the first work", stage.experience);
+        this.detailSection("What learners do differently", stage.learnerActions, { bullets: true });
+        this.detailSection("Teacher feedback / questions", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Improvement to notice", stage.evidenceToNotice, { bullets: true });
+      } else if (stage.stageNumber === 7) {
+        this.detailSection("Bring the learning together", stage.experience);
+        this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
         this.detailSection("Reflection questions", stage.reflectionPrompt);
-      }
-      if (stage.transferTask) {
         this.detailSection(
-          "Real-life follow-up / transfer task",
+          "Real-life assignment / transfer task",
           stage.transferTask,
         );
       }
