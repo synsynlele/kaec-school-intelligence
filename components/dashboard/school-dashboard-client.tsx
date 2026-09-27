@@ -15,7 +15,8 @@ import {
 
 type Role = KsiSchoolRole;
 type SchoolWorkspace = { id: string; name: string; role: Role };
-type Metrics = { lessons: number; assessments: number; diagnoses: number; interventions: number };
+type Metrics = { lessons: number; assessments: number; diagnoses: number; interventions: number; draftDiagnoses: number; confirmedInterventions: number };
+type Activity = { id: string; label: string; title: string; status: string; updatedAt: string; href: string };
 type State = {
   displayName: string;
   email: string;
@@ -23,6 +24,7 @@ type State = {
   schoolLogoUrl: string | null;
   schools: SchoolWorkspace[];
   metrics: Metrics;
+  recentActivity: Activity[];
 };
 type WorkspaceCard = {
   href: string;
@@ -95,14 +97,20 @@ export function SchoolDashboardClient() {
         }));
 
       const activeWorkspaceId = access.activeSchool.workspace_id;
-      const [lessonResult, assessmentResult, diagnosisResult, interventionResult, workspaceResult] = await Promise.all([
+      const [lessonResult, assessmentResult, diagnosisResult, interventionResult, workspaceResult, draftDiagnosisResult, confirmedInterventionResult, recentLessons, recentAssessments, recentDiagnoses, recentInterventions] = await Promise.all([
         supabase.from("lessons").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("assessments").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("diagnoses").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("intervention_handoffs").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).neq("status", "archived"),
         supabase.from("workspaces").select("logo_url").eq("id", activeWorkspaceId).single(),
+        supabase.from("diagnoses").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).eq("status", "draft"),
+        supabase.from("intervention_handoffs").select("id", { count: "exact", head: true }).eq("workspace_id", activeWorkspaceId).eq("status", "confirmed"),
+        supabase.from("lessons").select("id,title,status,updated_at").eq("workspace_id", activeWorkspaceId).neq("status", "archived").order("updated_at", { ascending: false }).limit(4),
+        supabase.from("assessments").select("id,title,status,updated_at").eq("workspace_id", activeWorkspaceId).neq("status", "archived").order("updated_at", { ascending: false }).limit(4),
+        supabase.from("diagnoses").select("id,status,updated_at").eq("workspace_id", activeWorkspaceId).neq("status", "archived").order("updated_at", { ascending: false }).limit(4),
+        supabase.from("intervention_handoffs").select("id,status,updated_at").eq("workspace_id", activeWorkspaceId).neq("status", "archived").order("updated_at", { ascending: false }).limit(4),
       ]);
-      const metricError = lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error ?? interventionResult.error ?? workspaceResult.error;
+      const metricError = lessonResult.error ?? assessmentResult.error ?? diagnosisResult.error ?? interventionResult.error ?? workspaceResult.error ?? draftDiagnosisResult.error ?? confirmedInterventionResult.error ?? recentLessons.error ?? recentAssessments.error ?? recentDiagnoses.error ?? recentInterventions.error;
       if (metricError) throw metricError;
 
       setState({
@@ -116,7 +124,15 @@ export function SchoolDashboardClient() {
           assessments: assessmentResult.count ?? 0,
           diagnoses: diagnosisResult.count ?? 0,
           interventions: interventionResult.count ?? 0,
+          draftDiagnoses: draftDiagnosisResult.count ?? 0,
+          confirmedInterventions: confirmedInterventionResult.count ?? 0,
         },
+        recentActivity: [
+          ...(recentLessons.data ?? []).map((row) => ({ id: row.id, label: "HQLS lesson", title: row.title, status: row.status, updatedAt: row.updated_at, href: "/saved-work" })),
+          ...(recentAssessments.data ?? []).map((row) => ({ id: row.id, label: "Assessment", title: row.title, status: row.status, updatedAt: row.updated_at, href: "/saved-work" })),
+          ...(recentDiagnoses.data ?? []).map((row) => ({ id: row.id, label: "Diagnosis", title: "Student diagnosis", status: row.status, updatedAt: row.updated_at, href: "/diagnosis" })),
+          ...(recentInterventions.data ?? []).map((row) => ({ id: row.id, label: "Intervention", title: "Learning intervention", status: row.status, updatedAt: row.updated_at, href: "/interventions" })),
+        ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 6),
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The school dashboard could not be loaded.");
@@ -233,13 +249,33 @@ export function SchoolDashboardClient() {
         {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
         <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[["HQLS lessons", state.metrics.lessons], ["Assessments", state.metrics.assessments], ["Diagnoses", state.metrics.diagnoses], ["Interventions", state.metrics.interventions]].map(([label, value]) => (
-            <div key={String(label)} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
-              <p className="text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">{value}</p>
-              <p className="mt-1 text-xs font-semibold text-zinc-500">{label}</p>
-            </div>
+          {([
+            { label: "HQLS lessons", value: state.metrics.lessons, href: "/saved-work" },
+            { label: "Assessments", value: state.metrics.assessments, href: "/saved-work" },
+            { label: "Diagnoses", value: state.metrics.diagnoses, href: "/diagnosis" },
+            { label: "Interventions", value: state.metrics.interventions, href: "/interventions" },
+          ]).map((item) => (
+            <Link key={item.label} href={item.href} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 sm:p-5">
+              <p className="text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">{item.value}</p>
+              <p className="mt-1 text-xs font-semibold text-zinc-500">{item.label} · open →</p>
+            </Link>
           ))}
         </section>
+
+        {canLead ? (
+          <section className="mt-7 grid gap-4 md:grid-cols-2" aria-label="School follow-through">
+            <Link href="/diagnosis" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 transition hover:border-amber-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-800">Human review</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{state.metrics.draftDiagnoses}</p>
+              <p className="mt-1 text-sm text-zinc-700">Draft diagnoses in this school · review the evidence before any parent-facing report is final.</p>
+            </Link>
+            <Link href="/interventions" className="rounded-2xl border border-blue-200 bg-blue-50 p-5 transition hover:border-blue-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-blue-800">Follow-through</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-950">{state.metrics.confirmedInterventions}</p>
+              <p className="mt-1 text-sm text-zinc-700">Confirmed interventions in this school · inspect actions and their next-lesson links.</p>
+            </Link>
+          </section>
+        ) : null}
 
         <section className="mt-7">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -250,6 +286,28 @@ export function SchoolDashboardClient() {
             <p className="max-w-xl text-sm leading-6 text-zinc-500">KSI keeps curriculum, lesson, assessment, diagnosis and intervention connected so each decision has visible provenance.</p>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <WorkspaceCardView key={card.href} card={card} />)}</div>
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">From this school’s records</p>
+              <h2 className="mt-2 text-xl font-semibold text-zinc-950">Recently updated work</h2>
+            </div>
+            <Link href="/saved-work" className="text-sm font-bold text-emerald-900">View saved work →</Link>
+          </div>
+          {state.recentActivity.length ? (
+            <ul className="mt-4 divide-y divide-zinc-100">
+              {state.recentActivity.map((item) => (
+                <li key={item.label + item.id}>
+                  <Link href={item.href} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm hover:text-emerald-800">
+                    <span><span className="font-semibold text-zinc-900">{item.title}</span><span className="ml-2 text-zinc-500">{item.label} · {item.status}</span></span>
+                    <time dateTime={item.updatedAt} className="text-xs text-zinc-500">{new Date(item.updatedAt).toLocaleDateString()}</time>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mt-4 text-sm text-zinc-500">No lessons, assessments, diagnoses or interventions have been saved in this school yet.</p>}
         </section>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
