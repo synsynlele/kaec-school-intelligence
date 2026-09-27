@@ -362,6 +362,96 @@ function validateTextSafety(text: string, label: string, violations: DiagnosisVa
   }
 }
 
+function uniqueValidEvidenceIds(ids: string[], validIds: Set<string>) {
+  return [...new Set(ids.filter((id) => validIds.has(id)))];
+}
+
+function tentativeStatement(statement: string) {
+  const trimmed = statement.trim();
+  if (!trimmed || tentativeLanguage.test(trimmed)) return trimmed;
+  const lowered = trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+  return `The cited evidence suggests that ${lowered}`;
+}
+
+/**
+ * Makes only deterministic, evidence-preserving repairs after the single AI repair pass.
+ * It must never invent a finding, cause or action. Anything still unsafe or unsupported
+ * is deliberately left for validateDiagnosis() to reject.
+ */
+export function stabilizeDiagnosisAfterRepair(
+  diagnosis: GeneratedDiagnosis,
+  suppliedEvidence: DiagnosisEvidencePacket[],
+): GeneratedDiagnosis {
+  const validIds = new Set(suppliedEvidence.map((item) => item.id));
+  const generatedObserved = new Map(
+    diagnosis.observedEvidence
+      .filter((item) => validIds.has(item.id))
+      .map((item) => [item.id, item] as const),
+  );
+
+  const observedEvidence = suppliedEvidence.map((evidence) => {
+    const generated = generatedObserved.get(evidence.id);
+    return {
+      ...evidence,
+      statement: generated?.statement?.trim() || evidence.statement,
+    };
+  });
+
+  const withValidReferences = <T extends { evidenceIds: string[] }>(item: T): T => ({
+    ...item,
+    evidenceIds: uniqueValidEvidenceIds(item.evidenceIds, validIds),
+  });
+
+  const possibleInterpretations = diagnosis.possibleInterpretations.map((item) => {
+    const repaired = withValidReferences(item);
+    return {
+      ...repaired,
+      statement: tentativeStatement(repaired.statement),
+      uncertaintyNote:
+        repaired.uncertaintyNote.trim().length >= 15
+          ? repaired.uncertaintyNote.trim()
+          : "This remains a tentative interpretation based only on the cited evidence.",
+    };
+  });
+
+  const evidenceDomain = (target: DiagnosisDomain) =>
+    suppliedEvidence.some((item) => item.domain === target);
+  const evidenceLimitations = diagnosis.evidenceLimitations
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (!evidenceLimitations.length) {
+    evidenceLimitations.push(
+      "This diagnosis reflects only the evidence supplied for this review and should be updated when new evidence becomes available.",
+    );
+  }
+
+  for (const absent of DIAGNOSIS_DOMAINS.filter((target) => !evidenceDomain(target))) {
+    const combined = evidenceLimitations.join(" ");
+    if (!new RegExp(`insufficient evidence.*${absent}|${absent}.*insufficient evidence`, "i").test(combined)) {
+      evidenceLimitations.push(
+        `Insufficient Evidence for ${absent}: no ${absent} evidence was supplied for this diagnosis.`,
+      );
+    }
+  }
+
+  return {
+    ...diagnosis,
+    observedEvidence,
+    detectedPatterns: diagnosis.detectedPatterns.map(withValidReferences),
+    possibleInterpretations,
+    academicSkillStrengths: diagnosis.academicSkillStrengths.map(withValidReferences),
+    academicSkillChallenges: diagnosis.academicSkillChallenges.map(withValidReferences),
+    characterStrengths: diagnosis.characterStrengths.map(withValidReferences),
+    characterChallenges: diagnosis.characterChallenges.map(withValidReferences),
+    schoolAcademicActions: diagnosis.schoolAcademicActions.map(withValidReferences),
+    parentAcademicActions: diagnosis.parentAcademicActions.map(withValidReferences),
+    schoolCharacterActions: diagnosis.schoolCharacterActions.map(withValidReferences),
+    parentCharacterActions: diagnosis.parentCharacterActions.map(withValidReferences),
+    evidenceLimitations,
+  };
+}
+
 export function validateDiagnosis(
   diagnosis: GeneratedDiagnosis,
   suppliedEvidence: DiagnosisEvidencePacket[],
@@ -533,6 +623,17 @@ The previous structured draft failed independent KAEC validation. Repair every i
 
 VALIDATION ISSUES:
 ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\n")}
+
+MANDATORY REPAIR CHECKLIST:
+- observedEvidence must contain every supplied evidence ID exactly once and no invented IDs.
+- Preserve the supplied evidence source/domain/metric metadata for each evidence ID.
+- Every pattern, strength/challenge and action must cite at least one supplied evidence ID that genuinely supports it.
+- Every possibleInterpretation.statement must itself use explicit tentative language such as may, might, could, suggests or appears.
+- Every possibleInterpretation.uncertaintyNote must clearly explain why the interpretation remains uncertain.
+- Do not use clinical/psychological labels, harmful learner labels or certain causal claims, even to disclaim them.
+- For every domain with no supplied evidence, evidenceLimitations must literally contain "Insufficient Evidence for <domain>".
+- Include a bounded-evidence limitation even when all three domains have evidence.
+- Repair only from the authorised evidence. Do not invent a new cause, trait, diagnosis, event, score or observation.
 
 PREVIOUS DRAFT:
 ${JSON.stringify(diagnosis)}`;
