@@ -42,7 +42,7 @@ assert(
 );
 
 assert(
-  savedWork.includes('href={`/hqls?lesson=${encodeURIComponent(item.artifactId)}`}') &&
+  savedWork.includes('href={`/hqls/result?lesson=${encodeURIComponent(item.artifactId)}`}') &&
     savedWork.includes("Open HQLS"),
   "Saved Work must provide a direct HQLS open action.",
 );
