@@ -484,13 +484,15 @@ export function validateHqlsLesson(
 
   const awakening = lesson.stages[0];
   const awakeningText = [awakening.experience, ...awakening.teacherPrompts].join(" ");
-  const awakeningDirections = [awakeningText, ...awakening.learnerActions].join(" ");
   if (
     awakening.teacherPrompts.length > 1 ||
-    includesAny(awakeningDirections, [
-      /\b(?:list|draw|solve|calculate|draft|complete|produce)\b/i,
-      /\b(?:in pairs|in groups|work in pairs|work in groups)\b/i,
-    ])
+    includesAny([awakening.experience, ...awakening.learnerActions].join(" "), [
+      /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:list|draw|solve|calculate|draft|complete|produce)\b/i,
+      /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
+    ]) ||
+    awakening.teacherPrompts.some((prompt) =>
+      /^(?:in\s+(?:pairs|groups),?\s+)?(?:list|draw|solve|calculate|draft|complete|produce)\b/i.test(prompt.trim()),
+    )
   ) {
     fail(
       "awakening",
@@ -519,14 +521,16 @@ export function validateHqlsLesson(
 
   const exploration = lesson.stages[1];
   const explorationText = [exploration.experience, ...exploration.teacherPrompts].join(" ");
-  const explorationDirections = [exploration.experience, ...exploration.teacherPrompts, ...exploration.learnerActions].join(" ");
+  const explorationDirections = [exploration.experience, ...exploration.learnerActions].join(" ");
   if (
     exploration.teacherPrompts.length > 2 ||
     includesAny(explorationDirections, [
-      /\b(?:list|write|draw|solve|calculate|draft|design|complete|produce)\b/i,
-      /\b(?:in pairs|in groups|work in pairs|work in groups)\b/i,
-      /\b(?:compare|create|make|build)\s+(?:a|an|the|your|their|letter|examples|answers|ideas)\b/i,
-    ])
+      /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:list|write|draw|solve|calculate|draft|design|complete|produce|compare)\b/i,
+      /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
+    ]) ||
+    exploration.teacherPrompts.some((prompt) =>
+      /^(?:in\s+(?:pairs|groups),?\s+)?(?:list|write|draw|solve|calculate|draft|design|complete|produce|compare)\b/i.test(prompt.trim()),
+    )
   ) {
     fail(
       "exploration",
