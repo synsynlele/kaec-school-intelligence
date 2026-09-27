@@ -9,17 +9,17 @@ export default function SchoolAccessAdminPage() {
   return (
     <>
       <header className="border-b border-emerald-900/10 bg-emerald-950 text-white shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="rounded-2xl bg-white px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-8 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="w-fit rounded-xl bg-white px-3 py-2">
             <KaecBrand compact />
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
               KSI Platform Administration
             </p>
-            <h1 className="mt-1 text-2xl font-bold">School Access Control</h1>
+            <h1 className="mt-1 text-xl font-bold sm:text-2xl">KSI Platform Overview</h1>
             <p className="mt-1 max-w-3xl text-sm text-emerald-50/90">
-              Review owner requests, provision schools and control Active / Paused / Blocked / Disabled access without deleting learning data.
+              Monitor school activity and follow-through, then manage onboarding and access.
             </p>
           </div>
           <Link
