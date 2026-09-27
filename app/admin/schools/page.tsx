@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { SchoolAccessClient } from "@/components/admin/school-access-client";
 import { SchoolAccessRequests } from "@/components/admin/school-access-requests";
+import { PlatformSchoolOverview } from "@/components/admin/platform-school-overview";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 
 export default function SchoolAccessAdminPage() {
@@ -30,6 +31,7 @@ export default function SchoolAccessAdminPage() {
         </div>
       </header>
 
+      <PlatformSchoolOverview />
       <SchoolAccessRequests />
       <SchoolAccessClient />
     </>
