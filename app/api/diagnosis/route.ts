@@ -8,6 +8,7 @@ import {
   buildDiagnosisRepairPrompt,
   buildDiagnosisSystemInstruction,
   parseGeneratedDiagnosis,
+  stabilizeDiagnosisAfterRepair,
   validateDiagnosis,
   type DiagnosisDomain,
   type DiagnosisEvidencePacket,
@@ -527,7 +528,10 @@ async function handleGenerate(supabase: KsiSupabaseClient, userId: string, raw: 
         schemaName: "ksi_student_diagnosis_repair",
         maxOutputTokens: 10000,
       });
-      diagnosis = parseGeneratedDiagnosis(repairedResult.data);
+      diagnosis = stabilizeDiagnosisAfterRepair(
+        parseGeneratedDiagnosis(repairedResult.data),
+        evidence,
+      );
       validation = validateDiagnosis(diagnosis, evidence);
     }
 
