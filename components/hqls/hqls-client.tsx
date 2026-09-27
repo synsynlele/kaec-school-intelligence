@@ -69,6 +69,8 @@ type HqlsWorkspaceState = {
   lessons: LessonSummary[];
 };
 
+class GenerationConnectionError extends Error {}
+
 const ACTION_OPTIONS: Array<{ value: HqlsStageAction; label: string }> = [
   { value: "improve", label: "Improve" },
   { value: "simplify", label: "Simplify" },
@@ -385,18 +387,29 @@ const refreshLessons = useCallback(async () => {
       throw new Error("Your session has expired. Sign in again.");
     }
 
-    const response = await fetch("/api/hqls", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/hqls", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (caught) {
+      if (isRecord(body) && body.action === "generate") {
+        throw new GenerationConnectionError("The generation connection was interrupted.");
+      }
+      throw caught;
+    }
     const payload = (await response
       .json()
       .catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
+      if (response.status >= 500 && isRecord(body) && body.action === "generate") {
+        throw new GenerationConnectionError("The generation response was interrupted.");
+      }
       const baseMessage =
         typeof payload.error === "string"
           ? payload.error
@@ -483,12 +496,47 @@ const refreshLessons = useCallback(async () => {
     }
   }
 
+  async function recoverGeneratedLesson(startedAt: string, requestedTopic: string) {
+    if (!state) return false;
+    setNotice("The connection dropped. Checking whether your lesson was saved; please keep this page open.");
+    const supabase = getBrowserSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const since = new Date(new Date(startedAt).getTime() - 10_000).toISOString();
+    const deadline = Date.now() + 120_000;
+
+    while (Date.now() < deadline) {
+      const { data, error: lookupError } = await supabase
+        .from("ai_runs")
+        .select("status,artifact_id,input_summary,started_at")
+        .eq("workspace_id", state.workspace.id)
+        .eq("initiated_by", user.id)
+        .eq("engine", "hqls_lesson")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false })
+        .limit(10);
+      if (lookupError) throw lookupError;
+      const run = data?.find((item) =>
+        isRecord(item.input_summary) && item.input_summary.topic === requestedTopic,
+      );
+      if (run?.status === "succeeded" && run.artifact_id) {
+        await refreshLessons();
+        return openLesson(run.artifact_id);
+      }
+      if (run?.status === "failed") return false;
+      await new Promise((resolve) => window.setTimeout(resolve, 4_000));
+    }
+    return false;
+  }
+
   async function generateLesson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!state) return;
     setGenerating(true);
     setError(null);
     setNotice(null);
+    const startedAt = new Date().toISOString();
+    const requestedTopic = topic.trim();
     try {
       const duration = Number(durationMinutes);
       const payload = await authenticatedPost({
@@ -528,6 +576,22 @@ const refreshLessons = useCallback(async () => {
           : "HQLS lesson generated, independently validated and saved.",
       );
     } catch (caught) {
+      if (
+        caught instanceof GenerationConnectionError ||
+        (caught instanceof Error && /load failed|failed to fetch|networkerror/i.test(caught.message))
+      ) {
+        try {
+          if (await recoverGeneratedLesson(startedAt, requestedTopic)) {
+            setNotice("Your lesson was generated and saved. It is open below.");
+            return;
+          }
+        } catch {
+          // Recovery may fail while the connection is still offline.
+        }
+        setNotice(null);
+        setError("The generation connection was interrupted. Check Saved Work before trying again; your lesson may already be there.");
+        return;
+      }
       setError(
         caught instanceof Error
           ? caught.message

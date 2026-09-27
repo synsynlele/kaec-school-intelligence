@@ -533,10 +533,15 @@ async function attachAiRunArtifact(
   supabase: KsiSupabaseClient,
   runId: string,
   lessonId: string,
+  inputSummary?: Json,
 ) {
   const { error } = await supabase
     .from("ai_runs")
-    .update({ artifact_id: lessonId, artifact_type: "lesson" })
+    .update({
+      artifact_id: lessonId,
+      artifact_type: "lesson",
+      ...(inputSummary ? { input_summary: inputSummary } : {}),
+    })
     .eq("id", runId);
   if (error) throw error;
 }
@@ -684,7 +689,7 @@ async function handleGenerate(
 
     let lesson = parseGeneratedHqlsLesson(generated.data);
     let validation = validateHqlsLesson(lesson);
-    let repairMode: "none" | "single_stage" | "full_lesson" = "none";
+    let repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson" = "none";
     let repairDurationMs = 0;
 
     if (!validation.passed) {
@@ -692,49 +697,48 @@ async function handleGenerate(
         (stage) => !validation.stageValidation[stage.stageKey]?.passed,
       );
 
-      if (failedStages.length === 1) {
-        repairMode = "single_stage";
-        const targetStage = failedStages[0];
-        const targetViolations = validation.violations.filter(
-          (item) => item.stageKey === targetStage.stageKey,
-        );
-        const stageValidation = validation.stageValidation[targetStage.stageKey];
-        const repairPrompt = `${buildStageRegenerationPrompt({
-          lesson,
-          targetStage,
-          action: "improve",
-          lessonContext: lessonContextSummary(input),
-        })}
+      if (failedStages.length > 0 && failedStages.length <= 2) {
+        repairMode = failedStages.length === 1 ? "single_stage" : "parallel_stages";
+        const repairStartedAt = Date.now();
+        const replacements = await Promise.all(failedStages.map(async (targetStage) => {
+          const targetViolations = validation.violations.filter(
+            (item) => item.stageKey === targetStage.stageKey,
+          );
+          const stageValidation = validation.stageValidation[targetStage.stageKey];
+          const repairPrompt = `${buildStageRegenerationPrompt({
+            lesson,
+            targetStage,
+            action: "improve",
+            lessonContext: lessonContextSummary(input),
+          })}
 
 Deterministic fidelity issues that must be fixed before returning this stage:
 ${(
-          targetViolations.length
-            ? targetViolations.map((item) => `${item.code}: ${item.message}`)
-            : stageValidation.violations
-        )
-          .map((item) => `- ${item}`)
-          .join("\n")}`;
-        const repaired = await generateOpenAIJson<unknown>({
-          systemInstruction: buildHqlsGenerationSystemInstruction(),
-          parts: [{ text: repairPrompt }, ...resources.parts],
-          responseSchema: HQLS_STAGE_JSON_SCHEMA,
-          schemaName: "ksi_hqls_stage_repair",
-          model,
-          reasoningEffort: "low",
-          promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair`,
-          promptCacheTtl: "30m",
-          textVerbosity: "low",
-          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
-        });
-        repairDurationMs = repaired.durationMs;
-        const replacement = parseHqlsStageContent(
-          repaired.data,
-          targetStage.stageNumber,
-        );
+            targetViolations.length
+              ? targetViolations.map((item) => `${item.code}: ${item.message}`)
+              : stageValidation.violations
+          )
+            .map((item) => `- ${item}`)
+            .join("\n")}`;
+          const repaired = await generateOpenAIJson<unknown>({
+            systemInstruction: buildHqlsGenerationSystemInstruction(),
+            parts: [{ text: repairPrompt }, ...resources.parts],
+            responseSchema: HQLS_STAGE_JSON_SCHEMA,
+            schemaName: "ksi_hqls_stage_repair",
+            model,
+            reasoningEffort: "low",
+            promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair`,
+            promptCacheTtl: "30m",
+            textVerbosity: "low",
+            maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
+          });
+          return parseHqlsStageContent(repaired.data, targetStage.stageNumber);
+        }));
+        repairDurationMs = Date.now() - repairStartedAt;
         lesson = {
           ...lesson,
           stages: lesson.stages.map((stage) =>
-            stage.stageNumber === replacement.stageNumber ? replacement : stage,
+            replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage,
           ),
         };
         validation = validateHqlsLesson(lesson);
@@ -797,7 +801,21 @@ ${(
     const savedLesson = persisted.lesson as LessonRow;
     await saveLessonValidation({ supabase, lesson: savedLesson, validation });
     await Promise.all([
-      attachAiRunArtifact(supabase, runId, savedLesson.id),
+      attachAiRunArtifact(supabase, runId, savedLesson.id, {
+        subject: input.subject,
+        topic: input.topic,
+        classLevel: input.classLevel,
+        ageRange: input.ageRange,
+        durationMinutes: input.durationMinutes,
+        objective: input.objective,
+        resourceCount: resources.rows.length,
+        timing: {
+          firstPassMs: generated.durationMs,
+          repairMs: repairDurationMs,
+          repairMode,
+          totalBeforeCompletionMs: Date.now() - generationStartedAt,
+        },
+      }),
       persistFidelityCheck({
         supabase,
         lessonId: savedLesson.id,
