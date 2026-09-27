@@ -211,7 +211,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
               <Link href={`/diagnosis?assessment=${encodeURIComponent(state.assessment.id)}`} className="min-h-11 rounded-xl bg-blue-700 px-4 py-2.5 text-center text-sm font-semibold text-white">Use in Diagnosis</Link>
             ) : null}
             {state.assessment.status !== "archived" ? (
-              <Link href={`/assessment?assessment=${encodeURIComponent(state.assessment.id)}&edit=1`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit Assessment</Link>
+              <Link href={`/assessment/edit?assessment=${encodeURIComponent(state.assessment.id)}`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit Assessment</Link>
             ) : null}
             <button
               type="button"
