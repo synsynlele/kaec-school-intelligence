@@ -13,8 +13,8 @@
   "backgroundColor": "#fafaf9",
   "enableNotifications": false,
   "startUrl": "/auth/resolve",
-  "iconUrl": "https://www.ksi.name.ng/pwa/icon-512",
-  "maskableIconUrl": "https://www.ksi.name.ng/pwa/icon-512",
+  "iconUrl": "https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-1.0.4",
+  "maskableIconUrl": "https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-1.0.4",
   "splashScreenFadeOutDuration": 250,
   "signingKey": {
     "path": "./ksi-lite-production.keystore",
