@@ -109,29 +109,24 @@ export function PlatformSchoolOverview() {
               <p className="text-xs text-zinc-500">As of {new Date(loadedAt).toLocaleString()} · learner-related counts withheld under 5 active learners</p>
             </div>
             {view.rows.length ? (
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[740px] text-left text-sm">
-                  <thead className="border-b border-zinc-200 text-xs text-zinc-500"><tr>
-                    <th className="py-3 pr-4">School</th><th className="py-3 pr-4">Lessons</th><th className="py-3 pr-4">Assessments</th>
-                    <th className="py-3 pr-4">Draft diagnoses</th><th className="py-3 pr-4">Latest final without confirmed action</th>
-                    <th className="py-3">Last visible update</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {view.rows.map((school) => {
-                      const days = daysSince(school.last_learning_update_at, loadedAt);
-                      return <tr key={school.id}>
-                        <th scope="row" className="py-4 pr-4 font-semibold text-zinc-900">
-                          {school.name}<span className="ml-2 text-xs font-normal capitalize text-zinc-500">{school.access_status}</span>
-                          {school.limited_metrics ? <span className="block text-xs font-normal text-zinc-500">Learner counts withheld</span> : null}
-                        </th>
-                        <td className="py-4 pr-4">{school.lessons}</td><td className="py-4 pr-4">{school.assessments}</td>
-                        <td className="py-4 pr-4">{school.draft_diagnoses ?? "—"}</td>
-                        <td className="py-4 pr-4">{school.latest_final_without_intervention ?? "—"}</td>
-                        <td className="py-4">{days === null ? "No visible activity" : days === 0 ? "Today" : `${days} days ago`}</td>
-                      </tr>;
-                    })}
-                  </tbody>
-                </table>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {view.rows.map((school) => {
+                  const days = daysSince(school.last_learning_update_at, loadedAt);
+                  return <article key={school.id} className="rounded-2xl border border-zinc-200 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="font-bold text-zinc-950">{school.name}</h3>
+                      <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold capitalize text-zinc-600">{school.access_status}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">Last visible update: {days === null ? "No visible activity" : days === 0 ? "Today" : `${days} days ago`}</p>
+                    <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div><dt className="text-xs text-zinc-500">HQLS lessons</dt><dd className="font-bold text-zinc-900">{school.lessons}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Assessments</dt><dd className="font-bold text-zinc-900">{school.assessments}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Draft diagnoses</dt><dd className="font-bold text-zinc-900">{school.draft_diagnoses ?? "—"}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Latest final without confirmed action</dt><dd className="font-bold text-zinc-900">{school.latest_final_without_intervention ?? "—"}</dd></div>
+                    </dl>
+                    {school.limited_metrics ? <p className="mt-3 text-xs text-zinc-500">Learner-related counts withheld for privacy.</p> : null}
+                  </article>;
+                })}
               </div>
             ) : <p className="mt-6 text-sm text-zinc-500">No schools match this view.</p>}
             <p className="mt-4 text-xs leading-5 text-zinc-500">“To check” means no visible saved activity, no visible update for 14 days, or a latest final diagnosis without a linked confirmed intervention. It is a prompt to investigate, not a judgement of a school.</p>
