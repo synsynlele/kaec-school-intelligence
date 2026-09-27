@@ -60,9 +60,9 @@ assert(
 assert(
   (pdf.match(/this\.teacherFollowUpPanel\(\[/g) ?? []).length === 7 &&
     pdf.includes("this.addStage(stage)") &&
-    pdf.includes("const previousPage = [...this.current]") &&
+    !pdf.includes("const previousPage = [...this.current]") &&
     pdf.includes("const schoolX = 108"),
-  "Each stage needs compact support cues, short stages must stay together, and the fallback header must not overlap the school name.",
+  "Each stage needs compact support cues, stages should follow each other without page-sized gaps, and the fallback header must not overlap the school name.",
 );
 
 assert(
