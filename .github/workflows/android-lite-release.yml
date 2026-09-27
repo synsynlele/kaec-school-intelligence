@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - stage17-ksi-lite-distribution
     paths:
       - .github/workflows/android-lite-release.yml
