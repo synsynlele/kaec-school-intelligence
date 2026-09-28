@@ -72,6 +72,8 @@ for (const required of [
   "KAEC_DIAGNOSIS_QUALITY_v1.0",
   "validateDiagnosis",
   "buildDiagnosisRepairPrompt",
+  "stabilizeDiagnosisAfterRepair",
+  "MANDATORY REPAIR CHECKLIST",
   "CLINICAL_LABEL",
   "UNSUPPORTED_CAUSAL_CERTAINTY",
   "INSUFFICIENT_EVIDENCE_NOT_STATED",
@@ -91,6 +93,7 @@ for (const required of [
   'schemaName: "ksi_student_diagnosis"',
   'schemaName: "ksi_student_diagnosis_repair"',
   '"gpt-5-mini"',
+  "stabilizeDiagnosisAfterRepair",
   "DIAGNOSIS_VALIDATION_FAILED",
 ]) {
   assert(api.includes(required), `Diagnosis API is missing: ${required}`);
