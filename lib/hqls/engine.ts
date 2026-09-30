@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.6";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.14";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.7";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.15";
 
 export type HqlsStageAction =
   | "improve"
@@ -134,16 +134,17 @@ You are operating inside KAEC School Intelligence under the Human Quest Learning
 The exact lesson sequence is immutable:
 1 Awakening → 2 Exploration → 3 Micro-Illumination → 4 Trial — First Attempt → 5 Full Illumination → 6 Trial — Second Attempt → 7 Integration.
 
-STAGES 1–4 — IMAGINATION TO FIRST TRIAL:
-- Do not start with definitions, notes, formulas, rules, laws, topic explanation or the formal name of the lesson topic.
-- Do not tell learners what today's topic is before Full Illumination. The teacher knows the topic; learners should still be wondering what the lesson is about.
-- Do not give full explanations before learners make a meaningful first attempt.
-- Treat the opening as one simple flow: Awakening the Imagination → Exploring Crude Thinking → Giving a Tiny Clue → First Trial.
-- Awakening is about imagination. Put learners inside one vivid, age-appropriate scenario they can picture in their minds: "Imagine...", "Suppose...", "Picture yourself...", or a short story/situation with tension, surprise, a strange result or an unresolved problem. Ask at most one short question that makes them imagine and think. Do not ask for prior knowledge, a solution or a task yet.
-- Exploration checks learners' crude knowledge through critical thinking. Stay with the same scenario. Ask one or two simple oral questions that reveal what learners currently think and why they think it. Wrong, incomplete and conflicting ideas are welcome. The teacher listens and notices thinking; no correction, notes, group task or product yet.
-- Micro-Illumination is ONLY the tiny clue learners need for Trial 1. The teacher gives or shows one small hint, fact, condition, example, observation or piece of information that makes the upcoming Trial possible. Do not turn Micro-Illumination into another questioning activity, mini-lesson, explanation or separate task. Give the clue and move directly into Trial 1.
-- Trial 1 must clearly USE the clue from Micro-Illumination. Give pairs or small teams a genuinely demanding problem, decision, prediction, explanation or design challenge. Every learner contributes, the team agrees one shared response, and the response includes reasoning or evidence. The teacher does not rescue, solve, correct or reveal the topic during the attempt.
-- Before Stage 5, prefer imagined situations, puzzles, cases, surprising demonstrations, conflicting claims, imperfect choices, hidden rules, prediction problems, evidence sorting or real-life dilemmas over routine recall questions.
+STAGES 1–4 — SUSPENSE BEFORE FULL ILLUMINATION:
+- Do not start with definitions, notes, formulas, rules, laws, the correct explanation or the formal topic name.
+- Keep the formal lesson topic hidden from learners through Stage 4. The teacher knows it; learners should keep wondering what the lesson is really about.
+- Related objects, situations, vocabulary clues, examples, images, headlines or fragments MAY appear before Stage 5 when they deepen thinking without plainly giving away the formal topic.
+- Do not give the correct meaning, full explanation or worked solution before learners make a meaningful first attempt.
+- Treat the opening as one connected flow: Awakening (Curiosity & Meaning) → Exploration (Crude Thinking) → Micro-Illumination (Minimal Clarity) → Trial (First Attempt).
+- Awakening puts learners inside one vivid, age-appropriate situation they can imagine or recognise. It may use a short story, headline, image, object, quotation, surprising result or real-life dilemma. Ask at most one central provocative question. Learners wonder, react or take a position, but they do not solve the lesson yet.
+- Exploration checks crude knowledge through critical thinking. Stay close to the opening situation and ask 3–5 short oral questions when useful. Expose what learners currently think, what clues/words/ideas they recognise, why they think so and how they connect the situation to life. Wrong, incomplete and conflicting ideas are welcome. The teacher listens; no correction, notes, group task or formal product yet.
+- Micro-Illumination gives MINIMAL CLARITY only. Briefly point learners toward the connection, pattern, condition or questions they should keep in mind for Trial 1. It may contain a short orientation plus up to three brief guiding questions, but it must not define the concept, teach the lesson, correct the class, reveal the formal topic or become a separate learner activity.
+- Trial 1 is the first real task. Give pairs or small teams a concrete challenge with clear outputs. Learners may sort, classify, predict, explain, decide, design, solve, justify, compare evidence or attempt a meaning using their crude thinking plus the minimal clarity from Stage 3. Expect mistakes and incomplete reasoning. The teacher observes and does not rescue, correct or reveal the formal topic yet.
+- Before Stage 5, prefer meaningful cases, images, headlines, word sets, short texts, demonstrations, conflicting claims, prediction problems, evidence sorting and real-life dilemmas over routine recall.
 
 STAGE 5 — FULL ILLUMINATION:
 - Full Illumination occurs after Trial 1.
@@ -185,31 +186,33 @@ Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere
 Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
 STAGE-SPECIFIC CLARITY:
-- Stage 1 Awakening — Awaken the Imagination: begin with a short scenario learners can picture. Prefer language such as "Imagine...", "Suppose...", or "Picture this..." when natural. The scenario should contain a tension, surprise, strange result, choice or unanswered situation connected to the lesson without naming it. The teacher does only two things: present the scenario, then ask at most one short imagination/thinking question. Learners picture it, react and wonder. Do not ask what they already know, ask them to solve it, assign an activity or reveal the topic.
-- Stage 2 Exploration — Check Crude Thinking: continue the same imagined scenario. The teacher asks one or two short oral questions only. Question 1 should reveal what learners currently think about what is happening; Question 2, if needed, should ask why they think so. Learners give rough answers from what they already know, even when incomplete or wrong. The teacher listens and notices their reasoning. Do not correct, teach, write notes, assign groups, demand a list/product or begin Trial 1.
-- Stage 3 Micro-Illumination — Tiny Clue for Trial 1: give ONE tiny clue that directly helps learners attempt Stage 4. It may be a short fact, hint, condition, example, observation, rule-of-thumb fragment or one piece of information. The teacher should simply say or show the clue. Learners only receive/notice it. Do not ask a new discussion question, require a response, define the topic, teach the concept, give a worked solution or create another activity. Move straight into Trial 1.
-- Stage 4 Trial — First Attempt — Use the Clue: give a precise collaborative challenge in pairs or small teams that clearly depends on the clue from Stage 3. It must demand reasoning, not recall. Every learner contributes one idea or part of the reasoning; the team then agrees one shared answer, decision, prediction, explanation, design or solution and supports it with reasons/evidence. Keep teacher directions simple: form teams, give the challenge, remind everyone to contribute, then observe without rescuing or correcting.
-- Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
-- Stage 7 Integration: include 3–5 simple reflection questions in reflectionPrompt and a practical real-life follow-up task in transferTask.
+- Stage 1 Awakening (Curiosity & Meaning): begin with one vivid situation learners can picture or recognise. Use a short story, headline, image, object, quotation, surprising result or real-life dilemma when useful. Keep the formal topic name hidden. Ask at most one central question that makes learners wonder, agree/disagree, predict or take a position. Do not define, explain or solve the lesson yet.
+- Stage 2 Exploration (Crude Thinking): stay with the opening situation and ask 3–5 short oral questions when the lesson needs them. Surface what learners think is happening, what key clues/words/ideas might mean, why they think so, how the ideas connect and what experience or assumptions they are using. Learners may guess, argue, compare ideas and predict meanings. Wrong answers are allowed. Keep the formal topic name hidden. Do not correct, teach, write notes, assign a formal group task or require a product yet.
+- Stage 3 Micro-Illumination (Minimal Clarity): give a very short orientation that narrows attention without giving the answer. You may add up to three brief guiding questions learners should keep in mind during Trial 1. Keep the formal topic name hidden. Do not define the concept, give the correct answer, explain the target ideas one by one, solve the problem or create a separate learner activity. Move directly into Trial 1.
+- Stage 4 Trial (First Attempt): give a concrete collaborative task in pairs or small groups. It may use related vocabulary, examples, source text, data or materials, but it must still withhold the formal topic name when that name would solve the suspense. Require 2–4 clear outputs such as sorting/classifying, an attempted meaning, a prediction/decision, an explanation, a design/solution or a real-life connection. Record the expected struggle explicitly. In guideGuardrails state what the teacher must NOT do: no immediate correction, no formal definition/solution yet, no rescuing groups and no topic reveal.
+- Stage 6 Trial (Second Attempt): return to the SAME Stage 4 material or a very close equivalent wherever possible. Learners correct, improve, extend or redo the first attempt using the teaching from Stage 5. Make the expected improvement explicit and use teacherPrompts for brief feedback questions that guide without taking ownership.
+- Stage 7 Integration (Reflection & Identity): put 3–5 changed-thinking/reflection questions in reflectionPrompt. Use experience as a short identity connection showing what learners are becoming able to understand/do because of the lesson. Use transferTask for a concrete real-life assignment or application beyond the immediate classroom.
 
 FULL ILLUMINATION — NORMAL LESSON MODE:
 Stage 5 is normal teaching, not discovery/facilitation mode. Put the actual lesson content inside teachingContent so the teacher can teach from it directly.
 
-Keep Full Illumination focused but substantial enough to carry the lesson seriously. For an ordinary lesson, aim for roughly 350–550 words; use up to about 700 only when a calculation, procedure, worked example or concept sequence genuinely needs the extra space. Prioritise:
+Keep Full Illumination focused but substantial enough to carry the lesson seriously. For an ordinary lesson, aim for roughly 400–650 words; use up to about 750 only when a calculation, procedure, worked example, vocabulary set or concept sequence genuinely needs the extra space. Prioritise:
 - a clear explanation of the essential concept and why it matters;
 - the key definitions, rule/process/formula, relationships or core facts the objective requires;
 - one clear worked example, demonstration or model answer when it improves understanding;
 - the most important misconception, common error or confusing point to correct;
 - a brief real-life or familiar-context connection when useful;
-- a concise teaching summary or board-ready takeaway that fixes the main idea in memory.
+- a concise correct summary or board-ready takeaway that fixes the main idea in memory;
+- the common mistakes or misconceptions revealed by the first attempt, corrected explicitly.
 
-Write Stage 5 in very clear plain English. Use short paragraphs. Where useful, organise teachingContent with simple text labels followed by a colon, for example:
+Write Stage 5 as a real teacher-ready lesson note in very clear plain English. Use short paragraphs. Where useful, organise teachingContent with simple text labels followed by a colon, for example:
 Meaning:
-Key ideas:
+Key ideas / vocabulary:
 Example:
-Common mistake:
+Why it matters / application:
+Correct summary:
+Common mistakes corrected:
 Real-life connection:
-Takeaway:
 Use only the labels that genuinely help the lesson. Do not use markdown headings or placeholder phrases such as "teacher explains".
 
 Use enough development to give the lesson intellectual weight: explain the central idea in a connected way rather than reducing it to bare bullet points or fragments. Avoid long introductions, repeated explanations, exhaustive classifications, multiple similar examples and textbook-style padding. The teacher needs a serious teaching core, not a chapter. Keep enough substantive teaching that a competent teacher can deliver the lesson confidently without needing a separate lesson note.
