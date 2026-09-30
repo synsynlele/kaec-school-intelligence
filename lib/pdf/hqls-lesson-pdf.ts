@@ -109,6 +109,22 @@ function canonicalStageDefinition(stageNumber: number) {
   return HQLS_STAGES[stageNumber - 1] ?? HQLS_STAGES[0];
 }
 
+function stageHeading(stageNumber: number, title: string) {
+  const suffix =
+    stageNumber === 1
+      ? " (Curiosity & Meaning)"
+      : stageNumber === 2
+        ? " (Crude Thinking)"
+        : stageNumber === 3
+          ? " (Minimal Clarity)"
+          : stageNumber === 5
+            ? " (Teaching After Struggle)"
+            : stageNumber === 7
+              ? " (Reflection & Identity)"
+              : "";
+  return `STAGE ${stageNumber} - ${title}${suffix}`;
+}
+
 function rgb([r, g, b]: [number, number, number]) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
 }
@@ -429,7 +445,7 @@ class PdfComposer {
   private addStage(stage: HqlsStageContent) {
       const definition = canonicalStageDefinition(stage.stageNumber);
       this.ensure(78);
-      this.line(`STAGE ${stage.stageNumber} - ${definition.title}`, {
+      this.line(stageHeading(stage.stageNumber, definition.title), {
         bold: true,
         size: 13,
         color: NAVY,
