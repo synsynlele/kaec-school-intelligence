@@ -970,14 +970,14 @@ const refreshLessons = useCallback(async () => {
                 filters={
                   <select
                     value={lessonStatus}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setLessonStatus(
                         event.target.value as
                           | "all"
                           | LessonSummary["status"],
                       );
-                      setLessonPage(1)
-                    }
+                      setLessonPage(1);
+                    }}
                     aria-label="Filter HQLS lessons by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                   >
