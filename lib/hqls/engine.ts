@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.3";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.11";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.4";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.12";
 
 export type HqlsStageAction =
   | "improve"
