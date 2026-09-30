@@ -436,10 +436,48 @@ function studentFacingStageText(stage: HqlsStageContent) {
 }
 
 
+function topicRevealCandidates(topic?: string) {
+  const cleanTopic = topic?.trim().replace(/\s+/g, " ");
+  if (!cleanTopic || cleanTopic.length < 3) return [];
+
+  const candidates = new Set<string>([cleanTopic]);
+  const colonParts = cleanTopic
+    .split(":")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (colonParts.length > 1) candidates.add(colonParts[colonParts.length - 1]);
+
+  const genericPrefixes = [
+    /^vocabulary development\s*[-:]?\s*/i,
+    /^words? associated with\s+/i,
+    /^introduction to\s+/i,
+    /^meaning of\s+/i,
+    /^concept of\s+/i,
+    /^study of\s+/i,
+    /^revision of\s+/i,
+    /^lesson on\s+/i,
+  ];
+
+  for (const value of [...candidates]) {
+    let stripped = value;
+    for (const prefix of genericPrefixes) {
+      stripped = stripped.replace(prefix, "").trim();
+    }
+    if (stripped.length >= 3) candidates.add(stripped);
+
+    const associated = value.match(/\bassociated with\s+(.+)$/i)?.[1]?.trim();
+    if (associated && associated.length >= 3) candidates.add(associated);
+  }
+
+  return [...candidates]
+    .filter((value) => value.length >= 3)
+    .sort((a, b) => b.length - a.length);
+}
+
 function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
-  const directText = [...stage.teacherPrompts, ...stage.learnerActions].join(" ");
+  const studentText = studentFacingStageText(stage);
   if (
-    includesAny(directText, [
+    includesAny(studentText, [
       /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
       /we (?:are|will be) (?:learning|studying|looking at)/i,
       /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
@@ -449,25 +487,11 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
     return true;
   }
 
-  const cleanTopic = topic?.trim();
-  if (!cleanTopic || cleanTopic.length < 3) return false;
-  const topicPattern = new RegExp(
-    "(^|[^a-z0-9])" + escapeRegExp(cleanTopic) + "([^a-z0-9]|$)",
-    "i",
-  );
-  const revealAction = /^(?:say|tell|write|announce|reveal|name|state|introduce)\b/i;
-  const learnerReveal = /\b(?:name|state|repeat|write|copy|define|identify)\b/i;
-
-  return (
-    stage.teacherPrompts.some(
-      (prompt) =>
-        revealAction.test(prompt.trim()) &&
-        !/\b(?:do not|don't|avoid|without|withhold)\b/i.test(prompt) &&
-        topicPattern.test(prompt),
-    ) ||
-    stage.learnerActions.some(
-      (action) => learnerReveal.test(action) && topicPattern.test(action),
-    )
+  return topicRevealCandidates(topic).some((candidate) =>
+    new RegExp(
+      "(^|[^a-z0-9])" + escapeRegExp(candidate) + "([^a-z0-9]|$)",
+      "i",
+    ).test(studentText),
   );
 }
 
@@ -583,7 +607,7 @@ export function validateHqlsLesson(
   const explorationText = [exploration.experience, ...exploration.teacherPrompts].join(" ");
   const explorationDirections = [exploration.experience, ...exploration.learnerActions].join(" ");
   if (
-    exploration.teacherPrompts.length > 2 ||
+    exploration.teacherPrompts.length > 5 ||
     includesAny(explorationDirections, [
       /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:list|write|draw|solve|calculate|draft|design|complete|produce|compare)\b/i,
       /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
@@ -595,7 +619,7 @@ export function validateHqlsLesson(
     fail(
       "exploration",
       "exploration_becomes_task",
-      "Exploration should briefly hear learners' existing ideas, not assign group work, a list, a comparison, a solution or a product. Save the first task for Trial 1.",
+      "Exploration may ask several short oral questions, but it must not assign group work, written work, a formal comparison, a solution or a product. Save the first real task for Trial 1.",
     );
   }
   if (
@@ -635,25 +659,24 @@ export function validateHqlsLesson(
     );
   }
   if (
-    micro.teacherPrompts.length > 1 ||
+    micro.teacherPrompts.length > 3 ||
     micro.learnerActions.length > 1 ||
-    micro.teacherPrompts.some((prompt) => prompt.includes("?")) ||
     includesAny(
-      [micro.experience, ...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+      [micro.experience, ...micro.learnerActions].join(" "),
       [
         /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
-        /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:solve|calculate|design|produce|create|discuss|debate|explain|answer)\b/i,
+        /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:solve|calculate|design|produce|create|debate|write|complete)\b/i,
       ],
     )
   ) {
     fail(
       "micro_illumination",
       "micro_illumination_becomes_task",
-      "Micro-Illumination is only one tiny clue for Trial 1. Give or show the clue without adding another question, discussion, response task or activity.",
+      "Micro-Illumination may give minimal orientation and up to three guiding questions, but it must not become a separate learner task or activity before Trial 1.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked as one tiny clue for Trial 1: no premature teaching and no separate learner task before the first attempt.",
+    "Micro-Illumination is checked as minimal clarity for Trial 1: brief orientation/guiding questions are allowed, while teaching, solution-giving and separate learner tasks remain blocked.",
   );
 
   const trialFirst = lesson.stages[3];
@@ -691,7 +714,7 @@ export function validateHqlsLesson(
     }
   }
   evidence.push(
-    "Stages 1–4 are checked as an Imagination → Crude Thinking → Tiny Clue → First Trial sequence with the formal topic concealed until Full Illumination.",
+    "Stages 1–4 are checked as Curiosity & Meaning → Crude Thinking → Minimal Clarity → First Attempt, with the formal topic concealed until Full Illumination.",
   );
   evidence.push(
     "Trial 1 is checked for collaborative first-attempt structure before normal full teaching begins.",
@@ -705,11 +728,15 @@ export function validateHqlsLesson(
   }
 
   const trialSecond = lesson.stages[5];
-  if (trialSecond.learnerActions.length === 0 || trialSecond.evidenceToNotice.length === 0) {
+  if (
+    trialSecond.learnerActions.length === 0 ||
+    trialSecond.evidenceToNotice.length === 0 ||
+    trialSecond.respondsToFirstAttempt.trim().length < 20
+  ) {
     fail(
       "trial_second",
       "trial_second_has_no_genuine_reattempt",
-      "Trial 2 must require learner re-application and make improvement observable.",
+      "Trial 2 must return to the first attempt, require learner re-application and make the improvement observable.",
     );
   }
   evidence.push(
@@ -717,6 +744,13 @@ export function validateHqlsLesson(
   );
 
   const integration = lesson.stages[6];
+  if (integration.experience.trim().length < 20) {
+    fail(
+      "integration",
+      "integration_identity_connection_missing",
+      "Integration must include a short identity connection showing what learners are becoming able to understand, do or contribute because of the lesson.",
+    );
+  }
   if (integration.reflectionPrompt.length < 20) {
     fail(
       "integration",
