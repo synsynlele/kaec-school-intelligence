@@ -647,37 +647,34 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !includesAny(microText, [
-      /\bclue\b/i,
-      /\bhint\b/i,
-      /\bfact\b/i,
-      /\bevidence\b/i,
-      /\bconstraint\b/i,
-      /\bcounterexample\b/i,
-      /\bobservation\b/i,
-      /\bdata\b/i,
-      /\bnotice\b/i,
-    ]) ||
-    !includesAny(microText, [
-      /predict\w*/i,
-      /reconsider\w*/i,
-      /revis\w*/i,
-      /stronger|weaker/i,
-      /more plausible|less plausible/i,
-      /eliminate\w*/i,
-      /which idea/i,
-      /which explanation/i,
-      /choose\w*/i,
+    includesAny(microText, [
+      /is defined as/i,
+      /the formula is/i,
+      /the rule is/i,
+      /this (?:idea|concept) is called/i,
+      /the correct answer is/i,
+      /therefore the answer is/i,
     ])
   ) {
     fail(
       "micro_illumination",
-      "micro_illumination_not_clue",
-      "Micro-Illumination must add one small clue that makes learners reconsider earlier ideas without giving the answer or becoming a mini-lecture.",
+      "micro_illumination_becomes_full_solution",
+      "Micro-Illumination may add a small clue or orientation, but it must not define the concept, state the rule/formula or give the solution.",
+    );
+  }
+  if (
+    !reasoningCuePresent(
+      [...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+    )
+  ) {
+    fail(
+      "micro_illumination",
+      "micro_illumination_lacks_reconsideration",
+      "Micro-Illumination must make learners reconsider, revise, predict, eliminate or otherwise update an earlier idea after receiving the new clue.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked as a clue that changes learner thinking without revealing the lesson.",
+    "Micro-Illumination is checked for a visible learner reconsideration move and absence of premature definition, rule, formula or solution.",
   );
 
   const trialFirst = lesson.stages[3];
@@ -700,33 +697,43 @@ export function validateHqlsLesson(
       "Trial 1 must state the productive struggle expected from learners.",
     );
   }
-  if (
-    !includesAny(firstAttemptText, [
-      /decid\w*/i,
-      /infer\w*/i,
-      /predict\w*/i,
-      /explain\w*/i,
-      /design\w*/i,
-      /solve\w*/i,
-      /choose\w*/i,
-      /rank\w*/i,
-      /interpret\w*/i,
-      /conclusion/i,
-    ]) ||
-    !includesAny(firstAttemptText, [
-      /justify\w*/i,
-      /defend\w*/i,
-      /reason\w*/i,
-      /evidence/i,
-      /clue/i,
-      /because/i,
-      /support\w*/i,
-    ])
-  ) {
+  const trialHasReasoningMove = includesAny(firstAttemptText, [
+    /decid\w*/i,
+    /infer\w*/i,
+    /predict\w*/i,
+    /explain\w*/i,
+    /design\w*/i,
+    /solve\w*/i,
+    /choose\w*/i,
+    /rank\w*/i,
+    /interpret\w*/i,
+    /conclud\w*/i,
+    /determin\w*/i,
+    /figure out/i,
+    /work out/i,
+    /recommend\w*/i,
+    /argue\w*/i,
+    /make (?:a|your|their) case/i,
+  ]);
+  const trialHasJustification = includesAny(firstAttemptText, [
+    /justify\w*/i,
+    /defend\w*/i,
+    /reason\w*/i,
+    /evidence/i,
+    /clue/i,
+    /because/i,
+    /support\w*/i,
+    /show how/i,
+    /explain why/i,
+    /based on/i,
+    /what led/i,
+    /grounds? for/i,
+  ]);
+  if (!trialHasReasoningMove || !trialHasJustification) {
     fail(
       "trial_first",
       "trial_first_lacks_reasoning",
-      "Trial 1 must demand a non-routine team decision, inference, prediction, design or explanation and require learners to justify the shared response with reasons, clues or evidence.",
+      "Trial 1 must demand a non-routine team decision, inference, prediction, design, solution or explanation and require learners to support the shared response with reasoning or evidence.",
     );
   }
 
