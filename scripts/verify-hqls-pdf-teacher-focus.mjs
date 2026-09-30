@@ -15,18 +15,21 @@ for (const required of [
   "teachingNote",
   "teacherFollowUpPanel",
   "SUPPORT CUES  |  Teacher reference",
-  "Curiosity hook - teacher says / shows",
+  "Teacher says / shows",
+  "Central question",
   "Teacher asks",
-  "Only the clarity needed to continue",
-  "Team first attempt - shared task",
-  "Second attempt - improve the first work",
-  "What learners do differently",
+  "Guiding questions for the first trial",
+  "Task",
+  "Students must",
+  "Task - return to the first attempt",
+  "Teacher feedback without taking ownership",
   "Expected struggle",
-  "What the teacher must not do",
+  "Teacher must NOT do",
   "What the teacher should look for",
-  "Reflection questions",
-  "Real-life assignment / transfer task",
-  "Full Illumination - complete teaching note",
+  "Reflection prompts",
+  "REAL LIFE ASSIGNMENT",
+  "Teacher explains clearly and in detail",
+  "stageHeading",
   "this.teachingNote(stage.teachingContent)",
 ]) {
   assert(
@@ -52,7 +55,7 @@ assert(
   pdf.includes("this.teachingNote(stage.teachingContent)") &&
     pdf.includes("this.teacherFollowUpPanel([") &&
     pdf.includes('label: "Expected struggle"') &&
-    pdf.includes('label: "What the teacher must not do"') &&
+    pdf.includes('label: "Teacher must NOT do"') &&
     pdf.includes('label: "What the teacher should look for"'),
   "Full teaching content and the first-attempt teacher guardrails must remain visible in the classroom map.",
 );
