@@ -59,7 +59,7 @@ export function RecordListPagination({
         >
           Previous
         </button>
-        <span className="min-w-[88px] text-center text-xs font-medium text-zinc-500">
+        <span className="text-center text-xs font-medium text-zinc-500">
           Page {totalItems === 0 ? 0 : safePage} of {totalItems === 0 ? 0 : totalPages}
         </span>
         <button
