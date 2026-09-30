@@ -132,19 +132,12 @@ export function SavedWorkClient() {
     });
   }, [data, searchQuery, sortOrder, typeFilter, view]);
 
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const pagedItems = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (currentPage - 1) * pageSize;
     return items.slice(start, start + pageSize);
-  }, [items, page, pageSize]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [pageSize, searchQuery, sortOrder, typeFilter, view]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-    setPage((current) => Math.min(current, totalPages));
-  }, [items.length, pageSize]);
+  }, [currentPage, items, pageSize]);
 
   async function manage(item: SavedWorkItem, action: SavedWorkAction) {
     if (!item.canManage) return;
@@ -245,7 +238,10 @@ export function SavedWorkClient() {
         <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
           <button
             type="button"
-            onClick={() => setView("active")}
+            onClick={() => {
+              setView("active");
+              setPage(1);
+            }}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               view === "active"
                 ? "bg-emerald-950 text-white"
@@ -256,7 +252,10 @@ export function SavedWorkClient() {
           </button>
           <button
             type="button"
-            onClick={() => setView("archived")}
+            onClick={() => {
+              setView("archived");
+              setPage(1);
+            }}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               view === "archived"
                 ? "bg-emerald-950 text-white"
@@ -272,7 +271,10 @@ export function SavedWorkClient() {
             <button
               key={filter}
               type="button"
-              onClick={() => setTypeFilter(filter)}
+              onClick={() => {
+                setTypeFilter(filter);
+                setPage(1);
+              }}
               className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                 typeFilter === filter
                   ? "border-emerald-800 bg-emerald-50 text-emerald-950"
@@ -292,12 +294,16 @@ export function SavedWorkClient() {
       <div className="mt-4">
         <RecordListToolbar
           searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={(value) => {
+            setSearchQuery(value);
+            setPage(1);
+          }}
           searchPlaceholder="Search title, subject, class or status…"
           sortValue={sortOrder}
-          onSortChange={(value) =>
-            setSortOrder(value as "newest" | "oldest" | "title")
-          }
+          onSortChange={(value) => {
+            setSortOrder(value as "newest" | "oldest" | "title");
+            setPage(1);
+          }}
           sortOptions={[
             { value: "newest", label: "Newest" },
             { value: "oldest", label: "Oldest" },
@@ -426,11 +432,14 @@ export function SavedWorkClient() {
       {items.length ? (
         <div className="mt-4">
           <RecordListPagination
-            page={page}
+            page={currentPage}
             pageSize={pageSize}
             totalItems={items.length}
             onPageChange={setPage}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
           />
         </div>
       ) : null}
