@@ -23,33 +23,33 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 1,
     key: "awakening",
     title: "Awakening",
-    purpose: "Create a mystery that makes learners curious before they know the lesson topic.",
+    purpose: "Awaken learners' imagination with a vivid scenario that makes them picture, wonder and think before they know the lesson topic.",
     nonNegotiable:
-      "Begin with a surprising problem, contradiction, dilemma or missing piece. Use at most one curiosity question. Do not reveal the topic, define it or start teaching it.",
+      "Present one short imagined scenario or situation and at most one thinking question. Do not test prior knowledge, assign a task, ask for a solution, reveal the topic or start teaching it.",
   },
   {
     index: 2,
     key: "exploration",
     title: "Exploration",
-    purpose: "Surface learners' crude hypotheses and the reasons behind them while the mystery remains open.",
+    purpose: "Check learners' crude knowledge through critical thinking about the imagined situation.",
     nonNegotiable:
-      "Wrong and incomplete thinking may surface. Learners briefly say what they think and why; correction, formal naming and task-setting are deliberately withheld.",
+      "Ask one or two short oral questions that reveal what learners currently think and why. Wrong and incomplete ideas may surface. Do not correct, teach, assign group work or require a product.",
   },
   {
     index: 3,
     key: "micro_illumination",
     title: "Micro-Illumination",
-    purpose: "Add one clue that forces learners to reconsider their earlier ideas without solving the mystery.",
+    purpose: "Give one tiny clue learners need for Trial — First Attempt.",
     nonNegotiable:
-      "Give one small fact, hint, constraint, counterexample or observation. Learners revise, predict or eliminate an idea. Do not reveal the topic, define it or give a worked solution.",
+      "Say or show one small clue that directly prepares learners for Trial 1, then move on. Do not ask another question, create another task, explain the concept, reveal the topic or give the solution.",
   },
   {
     index: 4,
     key: "trial_first",
     title: "Trial — First Attempt",
-    purpose: "Make learners use the clues together in a demanding first attempt before the mystery is explained.",
+    purpose: "Let learners use the Micro-Illumination clue together in a demanding first attempt before full teaching.",
     nonNegotiable:
-      "Pairs or small teams combine every learner's contribution into one justified shared decision, inference, prediction, design or explanation. The teacher does not rescue, correct, reveal the topic or remove meaningful cognitive effort.",
+      "Pairs or small teams use the Stage 3 clue, combine every learner's contribution and agree one justified shared response. The teacher gives the challenge clearly, observes, and does not rescue, correct, reveal the topic or remove meaningful cognitive effort.",
   },
   {
     index: 5,
@@ -84,7 +84,7 @@ export const HQLS_AUTOMATIC_FAILURES = [
   "exploration_corrects_too_early",
   "exploration_lacks_reasoning",
   "micro_illumination_becomes_full_solution",
-  "micro_illumination_lacks_reconsideration",
+  "micro_illumination_becomes_task",
   "trial_first_is_rescued",
   "trial_first_lacks_reasoning",
   "trial_second_has_no_genuine_reattempt",

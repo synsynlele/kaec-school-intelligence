@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.4";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.12";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.5";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.13";
 
 export type HqlsStageAction =
   | "improve"
@@ -134,16 +134,16 @@ You are operating inside KAEC School Intelligence under the Human Quest Learning
 The exact lesson sequence is immutable:
 1 Awakening → 2 Exploration → 3 Micro-Illumination → 4 Trial — First Attempt → 5 Full Illumination → 6 Trial — Second Attempt → 7 Integration.
 
-STAGES 1–4 — CONTROLLED MYSTERY ARC:
+STAGES 1–4 — IMAGINATION TO FIRST TRIAL:
 - Do not start with definitions, notes, formulas, rules, laws, topic explanation or the formal name of the lesson topic.
-- Do not tell learners what today's topic is before Full Illumination. The teacher knows the topic; the learners should keep wondering what connects the clues until Stage 5.
+- Do not tell learners what today's topic is before Full Illumination. The teacher knows the topic; learners should still be wondering what the lesson is about.
 - Do not give full explanations before learners make a meaningful first attempt.
-- Treat Stages 1–4 as one escalating reasoning journey: Curiosity → Hypothesis → Clue → Team Challenge.
-- Awakening presents one vivid unresolved situation containing a surprise, contradiction, dilemma, missing piece or result that does not fit normal expectation. Use at most one curiosity question. Learners notice and wonder; they are not asked to solve it yet.
-- Exploration stays inside that mystery and elicits learners' crude, incomplete or wrong hypotheses. Ask them to say what they think may be happening and briefly give a reason, clue or experience behind the idea. It remains an oral thinking check: no written/group task, required product or correction.
-- Micro-Illumination gives ONE carefully chosen clue, fact, hint, constraint, counterexample or small piece of evidence. It should make learners reconsider, strengthen, weaken or revise an idea without naming the topic or explaining the answer. It is a clue, not a mini-lecture.
-- Trial 1 is the climax of the mystery before teaching. Give pairs or small teams a genuinely demanding problem, decision, prediction, explanation or design challenge built from the earlier situation and clue. Require every learner to contribute and the team to agree one shared response. The response must include reasoning or evidence, not only an answer. The teacher does not rescue, solve, correct or reveal the topic during the attempt.
-- Before Stage 5, prefer puzzles, cases, surprising demonstrations, conflicting claims, imperfect choices, hidden rules, prediction problems, evidence sorting or real-life dilemmas over routine recall questions.
+- Treat the opening as one simple flow: Awakening the Imagination → Exploring Crude Thinking → Giving a Tiny Clue → First Trial.
+- Awakening is about imagination. Put learners inside one vivid, age-appropriate scenario they can picture in their minds: "Imagine...", "Suppose...", "Picture yourself...", or a short story/situation with tension, surprise, a strange result or an unresolved problem. Ask at most one short question that makes them imagine and think. Do not ask for prior knowledge, a solution or a task yet.
+- Exploration checks learners' crude knowledge through critical thinking. Stay with the same scenario. Ask one or two simple oral questions that reveal what learners currently think and why they think it. Wrong, incomplete and conflicting ideas are welcome. The teacher listens and notices thinking; no correction, notes, group task or product yet.
+- Micro-Illumination is ONLY the tiny clue learners need for Trial 1. The teacher gives or shows one small hint, fact, condition, example, observation or piece of information that makes the upcoming Trial possible. Do not turn Micro-Illumination into another questioning activity, mini-lesson, explanation or separate task. Give the clue and move directly into Trial 1.
+- Trial 1 must clearly USE the clue from Micro-Illumination. Give pairs or small teams a genuinely demanding problem, decision, prediction, explanation or design challenge. Every learner contributes, the team agrees one shared response, and the response includes reasoning or evidence. The teacher does not rescue, solve, correct or reveal the topic during the attempt.
+- Before Stage 5, prefer imagined situations, puzzles, cases, surprising demonstrations, conflicting claims, imperfect choices, hidden rules, prediction problems, evidence sorting or real-life dilemmas over routine recall questions.
 
 STAGE 5 — FULL ILLUMINATION:
 - Full Illumination occurs after Trial 1.
@@ -165,8 +165,9 @@ Return a practical teacher-ready HQLS lesson as structured data.
 PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Write so a teacher can understand the plan immediately without knowing HQLS jargon.
 - Use short, direct sentences and everyday words. Avoid vague academic phrases such as "facilitate discussion", "activate prior knowledge", "promote metacognition" or "engage learners" unless you explain exactly what the teacher should do.
-- Make every instruction concrete. Say what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for. Exploration is an oral prior-thinking check, not an activity or a product to make.
-- teacherPrompts must be exact words or actions the teacher can use in class, not abstract labels.
+- Make every instruction concrete. Say exactly what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for. Exploration is an oral prior-thinking check, not an activity or a product to make.
+- Keep teacher directions extremely simple. Prefer one action per sentence. A teacher should be able to scan the stage and know immediately: "Say this", "Show this", "Ask this", "Listen for this", or "Put learners into teams and give this challenge."
+- teacherPrompts must be short exact words or actions the teacher can use immediately in class, not abstract labels or professional-development language.
 - learnerActions must describe visible learner behaviour using simple verbs such as say, compare, write, draw, solve, explain, choose, build or present.
 - guideGuardrails must be simple "Do not..." instructions.
 - evidenceToNotice must describe clear signs the teacher can actually observe.
@@ -184,10 +185,10 @@ Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere
 Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
 STAGE-SPECIFIC CLARITY:
-- Stage 1 Awakening — Curiosity: create a short mystery learners can enter immediately. Use a familiar event, object, story, result, image, demonstration, claim or dilemma, but add something surprising, contradictory or incomplete. Use at most one compelling question such as "What do you notice that does not fit what you expected?" The question opens the mystery; it must not ask for the lesson answer. Learners react, notice or wonder. Do not ask what they already know, assign an activity, reveal the topic name or give topic content yet.
-- Stage 2 Exploration — Hypothesis: continue the exact same mystery. Invite crude prior ideas orally. Ask at most two open prompts that make learners state what they currently think AND why they think it, for example "What might be happening here?" and "What makes you think that?" Accept conflicting and incomplete ideas. Do not judge, correct, write a solution, assign groups, require a product or turn Exploration into Trial 1.
-- Stage 3 Micro-Illumination — Clue: reveal one small clue only: a fact, observation, counterexample, constraint, hint, short data point or tiny demonstration. The clue should force learners to reconsider at least one earlier idea. Ask for one brief reasoning move such as predict, eliminate, strengthen/weaken, revise or choose which hypothesis now seems more plausible. Do not define the concept, state a rule/formula, reveal the formal topic name or provide the solution.
-- Stage 4 Trial — First Attempt — Team Challenge: turn the unresolved mystery into a precise collaborative challenge in pairs or small teams. It must demand reasoning, not recall. Require learners to interpret clues/evidence, make a decision/inference/prediction/design/explanation, and justify the team's shared response. Every learner contributes before the team agrees. Make the shared output clear. Do not substitute simultaneous individual work for teamwork. State the likely struggle and what the teacher must not do. Guide Guardrails must protect the team's first attempt from teacher rescue, premature correction, topic-revealing hints or solution-giving.
+- Stage 1 Awakening — Awaken the Imagination: begin with a short scenario learners can picture. Prefer language such as "Imagine...", "Suppose...", or "Picture this..." when natural. The scenario should contain a tension, surprise, strange result, choice or unanswered situation connected to the lesson without naming it. The teacher does only two things: present the scenario, then ask at most one short imagination/thinking question. Learners picture it, react and wonder. Do not ask what they already know, ask them to solve it, assign an activity or reveal the topic.
+- Stage 2 Exploration — Check Crude Thinking: continue the same imagined scenario. The teacher asks one or two short oral questions only. Question 1 should reveal what learners currently think about what is happening; Question 2, if needed, should ask why they think so. Learners give rough answers from what they already know, even when incomplete or wrong. The teacher listens and notices their reasoning. Do not correct, teach, write notes, assign groups, demand a list/product or begin Trial 1.
+- Stage 3 Micro-Illumination — Tiny Clue for Trial 1: give ONE tiny clue that directly helps learners attempt Stage 4. It may be a short fact, hint, condition, example, observation, rule-of-thumb fragment or one piece of information. The teacher should simply say or show the clue. Learners only receive/notice it. Do not ask a new discussion question, require a response, define the topic, teach the concept, give a worked solution or create another activity. Move straight into Trial 1.
+- Stage 4 Trial — First Attempt — Use the Clue: give a precise collaborative challenge in pairs or small teams that clearly depends on the clue from Stage 3. It must demand reasoning, not recall. Every learner contributes one idea or part of the reasoning; the team then agrees one shared answer, decision, prediction, explanation, design or solution and supports it with reasons/evidence. Keep teacher directions simple: form teams, give the challenge, remind everyone to contribute, then observe without rescuing or correcting.
 - Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
 - Stage 7 Integration: include 3–5 simple reflection questions in reflectionPrompt and a practical real-life follow-up task in transferTask.
 
@@ -262,9 +263,15 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
-Stages 1–4 must feel like one controlled mystery. Stage 1 creates a surprising unresolved situation. Stage 2 collects learners' uncorrected hypotheses and brief reasons. Stage 3 adds one clue that changes the thinking without giving the answer. Stage 4 turns the same mystery into a demanding collaborative first attempt that requires a justified shared response. Do not reveal or explicitly name the lesson topic to learners anywhere before Stage 5. Stage 5 is where the mystery is formally named, explained and taught. Stage 6 returns to the first attempt and improves it after teaching.
+Stages 1–4 must be one simple connected flow:
+1. Awakening: awaken learners' imagination with one vivid scenario they can picture and one short thinking question.
+2. Exploration: use that same scenario to check learners' crude knowledge and critical thinking with one or two short oral questions. Listen to what they think and why. Do not correct yet.
+3. Micro-Illumination: give ONE tiny clue learners will need for Trial 1. Do not turn the clue into another activity or discussion. Give/show it and move on.
+4. Trial — First Attempt: make learners USE that clue in a challenging collaborative first attempt. Every learner contributes; the team agrees and justifies one shared response.
 
-IMPORTANT: Write every stage in simple plain English that a teacher can use immediately. Avoid vague directions. Say exactly what happens, what the teacher says or does, what learners do, what struggle is expected, and what the teacher should notice.
+Do not reveal or explicitly name the lesson topic to learners anywhere before Stage 5. Stage 5 is where the mystery is formally named, explained and taught. Stage 6 returns to the first attempt and improves it after teaching.
+
+IMPORTANT: Write every stage in very simple plain English that a teacher can use immediately. Teacher directions should be short and operational: "Say...", "Show...", "Ask...", "Listen...", "Put learners in teams...", "Give them...". Avoid abstract teaching language. Say exactly what happens, what learners do, what struggle is expected, and what the teacher should notice.
 
 Stage 5 Full Illumination is NORMAL LESSON MODE. Write the complete teaching content inside teachingContent. Make it focused, objective-led and substantial enough to give the lesson serious meaning: clearly explain the central concept, include the key terms/rule/process or core facts, one useful example when needed, the main misconception to correct, a brief practical connection where useful, and a short takeaway. Use short paragraphs and simple labels with colons when they improve clarity. Develop the explanation enough that the teacher can teach confidently from it, but do not turn it into a long textbook chapter. Do not write placeholders such as “teacher explains”, and do not pad the lesson with repeated detail.
 
@@ -294,7 +301,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson in simple plain English. Never move Full Illumination before Trial 1. Preserve the controlled mystery arc across Stages 1–4: Curiosity → Hypothesis → Clue → Team Challenge. Do not explicitly reveal the lesson topic to learners before Stage 5. Make the pre-illumination reasoning increasingly demanding without turning Exploration into a written/group task or Micro-Illumination into a mini-lecture. Keep every instruction concrete and classroom-ready. Stage 5 remains normal teaching and should formally name/explain the concept and be focused but substantial: enough connected explanation to teach the objective seriously, without unnecessary textbook-length expansion. Stage 7 must keep clear reflection questions and a distinct real-life transfer task.
+Return the full corrected seven-stage lesson in very simple plain English. Never move Full Illumination before Trial 1. Preserve this exact opening flow: Awakening = imagination scenario; Exploration = crude thinking and why; Micro-Illumination = one tiny clue ONLY for Trial 1; Trial 1 = learners use that clue in a collaborative justified first attempt. Do not explicitly reveal the lesson topic to learners before Stage 5. Do not turn Exploration into a task. Do not turn Micro-Illumination into a question-and-answer activity, mini-lesson or second Exploration. Keep teacher directions short and operational. Stage 5 remains normal teaching and should formally name/explain the concept and be focused but substantial: enough connected explanation to teach the objective seriously, without unnecessary textbook-length expansion. Stage 7 must keep clear reflection questions and a distinct real-life transfer task.
 `;
 }
 
@@ -326,7 +333,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. For Stages 1–4 preserve the controlled mystery and do not explicitly name/reveal the lesson topic to learners. If the target is Stage 1, create one vivid surprising or contradictory unresolved situation with at most one curiosity question; learners notice or wonder rather than explain or solve. If the target is Stage 2, continue that same situation and ask at most two brief oral prompts that draw out learners' crude hypotheses plus a reason or clue behind them; do not set a task, list, comparison, assigned group work or written output. If the target is Stage 3, add one clue/fact/constraint/counterexample that makes learners reconsider earlier ideas and make one brief reasoning move; do not define, explain or reveal the topic. If the target is Stage 4, pairs or small teams must interpret the earlier clues, make a non-routine decision/inference/prediction/design/explanation and justify one shared first attempt with a contribution from every learner; do not assign independent individual work. If the target is Stage 5, teachingContent must formally illuminate the mystery with a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in very simple plain English with short teacher actions. For Stages 1–4 do not explicitly name/reveal the lesson topic. If the target is Stage 1, awaken imagination with one vivid scenario learners can picture and at most one short thinking question; do not ask for prior knowledge, a solution or a task. If the target is Stage 2, continue the same scenario and ask at most two short oral questions that reveal learners' crude thinking and why they think it; do not correct, teach, assign groups or require a product. If the target is Stage 3, give ONE tiny clue that directly prepares learners for Stage 4; the teacher simply says/shows it and learners receive it. Do not add a discussion question, response task, explanation, definition or mini-lesson. If the target is Stage 4, give pairs or small teams a challenge that clearly uses the Stage 3 clue; every learner contributes and the team agrees one justified shared response. If the target is Stage 5, teachingContent must formally illuminate the mystery with a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
 `;
 }
 
@@ -664,18 +671,25 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !reasoningCuePresent(
-      [...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+    micro.teacherPrompts.length > 1 ||
+    micro.learnerActions.length > 1 ||
+    micro.teacherPrompts.some((prompt) => prompt.includes("?")) ||
+    includesAny(
+      [micro.experience, ...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+      [
+        /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
+        /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:solve|calculate|design|produce|create|discuss|debate|explain|answer)\b/i,
+      ],
     )
   ) {
     fail(
       "micro_illumination",
-      "micro_illumination_lacks_reconsideration",
-      "Micro-Illumination must make learners reconsider, revise, predict, eliminate or otherwise update an earlier idea after receiving the new clue.",
+      "micro_illumination_becomes_task",
+      "Micro-Illumination is only one tiny clue for Trial 1. Give or show the clue without adding another question, discussion, response task or activity.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked for a visible learner reconsideration move and absence of premature definition, rule, formula or solution.",
+    "Micro-Illumination is checked as one tiny clue for Trial 1: no premature teaching and no separate learner task before the first attempt.",
   );
 
   const trialFirst = lesson.stages[3];

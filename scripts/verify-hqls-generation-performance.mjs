@@ -44,22 +44,22 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.12') &&
+  engine.includes('HQLS_PROMPT_v1.13') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
-    engine.includes("teacherPrompts must be exact words or actions") &&
+    engine.includes("teacherPrompts must be short exact words or actions") &&
     engine.includes("roughly 350–550 words") &&
     engine.includes("use up to about 700") &&
     engine.includes("serious teaching core, not a chapter") &&
     engine.includes("without needing a separate lesson note") &&
-    engine.includes("CONTROLLED MYSTERY ARC") &&
-    engine.includes("Curiosity → Hypothesis → Clue → Team Challenge") &&
+    engine.includes("IMAGINATION TO FIRST TRIAL") &&
+    engine.includes("Awakening the Imagination → Exploring Crude Thinking → Giving a Tiny Clue → First Trial") &&
     engine.includes("pre_illumination_topic_revealed") &&
     engine.includes("reasoningCuePresent") &&
     engine.includes("exploration_lacks_reasoning") &&
-    engine.includes("micro_illumination_lacks_reconsideration") &&
+    engine.includes("micro_illumination_becomes_task") &&
     engine.includes("trial_first_lacks_reasoning") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
-  "HQLS prompting must keep every stage plain-English, preserve the Curiosity → Hypothesis → Clue → Team Challenge mystery arc before Full Illumination, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
+  "HQLS prompting must keep teacher actions plain-English, preserve the Imagination → Crude Thinking → Tiny Clue → First Trial flow, keep Micro-Illumination clue-only, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
 );
 for (const requirement of [
   'OpenAIReasoningEffort = "none"',
