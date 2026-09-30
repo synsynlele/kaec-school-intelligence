@@ -739,20 +739,11 @@ export function validateHqlsLesson(
 
   const preIlluminationStages = lesson.stages.slice(0, 4);
   for (const stage of preIlluminationStages) {
-    const learnerText = studentFacingStageText(stage);
-    if (
-      includesAny(learnerText, [
-        /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
-        /we (?:are|will be) (?:learning|studying|looking at)/i,
-        /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
-        /the (?:idea|concept|topic) is called/i,
-      ]) ||
-      topicIsExplicitlyRevealed(learnerText, topic)
-    ) {
+    if (topicIsExplicitlyRevealed(stage, topic)) {
       fail(
         stage.stageKey,
         "pre_illumination_topic_revealed",
-        "Stages 1–4 must preserve suspense. Do not explicitly name or reveal the lesson topic to learners before Full Illumination.",
+        "Stages 1–4 must preserve suspense. Do not explicitly announce, name or teach the lesson topic to learners before Full Illumination.",
       );
     }
   }
