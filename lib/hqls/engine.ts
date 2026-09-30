@@ -417,8 +417,27 @@ function includesAny(text: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\function includesAny(text: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+export function validateHqlsLesson(");
+}
+
+function studentFacingStageText(stage: HqlsStageContent) {
+  return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions].join(" ");
+}
+
+function topicIsExplicitlyRevealed(text: string, topic?: string) {
+  const cleanTopic = topic?.trim();
+  if (!cleanTopic || cleanTopic.length < 3) return false;
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(cleanTopic)}([^a-z0-9]|$)`, "i").test(text);
+}
+
 export function validateHqlsLesson(
   lesson: GeneratedHqlsLesson,
+  topic?: string,
 ): HqlsValidationResult {
   const violations: HqlsViolation[] = [];
   const evidence: string[] = [];
@@ -518,8 +537,30 @@ export function validateHqlsLesson(
       "Awakening appears to begin with explanation, definition, rule or notes instead of curiosity/tension.",
     );
   }
+  if (
+    !includesAny(awakeningText, [
+      /surpris\w*/i,
+      /unexpected/i,
+      /puzzl\w*/i,
+      /myster\w*/i,
+      /contradict\w*/i,
+      /does(?:n't| not) fit/i,
+      /strange/i,
+      /odd/i,
+      /curious/i,
+      /wonder/i,
+      /dilemma/i,
+      /missing/i,
+    ])
+  ) {
+    fail(
+      "awakening",
+      "awakening_lacks_mystery",
+      "Awakening must create a genuine unresolved surprise, contradiction, dilemma or missing piece that makes learners wonder before they know the topic.",
+    );
+  }
   evidence.push(
-    "Awakening is checked for problem-first entry and absence of premature full teaching.",
+    "Awakening is checked for problem-first entry, genuine mystery and absence of premature full teaching.",
   );
 
   const exploration = lesson.stages[1];
@@ -555,8 +596,29 @@ export function validateHqlsLesson(
       "Exploration must permit crude or wrong thinking without premature correction.",
     );
   }
+  if (
+    !includesAny(explorationText, [
+      /what makes you think/i,
+      /why do you think/i,
+      /what might/i,
+      /what could/i,
+      /which (?:idea|explanation|possibility)/i,
+      /because/i,
+      /reason/i,
+      /clue/i,
+      /evidence/i,
+      /experience/i,
+    ])
+  ) {
+    fail(
+      "exploration",
+      "exploration_lacks_reasoning",
+      "Exploration must elicit learners' crude hypotheses and at least a brief reason, clue or experience behind their thinking.",
+    );
+  }
 
   const micro = lesson.stages[2];
+  const microText = studentFacingStageText(micro);
   if (micro.guideGuardrails.length === 0) {
     fail(
       "micro_illumination",
@@ -564,8 +626,38 @@ export function validateHqlsLesson(
       "Micro-Illumination needs an explicit Guide Guardrail that protects learner struggle.",
     );
   }
+  if (
+    !includesAny(microText, [
+      /\bclue\b/i,
+      /\bhint\b/i,
+      /\bfact\b/i,
+      /\bevidence\b/i,
+      /\bconstraint\b/i,
+      /\bcounterexample\b/i,
+      /\bobservation\b/i,
+      /\bdata\b/i,
+      /\bnotice\b/i,
+    ]) ||
+    !includesAny(microText, [
+      /predict\w*/i,
+      /reconsider\w*/i,
+      /revis\w*/i,
+      /stronger|weaker/i,
+      /more plausible|less plausible/i,
+      /eliminate\w*/i,
+      /which idea/i,
+      /which explanation/i,
+      /choose\w*/i,
+    ])
+  ) {
+    fail(
+      "micro_illumination",
+      "micro_illumination_not_clue",
+      "Micro-Illumination must add one small clue that makes learners reconsider earlier ideas without giving the answer or becoming a mini-lecture.",
+    );
+  }
   evidence.push(
-    "Micro-Illumination is checked for minimal guidance before the full teaching stage.",
+    "Micro-Illumination is checked as a clue that changes learner thinking without revealing the lesson.",
   );
 
   const trialFirst = lesson.stages[3];
@@ -588,8 +680,60 @@ export function validateHqlsLesson(
       "Trial 1 must state the productive struggle expected from learners.",
     );
   }
+  if (
+    !includesAny(firstAttemptText, [
+      /decid\w*/i,
+      /infer\w*/i,
+      /predict\w*/i,
+      /explain\w*/i,
+      /design\w*/i,
+      /solve\w*/i,
+      /choose\w*/i,
+      /rank\w*/i,
+      /interpret\w*/i,
+      /conclusion/i,
+    ]) ||
+    !includesAny(firstAttemptText, [
+      /justify\w*/i,
+      /defend\w*/i,
+      /reason\w*/i,
+      /evidence/i,
+      /clue/i,
+      /because/i,
+      /support\w*/i,
+    ])
+  ) {
+    fail(
+      "trial_first",
+      "trial_first_lacks_reasoning",
+      "Trial 1 must demand a non-routine team decision, inference, prediction, design or explanation and require learners to justify the shared response with reasons, clues or evidence.",
+    );
+  }
+
+  const preIlluminationStages = lesson.stages.slice(0, 4);
+  for (const stage of preIlluminationStages) {
+    const learnerText = studentFacingStageText(stage);
+    if (
+      includesAny(learnerText, [
+        /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
+        /we (?:are|will be) (?:learning|studying|looking at)/i,
+        /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
+        /the (?:idea|concept|topic) is called/i,
+      ]) ||
+      topicIsExplicitlyRevealed(learnerText, topic)
+    ) {
+      fail(
+        stage.stageKey,
+        "pre_illumination_topic_revealed",
+        "Stages 1–4 must preserve suspense. Do not explicitly name or reveal the lesson topic to learners before Full Illumination.",
+      );
+    }
+  }
   evidence.push(
-    "Trial 1 is checked for real cognitive effort before normal full teaching begins.",
+    "Stages 1–4 are checked as a Curiosity → Hypothesis → Clue → Team Challenge arc with the formal topic concealed until Full Illumination.",
+  );
+  evidence.push(
+    "Trial 1 is checked for collaborative evidence-based reasoning before normal full teaching begins.",
   );
 
   const illumination = lesson.stages[4];
