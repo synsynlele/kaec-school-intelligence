@@ -190,19 +190,15 @@ export function DiagnosisBuilderClient() {
     });
   }, [data?.diagnoses, data?.students, diagnosisSearch, diagnosisSort, diagnosisStatus]);
 
+  const diagnosisTotalPages = Math.max(
+    1,
+    Math.ceil(visibleDiagnoses.length / diagnosisPageSize),
+  );
+  const diagnosisCurrentPage = Math.min(diagnosisPage, diagnosisTotalPages);
   const pagedDiagnoses = useMemo(() => {
-    const start = (diagnosisPage - 1) * diagnosisPageSize;
+    const start = (diagnosisCurrentPage - 1) * diagnosisPageSize;
     return visibleDiagnoses.slice(start, start + diagnosisPageSize);
-  }, [diagnosisPage, diagnosisPageSize, visibleDiagnoses]);
-
-  useEffect(() => {
-    setDiagnosisPage(1);
-  }, [diagnosisPageSize, diagnosisSearch, diagnosisSort, diagnosisStatus]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleDiagnoses.length / diagnosisPageSize));
-    setDiagnosisPage((current) => Math.min(current, totalPages));
-  }, [diagnosisPageSize, visibleDiagnoses.length]);
+  }, [diagnosisCurrentPage, diagnosisPageSize, visibleDiagnoses]);
 
   function onStudentChange(nextId: string) {
     setStudentId(nextId);
@@ -339,12 +335,16 @@ export function DiagnosisBuilderClient() {
             <RecordListToolbar
               compact
               searchValue={diagnosisSearch}
-              onSearchChange={setDiagnosisSearch}
+              onSearchChange={(value) => {
+                setDiagnosisSearch(value);
+                setDiagnosisPage(1);
+              }}
               searchPlaceholder="Search learner, class, session or term…"
               sortValue={diagnosisSort}
-              onSortChange={(value) =>
-                setDiagnosisSort(value as "newest" | "oldest" | "student")
-              }
+              onSortChange={(value) => {
+                setDiagnosisSort(value as "newest" | "oldest" | "student");
+                setDiagnosisPage(1);
+              }}
               sortOptions={[
                 { value: "newest", label: "Newest" },
                 { value: "oldest", label: "Oldest" },
@@ -353,7 +353,10 @@ export function DiagnosisBuilderClient() {
               filters={
                 <select
                   value={diagnosisStatus}
-                  onChange={(event) => setDiagnosisStatus(event.target.value)}
+                  onChange={(event) => {
+                    setDiagnosisStatus(event.target.value);
+                    setDiagnosisPage(1);
+                  }}
                   aria-label="Filter diagnoses by status"
                   className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                 >
@@ -378,11 +381,14 @@ export function DiagnosisBuilderClient() {
             <div className="mt-4">
               <RecordListPagination
                 compact
-                page={diagnosisPage}
+                page={diagnosisCurrentPage}
                 pageSize={diagnosisPageSize}
                 totalItems={visibleDiagnoses.length}
                 onPageChange={setDiagnosisPage}
-                onPageSizeChange={setDiagnosisPageSize}
+                onPageSizeChange={(value) => {
+                  setDiagnosisPageSize(value);
+                  setDiagnosisPage(1);
+                }}
               />
             </div>
           ) : null}
