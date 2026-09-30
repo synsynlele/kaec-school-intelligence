@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   parseGeneratedAssessment,
@@ -376,6 +377,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [assessmentSort, setAssessmentSort] = useState<
     "newest" | "oldest" | "title"
   >("newest");
+  const [assessmentPage, setAssessmentPage] = useState(1);
+  const [assessmentPageSize, setAssessmentPageSize] = useState<RecordPageSize>(20);
 
   const subjectMatch = useMemo(
     () =>
@@ -451,6 +454,20 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     state?.classes,
     state?.subjects,
   ]);
+
+  const pagedAssessments = useMemo(() => {
+    const start = (assessmentPage - 1) * assessmentPageSize;
+    return visibleAssessments.slice(start, start + assessmentPageSize);
+  }, [assessmentPage, assessmentPageSize, visibleAssessments]);
+
+  useEffect(() => {
+    setAssessmentPage(1);
+  }, [assessmentPageSize, assessmentSearch, assessmentSort, assessmentStatus]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleAssessments.length / assessmentPageSize));
+    setAssessmentPage((current) => Math.min(current, totalPages));
+  }, [assessmentPageSize, visibleAssessments.length]);
 
   const refreshAssessments = useCallback(async () => {
     if (!state) return;
@@ -1300,8 +1317,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               />
             </div>
             <div className="mt-4 grid gap-2">
-              {visibleAssessments.length ? (
-                visibleAssessments.map((assessment) => {
+              {pagedAssessments.length ? (
+                pagedAssessments.map((assessment) => {
                   const blueprint = isRecord(assessment.blueprint)
                     ? assessment.blueprint
                     : {};
@@ -1340,6 +1357,18 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 </p>
               )}
             </div>
+            {visibleAssessments.length ? (
+              <div className="mt-4">
+                <RecordListPagination
+                  compact
+                  page={assessmentPage}
+                  pageSize={assessmentPageSize}
+                  totalItems={visibleAssessments.length}
+                  onPageChange={setAssessmentPage}
+                  onPageSizeChange={setAssessmentPageSize}
+                />
+              </div>
+            ) : null}
           </aside>
         </section> : null}
 
