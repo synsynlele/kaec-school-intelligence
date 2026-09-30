@@ -275,7 +275,7 @@ assert(
   "HQLS teacher UI is not connected to the secure server route.",
 );
 assert(
-  hqlsClient.includes("Reflection — how thinking changed") &&
+  hqlsClient.includes("Reflection prompts — how thinking changed") &&
     hqlsClient.includes("payload.validation"),
   "HQLS teacher UI must expose explicit reflection and fidelity failure details.",
 );
