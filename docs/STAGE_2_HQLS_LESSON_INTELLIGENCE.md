@@ -35,11 +35,15 @@ Roles are fixed:
 Non-negotiables:
 - no full teaching before the first meaningful struggle
 - the formal lesson topic remains concealed from learners through Stages 1–4
-- Stages 1–4 operate as one connected flow: Imagination → Crude Thinking → Tiny Clue → First Trial
-- Awakening uses a vivid imagined scenario to make learners picture, wonder and think without testing prior knowledge or assigning a task
-- Exploration checks learners' crude knowledge through one or two oral critical-thinking questions about what they think and why
-- Micro-Illumination gives only one tiny clue needed for Trial 1; it is not another question, activity or mini-lesson
-- Trial — First Attempt must use the Micro-Illumination clue in a collaborative, evidence-based challenge with one justified shared response
+- Stages 1–4 operate as one connected suspense flow: Curiosity & Meaning → Crude Thinking → Minimal Clarity → First Attempt
+- Awakening uses a vivid scenario, story, headline, image, object, quotation or real-life dilemma plus at most one central provocative question
+- Exploration may use 3–5 short oral critical-thinking questions to surface crude meanings, reasons, assumptions and life connections; no correction or formal product yet
+- Micro-Illumination provides minimal orientation and may add up to three guiding questions for Trial 1; it must not become teaching or a separate learner activity
+- Trial — First Attempt is the first real collaborative task, with 2–4 clear outputs, explicit expected struggle and clear teacher "must not" guardrails
+- related clues may appear before Stage 5, but the formal topic name remains concealed through Stage 4
+- Full Illumination is the reveal and contains a proper teacher-ready lesson note, including correct explanation, key ideas/vocabulary or process, application, summary and common mistakes corrected
+- Trial — Second Attempt returns to the same first-attempt material or a close equivalent so improvement is visible
+- Integration includes changed-thinking reflection, an identity connection and a concrete real-life assignment/application
 - no struggle without guardrails
 - no second attempt without illumination
 - no learning without reflection
@@ -97,11 +101,13 @@ Deterministic validation runs after generation and after repair.
 The generator contract governs qualitative lesson design such as imagination, suspense, scenario quality and whether the tiny clue genuinely prepares the coming trial. The deterministic validator is deliberately limited to rules that can be checked reliably from structured output instead of rejecting good pedagogy because a particular keyword was absent.
 
 It verifies the constitutional sequence and enforceable laws, including:
-- Awakening does not dump teaching, assign the first task or exceed the one-question boundary
-- Exploration remains an oral crude-thinking check and withholds correction, group work and products; the quality of its critical-thinking questions is governed by the generation contract rather than keyword matching
-- Micro-Illumination cannot become a second activity: it is limited to one tiny clue, with no extra question/task and no definition, rule/formula or answer; learner-action/guardrail/evidence fields may be empty when the clue is simply handed into Trial 1
-- explicit topic announcement/naming to learners is blocked throughout Stages 1–4
-- Trial 1 structurally requires pairs/small-team collaboration, contribution from learners, one shared response and productive struggle; the intellectual quality of the challenge and justification is governed by the generation contract rather than keyword matching
+- Awakening does not dump teaching, assign the first task or exceed the one-central-question boundary
+- Exploration remains oral crude thinking, permits several short questions and withholds correction, group work and formal products
+- Micro-Illumination may contain minimal orientation and up to three guiding questions, but cannot become full teaching, solution-giving or a separate learner task
+- the formal topic name is blocked throughout Stages 1–4, including a core topic phrase derived from generic labels such as "Vocabulary Development: Words associated with..."
+- Trial 1 structurally requires pairs/small-team collaboration, contribution from learners, one shared response and productive struggle; the intellectual quality of the challenge remains governed by the generation contract
+- Trial 2 must link back to the first attempt and make improvement observable
+- Integration must contain reflection, identity connection and real-life transfer
 - Full Illumination teaches only after Trial 1
 - Trial 2 requires genuine re-application and observable improvement
 - Integration contains changed-thinking reflection and transfer
