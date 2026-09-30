@@ -51,19 +51,12 @@ export function HqlsExportsClient() {
     });
   }, [searchQuery, sortOrder, state?.lessons, statusFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(visibleLessons.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const pagedLessons = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (currentPage - 1) * pageSize;
     return visibleLessons.slice(start, start + pageSize);
-  }, [page, pageSize, visibleLessons]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [pageSize, searchQuery, sortOrder, statusFilter]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleLessons.length / pageSize));
-    setPage((current) => Math.min(current, totalPages));
-  }, [pageSize, visibleLessons.length]);
+  }, [currentPage, pageSize, visibleLessons]);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,12 +211,18 @@ export function HqlsExportsClient() {
           <div className="mt-7">
             <RecordListToolbar
               searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
+              onSearchChange={(value) => {
+                setSearchQuery(value);
+                setPage(1);
+              }}
               searchPlaceholder="Search lesson title, topic or status…"
               sortValue={sortOrder}
-              onSortChange={(value) => setSortOrder(value as "newest" | "oldest" | "title")}
+              onSortChange={(value) => {
+                setSortOrder(value as "newest" | "oldest" | "title");
+                setPage(1);
+              }}
               sortOptions={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }, { value: "title", label: "A–Z" }]}
-              filters={<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | Lesson["status"])} aria-label="Filter lesson exports by status" className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800"><option value="all">All statuses</option><option value="validated">Validated</option><option value="draft">Draft</option><option value="archived">Archived</option></select>}
+              filters={<select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | Lesson["status"]); setPage(1); }} aria-label="Filter lesson exports by status" className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800"><option value="all">All statuses</option><option value="validated">Validated</option><option value="draft">Draft</option><option value="archived">Archived</option></select>}
               visibleCount={visibleLessons.length}
               totalCount={state.lessons.length}
             />
@@ -274,11 +273,14 @@ export function HqlsExportsClient() {
         {!loading && visibleLessons.length ? (
           <div className="mt-4">
             <RecordListPagination
-              page={page}
+              page={currentPage}
               pageSize={pageSize}
               totalItems={visibleLessons.length}
               onPageChange={setPage}
-              onPageSizeChange={setPageSize}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPage(1);
+              }}
             />
           </div>
         ) : null}
