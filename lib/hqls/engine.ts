@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.2";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.10";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.3";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.11";
 
 export type HqlsStageAction =
   | "improve"
@@ -134,13 +134,16 @@ You are operating inside KAEC School Intelligence under the Human Quest Learning
 The exact lesson sequence is immutable:
 1 Awakening → 2 Exploration → 3 Micro-Illumination → 4 Trial — First Attempt → 5 Full Illumination → 6 Trial — Second Attempt → 7 Integration.
 
-STAGES 1–4:
-- Do not start with definitions, notes, formulas, rules, laws or topic explanation.
+STAGES 1–4 — CONTROLLED MYSTERY ARC:
+- Do not start with definitions, notes, formulas, rules, laws, topic explanation or the formal name of the lesson topic.
+- Do not tell learners what today's topic is before Full Illumination. The teacher knows the topic; the learners should keep wondering what connects the clues until Stage 5.
 - Do not give full explanations before learners make a meaningful first attempt.
-- Awakening presents one vivid unresolved situation and one curiosity question. Learners react or wonder; the teacher does not ask them to explain or solve it yet.
-- Exploration briefly elicits learners' crude, incomplete or wrong prior ideas about the same situation, problem or misconception from Awakening. It does not set a task, require an output or correct them yet.
-- Micro-Illumination gives only minimal orientation, never a worked solution or full lecture.
-- Trial 1 requires real cognitive effort through a small-team first attempt. Every learner contributes to a shared response, decision or product; the teacher does not rescue, solve or correct during the attempt.
+- Treat Stages 1–4 as one escalating reasoning journey: Curiosity → Hypothesis → Clue → Team Challenge.
+- Awakening presents one vivid unresolved situation containing a surprise, contradiction, dilemma, missing piece or result that does not fit normal expectation. Use at most one curiosity question. Learners notice and wonder; they are not asked to solve it yet.
+- Exploration stays inside that mystery and elicits learners' crude, incomplete or wrong hypotheses. Ask them to say what they think may be happening and briefly give a reason, clue or experience behind the idea. It remains an oral thinking check: no written/group task, required product or correction.
+- Micro-Illumination gives ONE carefully chosen clue, fact, hint, constraint, counterexample or small piece of evidence. It should make learners reconsider, strengthen, weaken or revise an idea without naming the topic or explaining the answer. It is a clue, not a mini-lecture.
+- Trial 1 is the climax of the mystery before teaching. Give pairs or small teams a genuinely demanding problem, decision, prediction, explanation or design challenge built from the earlier situation and clue. Require every learner to contribute and the team to agree one shared response. The response must include reasoning or evidence, not only an answer. The teacher does not rescue, solve, correct or reveal the topic during the attempt.
+- Before Stage 5, prefer puzzles, cases, surprising demonstrations, conflicting claims, imperfect choices, hidden rules, prediction problems, evidence sorting or real-life dilemmas over routine recall questions.
 
 STAGE 5 — FULL ILLUMINATION:
 - Full Illumination occurs after Trial 1.
@@ -181,10 +184,10 @@ Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere
 Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
 STAGE-SPECIFIC CLARITY:
-- Stage 1 Awakening: show or tell one short, familiar situation with a surprise, tension, dilemma or gap that makes learners want to know more. Use at most one compelling question that leaves the problem open. Learners may react, notice or wonder; do not ask what they already know, demand an answer, assign an activity or give topic content yet. Stage 2 will invite their crude prior ideas about this same situation.
-- Stage 2 Exploration: stay with the exact situation, problem or misconception from Stage 1. Briefly invite learners to say what they already believe, have seen or think might explain it. Use at most one or two open oral prompts, with no fixed number of answers. Record or notice their crude ideas without judging them. Do not ask them to list items, compare examples, write, draw, solve, make a product, discuss in assigned groups or begin the first attempt. Stage 4 is where the first task begins.
-- Stage 3 Micro-Illumination: give only the small clarification learners need to continue. State the limited clarification plainly and keep it short.
-- Stage 4 Trial — First Attempt: give a precise collaborative task in pairs or small teams. Every learner should contribute an idea or part of the work and the team should negotiate one shared response, decision or product. Make that shared output clear. Do not substitute simultaneous individual work for teamwork. State the likely struggle and what the teacher must not do. Guide Guardrails must protect the team's first attempt from teacher rescue, premature correction or solution-giving.
+- Stage 1 Awakening — Curiosity: create a short mystery learners can enter immediately. Use a familiar event, object, story, result, image, demonstration, claim or dilemma, but add something surprising, contradictory or incomplete. Use at most one compelling question such as "What do you notice that does not fit what you expected?" The question opens the mystery; it must not ask for the lesson answer. Learners react, notice or wonder. Do not ask what they already know, assign an activity, reveal the topic name or give topic content yet.
+- Stage 2 Exploration — Hypothesis: continue the exact same mystery. Invite crude prior ideas orally. Ask at most two open prompts that make learners state what they currently think AND why they think it, for example "What might be happening here?" and "What makes you think that?" Accept conflicting and incomplete ideas. Do not judge, correct, write a solution, assign groups, require a product or turn Exploration into Trial 1.
+- Stage 3 Micro-Illumination — Clue: reveal one small clue only: a fact, observation, counterexample, constraint, hint, short data point or tiny demonstration. The clue should force learners to reconsider at least one earlier idea. Ask for one brief reasoning move such as predict, eliminate, strengthen/weaken, revise or choose which hypothesis now seems more plausible. Do not define the concept, state a rule/formula, reveal the formal topic name or provide the solution.
+- Stage 4 Trial — First Attempt — Team Challenge: turn the unresolved mystery into a precise collaborative challenge in pairs or small teams. It must demand reasoning, not recall. Require learners to interpret clues/evidence, make a decision/inference/prediction/design/explanation, and justify the team's shared response. Every learner contributes before the team agrees. Make the shared output clear. Do not substitute simultaneous individual work for teamwork. State the likely struggle and what the teacher must not do. Guide Guardrails must protect the team's first attempt from teacher rescue, premature correction, topic-revealing hints or solution-giving.
 - Stage 6 Trial — Second Attempt: return to the work from Stage 4. Have learners improve or retry that work using the teaching from Stage 5, so the difference is visible.
 - Stage 7 Integration: include 3–5 simple reflection questions in reflectionPrompt and a practical real-life follow-up task in transferTask.
 
@@ -259,7 +262,7 @@ AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "
 
 Design the seven stages in exact order.
 
-Awakening and Exploration form one continuous opening: Stage 1 presents one vivid unresolved situation and leaves learners curious, without asking them to solve or explain it. Stage 2 checks their uncorrected prior thinking about that exact situation without a task or expected output. Stage 4 is the first task: pairs or small teams combine each learner's contribution into a shared attempt. Stage 6 returns to that work and improves it after Stage 5.
+Stages 1–4 must feel like one controlled mystery. Stage 1 creates a surprising unresolved situation. Stage 2 collects learners' uncorrected hypotheses and brief reasons. Stage 3 adds one clue that changes the thinking without giving the answer. Stage 4 turns the same mystery into a demanding collaborative first attempt that requires a justified shared response. Do not reveal or explicitly name the lesson topic to learners anywhere before Stage 5. Stage 5 is where the mystery is formally named, explained and taught. Stage 6 returns to the first attempt and improves it after teaching.
 
 IMPORTANT: Write every stage in simple plain English that a teacher can use immediately. Avoid vague directions. Say exactly what happens, what the teacher says or does, what learners do, what struggle is expected, and what the teacher should notice.
 
@@ -291,7 +294,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson in simple plain English. Never move Full Illumination before Trial 1. Keep every instruction concrete and classroom-ready. Stage 5 remains normal teaching and should be focused but substantial: enough connected explanation to teach the objective seriously, without unnecessary textbook-length expansion. Stage 7 must keep clear reflection questions and a distinct real-life transfer task.
+Return the full corrected seven-stage lesson in simple plain English. Never move Full Illumination before Trial 1. Preserve the controlled mystery arc across Stages 1–4: Curiosity → Hypothesis → Clue → Team Challenge. Do not explicitly reveal the lesson topic to learners before Stage 5. Make the pre-illumination reasoning increasingly demanding without turning Exploration into a written/group task or Micro-Illumination into a mini-lecture. Keep every instruction concrete and classroom-ready. Stage 5 remains normal teaching and should formally name/explain the concept and be focused but substantial: enough connected explanation to teach the objective seriously, without unnecessary textbook-length expansion. Stage 7 must keep clear reflection questions and a distinct real-life transfer task.
 `;
 }
 
@@ -323,7 +326,7 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. If the target is Stage 1, show one vivid unresolved situation with at most one curiosity question; learners react or wonder rather than explain or solve. If the target is Stage 2, continue that same situation and ask at most two brief oral prompts about learners' existing ideas, experiences or misconceptions; do not set a task, list, comparison, group work or written output. If the target is Stage 4, pairs or small teams must combine each learner's contribution into a shared first attempt; do not assign independent individual work. If the target is Stage 5, teachingContent must be a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in simple plain English with concrete teacher and learner instructions. For Stages 1–4 preserve the controlled mystery and do not explicitly name/reveal the lesson topic to learners. If the target is Stage 1, create one vivid surprising or contradictory unresolved situation with at most one curiosity question; learners notice or wonder rather than explain or solve. If the target is Stage 2, continue that same situation and ask at most two brief oral prompts that draw out learners' crude hypotheses plus a reason or clue behind them; do not set a task, list, comparison, assigned group work or written output. If the target is Stage 3, add one clue/fact/constraint/counterexample that makes learners reconsider earlier ideas and make one brief reasoning move; do not define, explain or reveal the topic. If the target is Stage 4, pairs or small teams must interpret the earlier clues, make a non-routine decision/inference/prediction/design/explanation and justify one shared first attempt with a contribution from every learner; do not assign independent individual work. If the target is Stage 5, teachingContent must formally illuminate the mystery with a focused but substantial normal teaching explanation centred on the lesson objective, with enough connected explanation, one useful example where appropriate, misconception correction and a concise takeaway. Do not add HQLS teaching-style restrictions beyond remaining Stage 5 after Trial 1. Stage 6 must improve or retry the work from Stage 4 after the teaching; Stage 7 must retain clear changed-thinking reflection and a practical transfer task.
 `;
 }
 
