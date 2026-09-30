@@ -437,49 +437,49 @@ class PdfComposer {
         gapAfter: 3,
       });
       if (stage.stageNumber === 1) {
-        this.detailSection("Curiosity hook - teacher says / shows", stage.experience);
-        this.detailSection(stage.teacherPrompts.length > 1 ? "Curiosity questions" : "One question to leave open", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Learners notice / wonder", stage.learnerActions, { bullets: true });
+        this.detailSection("Teacher says / shows", stage.experience);
+        this.detailSection("Central question", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Expected student actions", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Notice", value: stage.evidenceToNotice },
           { label: "Avoid", value: stage.guideGuardrails, labelColor: RED },
           { label: "Likely hesitation", value: stage.productiveStruggle },
         ]);
       } else if (stage.stageNumber === 2) {
-        this.detailSection("What learners already think", stage.experience);
-        this.detailSection("Ask briefly (no task yet)", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Crude ideas to listen for", stage.learnerActions, { bullets: true });
+        this.detailSection("Teacher sets the same situation", stage.experience);
+        this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Expected student actions", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Notice", value: stage.evidenceToNotice },
           { label: "Do not correct yet", value: stage.guideGuardrails, labelColor: RED },
           { label: "Likely uncertainty", value: stage.productiveStruggle },
         ]);
       } else if (stage.stageNumber === 3) {
-        this.detailSection("Only the clarity needed to continue", stage.experience);
-        this.detailSection("Teacher says", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Teacher says / shows - minimal clarity", stage.experience);
+        this.detailSection("Guiding questions for the first trial", stage.teacherPrompts, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Learners then", value: stage.learnerActions },
           { label: "Notice", value: stage.evidenceToNotice },
           { label: "Keep it brief", value: stage.guideGuardrails, labelColor: RED },
         ]);
       } else if (stage.stageNumber === 4) {
-        this.detailSection("Team first attempt - shared task", stage.experience);
-        this.detailSection("How everyone contributes / shared output", stage.learnerActions, { bullets: true });
+        this.detailSection("Task", stage.experience);
+        this.detailSection("Students must", stage.learnerActions, { bullets: true });
         this.teacherFollowUpPanel([
-          { label: "Teacher prompts", value: stage.teacherPrompts },
+          { label: "Teacher gives / reminds", value: stage.teacherPrompts },
           { label: "Expected struggle", value: stage.productiveStruggle, labelColor: RED },
-          { label: "What the teacher must not do", value: stage.guideGuardrails, labelColor: RED },
+          { label: "Teacher must NOT do", value: stage.guideGuardrails, labelColor: RED },
           { label: "What the teacher should look for", value: stage.evidenceToNotice },
         ]);
       } else if (stage.stageNumber === 5 && stage.teachingContent) {
-        this.line("Full Illumination - complete teaching note", {
+        this.line("Teacher explains clearly and in detail", {
           bold: true,
           size: 10.4,
           color: NAVY,
           gapBefore: 3,
           gapAfter: 2,
         });
-        this.line("Teach this after learners have made their first attempt.", {
+        this.line("Lesson note - teach this after learners have made their first attempt.", {
           size: 8.7,
           color: MUTED,
           gapAfter: 4,
@@ -491,9 +491,9 @@ class PdfComposer {
           { label: "Teacher reminder", value: stage.guideGuardrails },
         ]);
       } else if (stage.stageNumber === 6) {
-        this.detailSection("Second attempt - improve the first work", stage.experience);
-        this.detailSection("What learners do differently", stage.learnerActions, { bullets: true });
-        this.detailSection("Teacher feedback / questions", stage.teacherPrompts, { bullets: true });
+        this.detailSection("Task - return to the first attempt", stage.experience);
+        this.detailSection("Students now", stage.learnerActions, { bullets: true });
+        this.detailSection("Teacher feedback without taking ownership", stage.teacherPrompts, { bullets: true });
         this.teacherFollowUpPanel([
           { label: "Improvement to notice", value: stage.evidenceToNotice },
           { label: "Link to first attempt", value: stage.respondsToFirstAttempt },
@@ -501,11 +501,11 @@ class PdfComposer {
           { label: "Likely struggle", value: stage.productiveStruggle },
         ]);
       } else if (stage.stageNumber === 7) {
-        this.detailSection("Bring the learning together", stage.experience);
+        this.detailSection("Identity connection", stage.experience);
         this.detailSection("Teacher asks", stage.teacherPrompts, { bullets: true });
-        this.detailSection("Reflection questions", stage.reflectionPrompt);
+        this.detailSection("Reflection prompts", stage.reflectionPrompt);
         this.detailSection(
-          "Real-life assignment / transfer task",
+          "REAL LIFE ASSIGNMENT",
           stage.transferTask,
         );
         this.teacherFollowUpPanel([
