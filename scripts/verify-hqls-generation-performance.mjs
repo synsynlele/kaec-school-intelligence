@@ -42,15 +42,22 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.10') &&
+  engine.includes('HQLS_PROMPT_v1.11') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("teacherPrompts must be exact words or actions") &&
     engine.includes("roughly 350–550 words") &&
     engine.includes("use up to about 700") &&
     engine.includes("serious teaching core, not a chapter") &&
     engine.includes("without needing a separate lesson note") &&
+    engine.includes("CONTROLLED MYSTERY ARC") &&
+    engine.includes("Curiosity → Hypothesis → Clue → Team Challenge") &&
+    engine.includes("pre_illumination_topic_revealed") &&
+    engine.includes("awakening_lacks_mystery") &&
+    engine.includes("exploration_lacks_reasoning") &&
+    engine.includes("micro_illumination_not_clue") &&
+    engine.includes("trial_first_lacks_reasoning") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
-  "HQLS prompting must keep every stage plain-English while Full Illumination remains focused, substantial and objective-led.",
+  "HQLS prompting must keep every stage plain-English, preserve the Curiosity → Hypothesis → Clue → Team Challenge mystery arc before Full Illumination, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
 );
 for (const requirement of [
   'OpenAIReasoningEffort = "none"',
