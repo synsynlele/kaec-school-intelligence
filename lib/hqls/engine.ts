@@ -418,11 +418,7 @@ function includesAny(text: string, patterns: RegExp[]) {
 }
 
 function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\function includesAny(text: string, patterns: RegExp[]) {
-  return patterns.some((pattern) => pattern.test(text));
-}
-
-export function validateHqlsLesson(");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function studentFacingStageText(stage: HqlsStageContent) {
