@@ -671,18 +671,25 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !reasoningCuePresent(
-      [...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+    micro.teacherPrompts.length > 1 ||
+    micro.learnerActions.length > 1 ||
+    micro.teacherPrompts.some((prompt) => prompt.includes("?")) ||
+    includesAny(
+      [micro.experience, ...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+      [
+        /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
+        /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:solve|calculate|design|produce|create|discuss|debate|explain|answer)\b/i,
+      ],
     )
   ) {
     fail(
       "micro_illumination",
-      "micro_illumination_lacks_reconsideration",
-      "Micro-Illumination must make learners reconsider, revise, predict, eliminate or otherwise update an earlier idea after receiving the new clue.",
+      "micro_illumination_becomes_task",
+      "Micro-Illumination is only one tiny clue for Trial 1. Give or show the clue without adding another question, discussion, response task or activity.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked for a visible learner reconsideration move and absence of premature definition, rule, formula or solution.",
+    "Micro-Illumination is checked as one tiny clue for Trial 1: no premature teaching and no separate learner task before the first attempt.",
   );
 
   const trialFirst = lesson.stages[3];
