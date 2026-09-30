@@ -168,9 +168,9 @@ PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Make every instruction concrete. Say exactly what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for. Exploration is an oral prior-thinking check, not an activity or a product to make.
 - Keep teacher directions extremely simple. Prefer one action per sentence. A teacher should be able to scan the stage and know immediately: "Say this", "Show this", "Ask this", "Listen for this", or "Put learners into teams and give this challenge."
 - teacherPrompts must be short exact words or actions the teacher can use immediately in class, not abstract labels or professional-development language.
-- learnerActions must describe visible learner behaviour using simple verbs such as say, compare, write, draw, solve, explain, choose, build or present.
-- guideGuardrails must be simple "Do not..." instructions.
-- evidenceToNotice must describe clear signs the teacher can actually observe.
+- learnerActions must describe visible learner behaviour using simple verbs such as say, compare, write, draw, solve, explain, choose, build or present. Micro-Illumination is the exception: learnerActions may be empty when learners simply receive the tiny clue before Trial 1.
+- guideGuardrails must be simple "Do not..." instructions. Micro-Illumination may leave guideGuardrails empty when no extra guardrail is needed beyond giving the clue and moving on.
+- evidenceToNotice must describe clear signs the teacher can actually observe. Micro-Illumination may leave evidenceToNotice empty because it is a clue handoff, not an assessment moment.
 - productiveStruggle must explain the likely difficulty in plain English and why the teacher should allow learners to work through it.
 
 For Stages 1, 2, 3, 4, 6 and 7:
