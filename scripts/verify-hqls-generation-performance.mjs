@@ -42,7 +42,8 @@ assert(
 assert(
   !route.includes("maxOutputTokens: 14000"),
   "The HQLS generation path must not regress to the old 14k output ceiling.",
-);\nassert(
+);
+assert(
   !engine.includes("micro.teacherPrompts.length > 3") &&
     !engine.includes("micro.learnerActions.length > 1") &&
     engine.includes("Micro-Illumination is checked by function, not field counts"),
