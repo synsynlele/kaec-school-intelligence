@@ -23,33 +23,33 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 1,
     key: "awakening",
     title: "Awakening",
-    purpose: "Make learners curious and show why the lesson matters.",
+    purpose: "Create a mystery that makes learners curious before they know the lesson topic.",
     nonNegotiable:
-      "Begin with a problem, situation, tension or provocative question. No definitions, notes or full teaching.",
+      "Begin with a surprising problem, contradiction, dilemma or missing piece. Use at most one curiosity question. Do not reveal the topic, define it or start teaching it.",
   },
   {
     index: 2,
     key: "exploration",
     title: "Exploration",
-    purpose: "Let learners share what they already think, including wrong or incomplete ideas.",
+    purpose: "Surface learners' crude hypotheses and the reasons behind them while the mystery remains open.",
     nonNegotiable:
-      "Wrong and incomplete thinking may surface. Correction is deliberately withheld while the teacher observes thinking.",
+      "Wrong and incomplete thinking may surface. Learners briefly say what they think and why; correction, formal naming and task-setting are deliberately withheld.",
   },
   {
     index: 3,
     key: "micro_illumination",
     title: "Micro-Illumination",
-    purpose: "Give only a small amount of clarification so learners can continue.",
+    purpose: "Add one clue that forces learners to reconsider their earlier ideas without solving the mystery.",
     nonNegotiable:
-      "Give only enough clarity to prevent hopelessness. Do not convert this stage into full teaching or a worked solution.",
+      "Give one small fact, hint, constraint, counterexample or observation. Learners revise, predict or eliminate an idea. Do not reveal the topic, define it or give a worked solution.",
   },
   {
     index: 4,
     key: "trial_first",
     title: "Trial — First Attempt",
-    purpose: "Let learners work together on a first attempt before full teaching so their ideas and gaps become clear.",
+    purpose: "Make learners use the clues together in a demanding first attempt before the mystery is explained.",
     nonNegotiable:
-      "Pairs or small teams combine every learner's contribution into a shared first attempt before full explanation. The teacher does not rescue, solve or remove meaningful cognitive effort.",
+      "Pairs or small teams combine every learner's contribution into one justified shared decision, inference, prediction, design or explanation. The teacher does not rescue, correct, reveal the topic or remove meaningful cognitive effort.",
   },
   {
     index: 5,
@@ -79,10 +79,15 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
 
 export const HQLS_AUTOMATIC_FAILURES = [
   "full_teaching_before_first_struggle",
+  "pre_illumination_topic_revealed",
   "awakening_starts_with_content_dump",
+  "awakening_lacks_mystery",
   "exploration_corrects_too_early",
+  "exploration_lacks_reasoning",
   "micro_illumination_becomes_full_solution",
+  "micro_illumination_not_clue",
   "trial_first_is_rescued",
+  "trial_first_lacks_reasoning",
   "trial_second_has_no_genuine_reattempt",
   "integration_missing",
 ] as const;
