@@ -185,6 +185,15 @@ Use teachingContent only for Stage 5.
 Use reflectionPrompt only for Stage 7 Integration; use an empty string elsewhere.
 Use transferTask only for Stage 7 Integration; use an empty string elsewhere.
 
+BENCHMARK TEACHER-PLAN SHAPE:
+- Stage 1: experience = what the teacher says/shows as the vivid scenario; teacherPrompts = the one central provocative question; learnerActions = expected student reactions/ideas.
+- Stage 2: experience = brief continuation of the same situation; teacherPrompts = 3–5 crude-thinking questions; learnerActions = expected guesses, arguments, comparisons, predictions or experience-based ideas.
+- Stage 3: experience = the short minimal-clarity statement/hint; teacherPrompts = up to three guiding questions learners carry into Trial 1; learnerActions should stay minimal because this is not a separate task.
+- Stage 4: experience = the actual collaborative task; learnerActions = the 2–4 clear things students must produce/do; productiveStruggle = the mistakes/confusions expected; guideGuardrails = what the teacher must NOT do before Full Illumination.
+- Stage 5: teachingContent = the complete lesson note the teacher can teach from directly; respondsToFirstAttempt = the misconceptions/gaps from Trial 1 that this teaching resolves.
+- Stage 6: experience = the second-attempt task using the same Stage 4 material or close equivalent; learnerActions = what students now correct/improve/extend; evidenceToNotice = expected improvement; teacherPrompts = feedback questions without taking ownership; respondsToFirstAttempt = the explicit link back to Trial 1.
+- Stage 7: reflectionPrompt = 3–5 reflection questions; experience = the identity connection; transferTask = the concrete real-life assignment/application.
+
 STAGE-SPECIFIC CLARITY:
 - Stage 1 Awakening (Curiosity & Meaning): begin with one vivid situation learners can picture or recognise. Use a short story, headline, image, object, quotation, surprising result or real-life dilemma when useful. Keep the formal topic name hidden. Ask at most one central question that makes learners wonder, agree/disagree, predict or take a position. Do not define, explain or solve the lesson yet.
 - Stage 2 Exploration (Crude Thinking): stay with the opening situation and ask 3–5 short oral questions when the lesson needs them. Surface what learners think is happening, what key clues/words/ideas might mean, why they think so, how the ideas connect and what experience or assumptions they are using. Learners may guess, argue, compare ideas and predict meanings. Wrong answers are allowed. Keep the formal topic name hidden. Do not correct, teach, write notes, assign a formal group task or require a product yet.
