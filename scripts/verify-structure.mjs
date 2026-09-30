@@ -187,8 +187,8 @@ for (const brandedSurface of [
 
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
-  "HQLS_ENGINE_v1.6",
-  "HQLS_PROMPT_v1.14",
+  "HQLS_ENGINE_v1.7",
+  "HQLS_PROMPT_v1.15",
   "validateHqlsLesson",
   "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
@@ -199,9 +199,11 @@ for (const required of [
   "NORMAL LESSON MODE",
   "normal conventional teaching is allowed",
   "without needing a separate lesson note",
-  "IMAGINATION TO FIRST TRIAL",
+  "SUSPENSE BEFORE FULL ILLUMINATION",
   "pre_illumination_topic_revealed",
   "micro_illumination_becomes_task",
+  "topicRevealCandidates",
+  "integration_identity_connection_missing",
   "trial_first_lacks_teamwork",
   "trial_first_has_no_productive_struggle",
 ]) {
