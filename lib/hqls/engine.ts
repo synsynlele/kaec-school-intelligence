@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.7";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.15";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.16";
 
 export type HqlsStageAction =
   | "improve"
@@ -667,25 +667,28 @@ export function validateHqlsLesson(
       "Micro-Illumination may add a small clue or orientation, but it must not define the concept, state the rule/formula or give the solution.",
     );
   }
+  const microActivityText = [
+    micro.experience,
+    ...micro.teacherPrompts,
+    ...micro.learnerActions,
+  ].join(" ");
   if (
-    micro.teacherPrompts.length > 3 ||
-    micro.learnerActions.length > 1 ||
-    includesAny(
-      [micro.experience, ...micro.learnerActions].join(" "),
-      [
-        /\b(?:work|discuss)\s+in\s+(?:pairs|groups)\b/i,
-        /\b(?:students|learners)\s+(?:will\s+|should\s+)?(?:solve|calculate|design|produce|create|debate|write|complete)\b/i,
-      ],
-    )
+    includesAny(microActivityText, [
+      /\b(?:work|discuss|collaborate)\s+in\s+(?:pairs|groups|teams)\b/i,
+      /\bin\s+(?:pairs|groups|teams),?\s+(?:write|solve|calculate|design|produce|create|complete|prepare|present)\b/i,
+      /\b(?:students|learners)\s+(?:will\s+|should\s+|must\s+)?(?:write|solve|calculate|design|produce|create|complete|prepare|present)\b/i,
+      /\b(?:complete|fill in)\s+(?:the\s+)?(?:worksheet|table|chart|task|exercise)\b/i,
+      /\b(?:submit|produce|prepare|present)\s+(?:a|an|the|their)\s+(?:response|answer|report|poster|solution|design|presentation|product)\b/i,
+    ])
   ) {
     fail(
       "micro_illumination",
       "micro_illumination_becomes_task",
-      "Micro-Illumination may give minimal orientation and up to three guiding questions, but it must not become a separate learner task or activity before Trial 1.",
+      "Micro-Illumination may give brief orientation, guiding questions and light learner thinking, but it must not become a formal pair/group, written, problem-solving or product task before Trial 1.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked as minimal clarity for Trial 1: brief orientation/guiding questions are allowed, while teaching, solution-giving and separate learner tasks remain blocked.",
+    "Micro-Illumination is checked by function, not field counts: brief orientation, several guiding prompts and light learner responses are allowed; only premature teaching/solution-giving or a distinct formal task is blocked.",
   );
 
   const trialFirst = lesson.stages[3];

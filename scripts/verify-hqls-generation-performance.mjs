@@ -44,7 +44,15 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.15') &&
+  !engine.includes("micro.teacherPrompts.length > 3") &&
+    !engine.includes("micro.learnerActions.length > 1") &&
+    engine.includes("Micro-Illumination is checked by function, not field counts"),
+  "Micro-Illumination fidelity must not reject valid minimal-clarity stages because of prompt/action counts; only genuine premature task behaviour may fail.",
+);
+
+
+assert(
+  engine.includes('HQLS_PROMPT_v1.16') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&

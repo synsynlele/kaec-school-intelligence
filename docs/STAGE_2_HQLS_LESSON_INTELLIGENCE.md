@@ -103,7 +103,7 @@ The generator contract governs qualitative lesson design such as imagination, su
 It verifies the constitutional sequence and enforceable laws, including:
 - Awakening does not dump teaching, assign the first task or exceed the one-central-question boundary
 - Exploration remains oral crude thinking, permits several short questions and withholds correction, group work and formal products
-- Micro-Illumination may contain minimal orientation and up to three guiding questions, but cannot become full teaching, solution-giving or a separate learner task
+- Micro-Illumination may contain minimal orientation, several guiding prompts and light learner thinking/responses; it cannot become full teaching, solution-giving or a separate formal learner task. Fidelity is checked by function, not by counting learner-action lines
 - the formal topic name is blocked throughout Stages 1–4, including a core topic phrase derived from generic labels such as "Vocabulary Development: Words associated with..."
 - Trial 1 structurally requires pairs/small-team collaboration, contribution from learners, one shared response and productive struggle; the intellectual quality of the challenge remains governed by the generation contract
 - Trial 2 must link back to the first attempt and make improvement observable
