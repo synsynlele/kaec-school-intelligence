@@ -46,6 +46,7 @@ assert(
 assert(
   engine.includes('HQLS_PROMPT_v1.15') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
+    engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
     engine.includes("roughly 400–650 words") &&
     engine.includes("use up to about 750") &&
