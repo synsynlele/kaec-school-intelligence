@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   deriveInterventionDraft,
@@ -86,11 +87,15 @@ export function InterventionWorkspaceClient() {
   const [diagnosisSort, setDiagnosisSort] = useState<
     "newest" | "oldest" | "student"
   >("newest");
+  const [diagnosisPage, setDiagnosisPage] = useState(1);
+  const [diagnosisPageSize, setDiagnosisPageSize] = useState<RecordPageSize>(20);
   const [planSearch, setPlanSearch] = useState("");
   const [planStatus, setPlanStatus] = useState<"all" | Handoff["status"]>("all");
   const [planSort, setPlanSort] = useState<
     "newest" | "oldest" | "student"
   >("newest");
+  const [planPage, setPlanPage] = useState(1);
+  const [planPageSize, setPlanPageSize] = useState<RecordPageSize>(20);
 
   useEffect(() => {
     let active = true;
@@ -186,6 +191,34 @@ export function InterventionWorkspaceClient() {
     });
   }, [planSearch, planSort, planStatus, recordNames, state?.handoffs]);
 
+  const pagedDiagnoses = useMemo(() => {
+    const start = (diagnosisPage - 1) * diagnosisPageSize;
+    return visibleDiagnoses.slice(start, start + diagnosisPageSize);
+  }, [diagnosisPage, diagnosisPageSize, visibleDiagnoses]);
+
+  const pagedHandoffs = useMemo(() => {
+    const start = (planPage - 1) * planPageSize;
+    return visibleHandoffs.slice(start, start + planPageSize);
+  }, [planPage, planPageSize, visibleHandoffs]);
+
+  useEffect(() => {
+    setDiagnosisPage(1);
+  }, [diagnosisPageSize, diagnosisSearch, diagnosisSort]);
+
+  useEffect(() => {
+    setPlanPage(1);
+  }, [planPageSize, planSearch, planSort, planStatus]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleDiagnoses.length / diagnosisPageSize));
+    setDiagnosisPage((current) => Math.min(current, totalPages));
+  }, [diagnosisPageSize, visibleDiagnoses.length]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleHandoffs.length / planPageSize));
+    setPlanPage((current) => Math.min(current, totalPages));
+  }, [planPageSize, visibleHandoffs.length]);
+
   async function createHandoff(diagnosis: Diagnosis) {
     if (!state) return;
     setBusy(diagnosis.id);
@@ -258,7 +291,7 @@ export function InterventionWorkspaceClient() {
             />
           </div>
           <div className="mt-4 grid gap-3">
-            {visibleDiagnoses.length ? visibleDiagnoses.map((diagnosis) => {
+            {pagedDiagnoses.length ? pagedDiagnoses.map((diagnosis) => {
               const handoff = handoffByDiagnosis.get(diagnosis.id);
               return (
                 <article key={diagnosis.id} className="rounded-2xl border border-zinc-200 p-4">
@@ -274,6 +307,17 @@ export function InterventionWorkspaceClient() {
               );
             }) : <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500">{diagnosisSearch.trim() ? "No final diagnoses match your search." : "No final diagnosis is available. Review and approve a diagnosis first."}</p>}
           </div>
+          {visibleDiagnoses.length ? (
+            <div className="mt-4">
+              <RecordListPagination
+                page={diagnosisPage}
+                pageSize={diagnosisPageSize}
+                totalItems={visibleDiagnoses.length}
+                onPageChange={setDiagnosisPage}
+                onPageSizeChange={setDiagnosisPageSize}
+              />
+            </div>
+          ) : null}
         </section>
 
         <aside className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
@@ -313,7 +357,19 @@ export function InterventionWorkspaceClient() {
               totalCount={state.handoffs.length}
             />
           </div>
-          <div className="mt-4 grid gap-2">{visibleHandoffs.length ? visibleHandoffs.map((handoff) => <Link key={handoff.id} href={`/interventions/result?intervention=${encodeURIComponent(handoff.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{studentName(handoff.student_id)}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{handoff.status}</span></div><p className="mt-1 text-[11px] text-zinc-400">{className(handoff.student_id)}</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-500">{handoff.priority_growth_target}</p>{handoff.next_lesson_id ? <p className="mt-2 text-[11px] font-semibold text-emerald-800">Next HQLS linked</p> : null}</Link>) : <p className="text-sm text-zinc-500">{planSearch.trim() || planStatus !== "all" ? "No intervention plans match your search and filters." : "No intervention plans yet."}</p>}</div>
+          <div className="mt-4 grid gap-2">{pagedHandoffs.length ? pagedHandoffs.map((handoff) => <Link key={handoff.id} href={`/interventions/result?intervention=${encodeURIComponent(handoff.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{studentName(handoff.student_id)}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{handoff.status}</span></div><p className="mt-1 text-[11px] text-zinc-400">{className(handoff.student_id)}</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-500">{handoff.priority_growth_target}</p>{handoff.next_lesson_id ? <p className="mt-2 text-[11px] font-semibold text-emerald-800">Next HQLS linked</p> : null}</Link>) : <p className="text-sm text-zinc-500">{planSearch.trim() || planStatus !== "all" ? "No intervention plans match your search and filters." : "No intervention plans yet."}</p>}</div>
+          {visibleHandoffs.length ? (
+            <div className="mt-4">
+              <RecordListPagination
+                compact
+                page={planPage}
+                pageSize={planPageSize}
+                totalItems={visibleHandoffs.length}
+                onPageChange={setPlanPage}
+                onPageSizeChange={setPlanPageSize}
+              />
+            </div>
+          ) : null}
         </aside>
       </div>
     </main>
