@@ -44,21 +44,24 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.14') &&
+  engine.includes('HQLS_PROMPT_v1.15') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
-    engine.includes("roughly 350–550 words") &&
-    engine.includes("use up to about 700") &&
+    engine.includes("roughly 400–650 words") &&
+    engine.includes("use up to about 750") &&
     engine.includes("serious teaching core, not a chapter") &&
     engine.includes("without needing a separate lesson note") &&
-    engine.includes("IMAGINATION TO FIRST TRIAL") &&
-    engine.includes("Awakening the Imagination → Exploring Crude Thinking → Giving a Tiny Clue → First Trial") &&
+    engine.includes("SUSPENSE BEFORE FULL ILLUMINATION") &&
+    engine.includes("Awakening (Curiosity & Meaning) → Exploration (Crude Thinking) → Micro-Illumination (Minimal Clarity) → Trial (First Attempt)") &&
     engine.includes("pre_illumination_topic_revealed") &&
     engine.includes("micro_illumination_becomes_task") &&
-    engine.includes("the quality of its critical-thinking questions is governed by the generation contract") &&
-    engine.includes("the intellectual quality of the challenge and justification is governed by the generation contract") &&
+    engine.includes("topicRevealCandidates") &&
+    engine.includes("3–5 short oral questions") &&
+    engine.includes("up to three brief guiding questions") &&
+    engine.includes("2–4 clear outputs") &&
+    engine.includes("identity connection") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
-  "HQLS prompting must keep teacher actions plain-English, preserve the Imagination → Crude Thinking → Tiny Clue → First Trial flow, keep Micro-Illumination clue-only, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
+  "HQLS prompting must keep teacher actions plain-English, preserve the Curiosity & Meaning → Crude Thinking → Minimal Clarity → First Attempt flow, conceal the formal topic through Stage 4, permit rich Exploration and guiding Micro-Illumination without premature teaching, and keep Full Illumination teacher-ready and substantial.",
 );
 for (const requirement of [
   'OpenAIReasoningEffort = "none"',
