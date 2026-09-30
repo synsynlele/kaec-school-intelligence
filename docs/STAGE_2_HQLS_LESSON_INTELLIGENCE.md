@@ -34,6 +34,12 @@ Roles are fixed:
 
 Non-negotiables:
 - no full teaching before the first meaningful struggle
+- the formal lesson topic remains concealed from learners through Stages 1–4
+- Stages 1–4 operate as a controlled mystery: Curiosity → Hypothesis → Clue → Team Challenge
+- Awakening creates unresolved surprise without becoming a task
+- Exploration surfaces crude prior thinking and reasons without correction or a product
+- Micro-Illumination contributes one clue that changes thinking without becoming a mini-lecture
+- Trial — First Attempt requires collaborative, evidence-based critical thinking and one justified shared response
 - no struggle without guardrails
 - no second attempt without illumination
 - no learning without reflection
@@ -89,11 +95,12 @@ Each stage includes:
 Deterministic validation runs after generation and after repair.
 
 It verifies the constitutional sequence and laws, including:
-- Awakening does not dump teaching
-- Exploration permits discovery before correction
-- Micro-Illumination gives only enough light to proceed
-- Trial 1 contains meaningful productive struggle and Guide Guardrails
-- Full Illumination teaches after effort and responds to Trial 1 gaps
+- Awakening creates genuine mystery without dumping teaching or becoming a task
+- Exploration surfaces hypotheses plus learner reasoning before correction
+- Micro-Illumination behaves as a clue that forces reconsideration without revealing the topic
+- the lesson topic is not explicitly revealed to learners anywhere in Stages 1–4
+- Trial 1 contains collaborative, non-routine reasoning, justification, productive struggle and Guide Guardrails
+- Full Illumination formally names/explains the concept after effort and responds to Trial 1 gaps
 - Trial 2 requires genuine re-application and observable improvement
 - Integration contains changed-thinking reflection and transfer
 - learner cognitive ownership remains visible
