@@ -776,7 +776,41 @@ ${(
       }
     }
 
+    if (!validation.passed && repairMode !== "full_lesson") {
+      repairMode = "full_lesson";
+      const repaired = await generateOpenAIJson<unknown>({
+        systemInstruction: buildHqlsGenerationSystemInstruction(),
+        parts: [
+          { text: buildHqlsRepairPrompt(input, lesson, validation) },
+          ...resources.parts,
+        ],
+        responseSchema: HQLS_LESSON_JSON_SCHEMA,
+        schemaName: "ksi_hqls_lesson_repair",
+        model,
+        reasoningEffort: "low",
+        promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
+        promptCacheTtl: "30m",
+        textVerbosity: "low",
+        maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
+      });
+      repairDurationMs += repaired.durationMs;
+      lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(repaired.data));
+      validation = validateHqlsLesson(lesson, input.topic);
+    }
+
     if (!validation.passed) {
+      console.warn(
+        "KSI_HQLS_FIDELITY_FAILED",
+        JSON.stringify({
+          engineVersion: HQLS_ENGINE_VERSION,
+          promptVersion: HQLS_PROMPT_VERSION,
+          repairMode,
+          violations: validation.violations.map((item) => ({
+            code: item.code,
+            stageKey: item.stageKey ?? null,
+          })),
+        }),
+      );
       await completeAiRun(
         supabase,
         runId,
