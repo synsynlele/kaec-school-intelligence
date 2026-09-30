@@ -425,12 +425,67 @@ function studentFacingStageText(stage: HqlsStageContent) {
   return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions].join(" ");
 }
 
-function topicIsExplicitlyRevealed(text: string, topic?: string) {
-  const cleanTopic = topic?.trim();
-  if (!cleanTopic || cleanTopic.length < 3) return false;
-  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(cleanTopic)}([^a-z0-9]|$)`, "i").test(text);
+function reasoningCuePresent(text: string) {
+  return includesAny(text, [
+    /\bwhy\b/i,
+    /what makes you (?:think|say|believe)/i,
+    /what led you/i,
+    /how do you know/i,
+    /what suggests/i,
+    /what points to/i,
+    /what is your reason/i,
+    /give (?:a|your) reason/i,
+    /what did you notice/i,
+    /what have you seen/i,
+    /what experience/i,
+    /what (?:might|could) explain/i,
+    /which (?:clue|idea|explanation|possibility)/i,
+    /based on (?:what|this|the)/i,
+    /what does this (?:suggest|change)/i,
+    /change your (?:idea|thinking|prediction)/i,
+    /reconsider\w*/i,
+    /revis\w*/i,
+    /predict\w*/i,
+    /stronger|weaker/i,
+    /more likely|less likely|more plausible|less plausible/i,
+    /rule out|eliminate\w*/i,
+  ]);
 }
 
+function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
+  const directText = [...stage.teacherPrompts, ...stage.learnerActions].join(" ");
+  if (
+    includesAny(directText, [
+      /today(?:\'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
+      /we (?:are|will be) (?:learning|studying|looking at)/i,
+      /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
+      /the (?:idea|concept|topic) is called/i,
+    ])
+  ) {
+    return true;
+  }
+
+  const cleanTopic = topic?.trim();
+  if (!cleanTopic || cleanTopic.length < 3) return false;
+  const topicPattern = new RegExp(
+    "(^|[^a-z0-9])" + escapeRegExp(cleanTopic) + "([^a-z0-9]|$)",
+    "i",
+  );
+  const revealAction = /^(?:say|tell|write|announce|reveal|name|state|introduce)\b/i;
+  const learnerReveal = /\b(?:name|state|repeat|write|copy|define|identify)\b/i;
+
+  return (
+    stage.teacherPrompts.some(
+      (prompt) =>
+        revealAction.test(prompt.trim()) &&
+        !/\b(?:do not|don\'t|avoid|without|withhold)\b/i.test(prompt) &&
+        topicPattern.test(prompt),
+    ) ||
+    stage.learnerActions.some(
+      (action) => learnerReveal.test(action) && topicPattern.test(action),
+    )
+  );
+}
 export function validateHqlsLesson(
   lesson: GeneratedHqlsLesson,
   topic?: string,
