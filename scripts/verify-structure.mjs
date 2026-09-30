@@ -187,8 +187,8 @@ for (const brandedSurface of [
 
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
-  "HQLS_ENGINE_v1.2",
-  "HQLS_PROMPT_v1.10",
+  "HQLS_ENGINE_v1.3",
+  "HQLS_PROMPT_v1.11",
   "validateHqlsLesson",
   "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
@@ -199,6 +199,12 @@ for (const required of [
   "NORMAL LESSON MODE",
   "normal conventional teaching is allowed",
   "without needing a separate lesson note",
+  "CONTROLLED MYSTERY ARC",
+  "pre_illumination_topic_revealed",
+  "awakening_lacks_mystery",
+  "exploration_lacks_reasoning",
+  "micro_illumination_not_clue",
+  "trial_first_lacks_reasoning",
 ]) {
   assert(
     stage2Engine.includes(required),
