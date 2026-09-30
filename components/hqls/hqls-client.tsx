@@ -310,19 +310,15 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
     state?.subjects,
   ]);
 
+  const lessonTotalPages = Math.max(
+    1,
+    Math.ceil(visibleLessons.length / lessonPageSize),
+  );
+  const lessonCurrentPage = Math.min(lessonPage, lessonTotalPages);
   const pagedLessons = useMemo(() => {
-    const start = (lessonPage - 1) * lessonPageSize;
+    const start = (lessonCurrentPage - 1) * lessonPageSize;
     return visibleLessons.slice(start, start + lessonPageSize);
-  }, [lessonPage, lessonPageSize, visibleLessons]);
-
-  useEffect(() => {
-    setLessonPage(1);
-  }, [lessonPageSize, lessonSearch, lessonSort, lessonStatus]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleLessons.length / lessonPageSize));
-    setLessonPage((current) => Math.min(current, totalPages));
-  }, [lessonPageSize, visibleLessons.length]);
+  }, [lessonCurrentPage, lessonPageSize, visibleLessons]);
 
   const needsFinalValidation = Boolean(
   selectedLesson?.status === "draft" &&
@@ -956,12 +952,16 @@ const refreshLessons = useCallback(async () => {
               <RecordListToolbar
                 compact
                 searchValue={lessonSearch}
-                onSearchChange={setLessonSearch}
+                onSearchChange={(value) => {
+                  setLessonSearch(value);
+                  setLessonPage(1);
+                }}
                 searchPlaceholder="Search HQLS title, topic, subject or class…"
                 sortValue={lessonSort}
-                onSortChange={(value) =>
-                  setLessonSort(value as "newest" | "oldest" | "title")
-                }
+                onSortChange={(value) => {
+                  setLessonSort(value as "newest" | "oldest" | "title");
+                  setLessonPage(1);
+                }}
                 sortOptions={[
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },
@@ -975,7 +975,8 @@ const refreshLessons = useCallback(async () => {
                         event.target.value as
                           | "all"
                           | LessonSummary["status"],
-                      )
+                      );
+                      setLessonPage(1)
                     }
                     aria-label="Filter HQLS lessons by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
@@ -1020,11 +1021,14 @@ const refreshLessons = useCallback(async () => {
               <div className="mt-4">
                 <RecordListPagination
                   compact
-                  page={lessonPage}
+                  page={lessonCurrentPage}
                   pageSize={lessonPageSize}
                   totalItems={visibleLessons.length}
                   onPageChange={setLessonPage}
-                  onPageSizeChange={setLessonPageSize}
+                  onPageSizeChange={(value) => {
+                    setLessonPageSize(value);
+                    setLessonPage(1);
+                  }}
                 />
               </div>
             ) : null}
