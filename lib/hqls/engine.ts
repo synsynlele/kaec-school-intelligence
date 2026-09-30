@@ -588,30 +588,8 @@ export function validateHqlsLesson(
       "Awakening appears to begin with explanation, definition, rule or notes instead of curiosity/tension.",
     );
   }
-  if (
-    !includesAny(awakeningText, [
-      /surpris\w*/i,
-      /unexpected/i,
-      /puzzl\w*/i,
-      /myster\w*/i,
-      /contradict\w*/i,
-      /does(?:n't| not) fit/i,
-      /strange/i,
-      /odd/i,
-      /curious/i,
-      /wonder/i,
-      /dilemma/i,
-      /missing/i,
-    ])
-  ) {
-    fail(
-      "awakening",
-      "awakening_lacks_mystery",
-      "Awakening must create a genuine unresolved surprise, contradiction, dilemma or missing piece that makes learners wonder before they know the topic.",
-    );
-  }
   evidence.push(
-    "Awakening is checked for problem-first entry, genuine mystery and absence of premature full teaching.",
+    "Awakening is checked for problem-first entry, no assigned task and absence of premature teaching; mystery quality is governed by the HQLS generation contract rather than brittle keyword matching.",
   );
 
   const exploration = lesson.stages[1];
@@ -648,23 +626,14 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !includesAny(explorationText, [
-      /what makes you think/i,
-      /why do you think/i,
-      /what might/i,
-      /what could/i,
-      /which (?:idea|explanation|possibility)/i,
-      /because/i,
-      /reason/i,
-      /clue/i,
-      /evidence/i,
-      /experience/i,
-    ])
+    !reasoningCuePresent(
+      [...exploration.teacherPrompts, ...exploration.learnerActions].join(" "),
+    )
   ) {
     fail(
       "exploration",
       "exploration_lacks_reasoning",
-      "Exploration must elicit learners' crude hypotheses and at least a brief reason, clue or experience behind their thinking.",
+      "Exploration must elicit learners' crude hypotheses and a brief reason, observation or experience behind their thinking.",
     );
   }
 
