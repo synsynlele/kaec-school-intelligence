@@ -344,10 +344,10 @@ export function InterventionWorkspaceClient() {
               filters={
                 <select
                   value={planStatus}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setPlanStatus(event.target.value as "all" | Handoff["status"]);
-                    setPlanPage(1)
-                  }
+                    setPlanPage(1);
+                  }}
                   aria-label="Filter intervention plans by status"
                   className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                 >
