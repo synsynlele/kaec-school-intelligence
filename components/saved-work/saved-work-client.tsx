@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -46,6 +47,8 @@ export function SavedWorkClient() {
   const [typeFilter, setTypeFilter] = useState<"all" | SavedWorkType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "title">("newest");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<RecordPageSize>(20);
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -128,6 +131,20 @@ export function SavedWorkClient() {
       return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
     });
   }, [data, searchQuery, sortOrder, typeFilter, view]);
+
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, searchQuery, sortOrder, typeFilter, view]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    setPage((current) => Math.min(current, totalPages));
+  }, [items.length, pageSize]);
 
   async function manage(item: SavedWorkItem, action: SavedWorkAction) {
     if (!item.canManage) return;
@@ -294,8 +311,8 @@ export function SavedWorkClient() {
       </div>
 
       <section className="mt-5 grid gap-3">
-        {items.length ? (
-          items.map((item) => {
+        {pagedItems.length ? (
+          pagedItems.map((item) => {
             const archiveKey = `${item.artifactType}:${item.artifactId}:archive`;
             const restoreKey = `${item.artifactType}:${item.artifactId}:restore`;
             const deleteKey = `${item.artifactType}:${item.artifactId}:delete`;
@@ -406,6 +423,17 @@ export function SavedWorkClient() {
           </div>
         )}
       </section>
+      {items.length ? (
+        <div className="mt-4">
+          <RecordListPagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={items.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      ) : null}
     </main>
   );
 }
