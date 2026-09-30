@@ -35,11 +35,11 @@ Roles are fixed:
 Non-negotiables:
 - no full teaching before the first meaningful struggle
 - the formal lesson topic remains concealed from learners through Stages 1–4
-- Stages 1–4 operate as a controlled mystery: Curiosity → Hypothesis → Clue → Team Challenge
-- Awakening creates unresolved surprise without becoming a task
-- Exploration surfaces crude prior thinking and reasons without correction or a product
-- Micro-Illumination contributes one clue that changes thinking without becoming a mini-lecture
-- Trial — First Attempt requires collaborative, evidence-based critical thinking and one justified shared response
+- Stages 1–4 operate as one connected flow: Imagination → Crude Thinking → Tiny Clue → First Trial
+- Awakening uses a vivid imagined scenario to make learners picture, wonder and think without testing prior knowledge or assigning a task
+- Exploration checks learners' crude knowledge through one or two oral critical-thinking questions about what they think and why
+- Micro-Illumination gives only one tiny clue needed for Trial 1; it is not another question, activity or mini-lesson
+- Trial — First Attempt must use the Micro-Illumination clue in a collaborative, evidence-based challenge with one justified shared response
 - no struggle without guardrails
 - no second attempt without illumination
 - no learning without reflection
@@ -94,12 +94,12 @@ Each stage includes:
 
 Deterministic validation runs after generation and after repair.
 
-The generator contract governs qualitative lesson design such as genuine mystery, suspense and clue quality. The deterministic validator is deliberately limited to rules that can be checked reliably from structured output instead of rejecting good pedagogy because a particular keyword was absent.
+The generator contract governs qualitative lesson design such as imagination, suspense, scenario quality and whether the tiny clue genuinely prepares the coming trial. The deterministic validator is deliberately limited to rules that can be checked reliably from structured output instead of rejecting good pedagogy because a particular keyword was absent.
 
 It verifies the constitutional sequence and enforceable laws, including:
-- Awakening does not dump teaching, assign the first task or exceed the curiosity-question boundary
-- Exploration remains an oral prior-thinking check, surfaces reasoning and withholds correction
-- Micro-Illumination requires a visible reconsideration move and cannot define the concept, state the rule/formula or give the answer
+- Awakening does not dump teaching, assign the first task or exceed the one-question boundary
+- Exploration remains an oral crude-thinking check, surfaces reasoning and withholds correction
+- Micro-Illumination cannot become a second activity: it is limited to one tiny clue, with no extra question/task and no definition, rule/formula or answer
 - explicit topic announcement/naming to learners is blocked throughout Stages 1–4
 - Trial 1 contains collaboration, every-learner contribution, non-routine reasoning, justification, productive struggle and Guide Guardrails
 - Full Illumination teaches only after Trial 1
