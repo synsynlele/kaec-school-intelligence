@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -90,6 +91,8 @@ export function DiagnosisBuilderClient() {
   const [diagnosisSort, setDiagnosisSort] = useState<
     "newest" | "oldest" | "student"
   >("newest");
+  const [diagnosisPage, setDiagnosisPage] = useState(1);
+  const [diagnosisPageSize, setDiagnosisPageSize] = useState<RecordPageSize>(20);
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -186,6 +189,20 @@ export function DiagnosisBuilderClient() {
       return diagnosisSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
   }, [data?.diagnoses, data?.students, diagnosisSearch, diagnosisSort, diagnosisStatus]);
+
+  const pagedDiagnoses = useMemo(() => {
+    const start = (diagnosisPage - 1) * diagnosisPageSize;
+    return visibleDiagnoses.slice(start, start + diagnosisPageSize);
+  }, [diagnosisPage, diagnosisPageSize, visibleDiagnoses]);
+
+  useEffect(() => {
+    setDiagnosisPage(1);
+  }, [diagnosisPageSize, diagnosisSearch, diagnosisSort, diagnosisStatus]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleDiagnoses.length / diagnosisPageSize));
+    setDiagnosisPage((current) => Math.min(current, totalPages));
+  }, [diagnosisPageSize, visibleDiagnoses.length]);
 
   function onStudentChange(nextId: string) {
     setStudentId(nextId);
@@ -352,11 +369,23 @@ export function DiagnosisBuilderClient() {
             />
           </div>
           <div className="mt-4 grid gap-2">
-            {visibleDiagnoses.length ? visibleDiagnoses.map((entry) => {
+            {pagedDiagnoses.length ? pagedDiagnoses.map((entry) => {
               const student = data.students.find((item) => item.id === entry.row.student_id);
               return <Link key={entry.row.id} href={`/diagnosis/result?diagnosis=${encodeURIComponent(entry.row.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{student?.name || "Student"}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{entry.row.status}</span></div><p className="mt-1 text-xs text-zinc-500">{student?.className || "Class not assigned"} · {entry.row.academic_session || "Session not set"} · {entry.row.term || "Term not set"}</p></Link>;
             }) : <p className="text-sm text-zinc-500">{diagnosisSearch.trim() || diagnosisStatus !== "all" ? "No diagnoses match your search and filters." : "No saved diagnoses yet."}</p>}
           </div>
+          {visibleDiagnoses.length ? (
+            <div className="mt-4">
+              <RecordListPagination
+                compact
+                page={diagnosisPage}
+                pageSize={diagnosisPageSize}
+                totalItems={visibleDiagnoses.length}
+                onPageChange={setDiagnosisPage}
+                onPageSizeChange={setDiagnosisPageSize}
+              />
+            </div>
+          ) : null}
         </aside>
       </div>
     </main>
