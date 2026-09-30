@@ -128,6 +128,67 @@ function joinLines(value: string[]) {
   return value.join("\n");
 }
 
+function stageEditorLabels(stageNumber: number) {
+  switch (stageNumber) {
+    case 1:
+      return {
+        experience: "Teacher says / shows — scenario",
+        prompts: "Central question",
+        learners: "Expected student actions",
+        evidence: "What the teacher should notice",
+      };
+    case 2:
+      return {
+        experience: "Same situation / context",
+        prompts: "Teacher asks — crude thinking questions",
+        learners: "Expected student actions",
+        evidence: "Crude ideas / reasoning to notice",
+      };
+    case 3:
+      return {
+        experience: "Teacher says / shows — minimal clarity",
+        prompts: "Guiding questions for the first trial",
+        learners: "Learner response / what they carry into the trial",
+        evidence: "What to notice",
+      };
+    case 4:
+      return {
+        experience: "Task — first attempt",
+        prompts: "Teacher gives / reminds",
+        learners: "Students must — clear outputs",
+        evidence: "What the teacher should notice",
+      };
+    case 5:
+      return {
+        experience: "Teaching setup (optional)",
+        prompts: "Teacher prompts / actions (optional)",
+        learners: "Learner actions (optional)",
+        evidence: "Evidence to notice (optional)",
+      };
+    case 6:
+      return {
+        experience: "Task — return to the first attempt",
+        prompts: "Teacher feedback without taking ownership",
+        learners: "Students now — improved attempt",
+        evidence: "Expected improvement",
+      };
+    case 7:
+      return {
+        experience: "Identity connection",
+        prompts: "Teacher asks",
+        learners: "Expected student response",
+        evidence: "What the teacher should notice",
+      };
+    default:
+      return {
+        experience: "Learning experience / task",
+        prompts: "Teacher prompts / actions",
+        learners: "Expected learner actions",
+        evidence: "Evidence to notice",
+      };
+  }
+}
+
 function requestedLessonId() {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("lesson")?.trim();
@@ -1112,6 +1173,7 @@ const refreshLessons = useCallback(async () => {
             <div className="mt-5 space-y-5">
               {editorStages.map((stage) => {
                 const definition = HQLS_STAGES[stage.stageNumber - 1];
+                const labels = stageEditorLabels(stage.stageNumber);
                 return (
                   <article
                     key={stage.stageKey}
@@ -1162,7 +1224,7 @@ const refreshLessons = useCallback(async () => {
 
                     <div className="mt-6 grid gap-5 lg:grid-cols-2">
                       <TextArea
-                        label="Learning experience / task"
+                        label={labels.experience}
                         value={stage.experience}
                         onChange={(value) =>
                           updateStage(stage.stageNumber, "experience", value)
@@ -1170,7 +1232,7 @@ const refreshLessons = useCallback(async () => {
                         rows={5}
                       />
                       <TextArea
-                        label="Teacher prompts / actions (one per line)"
+                        label={`${labels.prompts} (one per line)`}
                         value={joinLines(stage.teacherPrompts)}
                         onChange={(value) =>
                           updateStage(
@@ -1182,7 +1244,7 @@ const refreshLessons = useCallback(async () => {
                         rows={5}
                       />
                       <TextArea
-                        label="Expected learner actions (one per line)"
+                        label={`${labels.learners} (one per line)`}
                         value={joinLines(stage.learnerActions)}
                         onChange={(value) =>
                           updateStage(
@@ -1206,7 +1268,7 @@ const refreshLessons = useCallback(async () => {
                         rows={5}
                       />
                       <TextArea
-                        label="Evidence to notice (one per line)"
+                        label={`${labels.evidence} (one per line)`}
                         value={joinLines(stage.evidenceToNotice)}
                         onChange={(value) =>
                           updateStage(
@@ -1235,7 +1297,7 @@ const refreshLessons = useCallback(async () => {
                       {stage.stageNumber === 5 ? (
                         <>
                           <TextArea
-                            label="Full Illumination — concise teaching after struggle"
+                            label="Lesson note — complete teaching after struggle"
                             value={stage.teachingContent}
                             onChange={(value) =>
                               updateStage(
@@ -1263,7 +1325,7 @@ const refreshLessons = useCallback(async () => {
                       {stage.stageNumber === 7 ? (
                         <>
                           <TextArea
-                            label="Reflection — how thinking changed"
+                            label="Reflection prompts — how thinking changed"
                             value={stage.reflectionPrompt}
                             onChange={(value) =>
                               updateStage(
@@ -1275,7 +1337,7 @@ const refreshLessons = useCallback(async () => {
                             rows={4}
                           />
                           <TextArea
-                            label="Real-life / future transfer"
+                            label="Real-life assignment / application"
                             value={stage.transferTask}
                             onChange={(value) =>
                               updateStage(
