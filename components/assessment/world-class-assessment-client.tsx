@@ -1296,14 +1296,14 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 filters={
                   <select
                     value={assessmentStatus}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setAssessmentStatus(
                         event.target.value as
                           | "all"
                           | AssessmentSummary["status"],
                       );
-                      setAssessmentPage(1)
-                    }
+                      setAssessmentPage(1);
+                    }}
                     aria-label="Filter assessments by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                   >
