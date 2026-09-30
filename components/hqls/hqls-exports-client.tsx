@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { KsiBrand } from "@/components/branding/ksi-brand";
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -30,6 +31,8 @@ export function HqlsExportsClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Lesson["status"]>("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "title">("newest");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<RecordPageSize>(20);
 
   const visibleLessons = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -47,6 +50,20 @@ export function HqlsExportsClient() {
       return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
     });
   }, [searchQuery, sortOrder, state?.lessons, statusFilter]);
+
+  const pagedLessons = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return visibleLessons.slice(start, start + pageSize);
+  }, [page, pageSize, visibleLessons]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, searchQuery, sortOrder, statusFilter]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleLessons.length / pageSize));
+    setPage((current) => Math.min(current, totalPages));
+  }, [pageSize, visibleLessons.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,8 +235,8 @@ export function HqlsExportsClient() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500">
               Loading saved lessons…
             </div>
-          ) : visibleLessons.length ? (
-            visibleLessons.map((lesson) => (
+          ) : pagedLessons.length ? (
+            pagedLessons.map((lesson) => (
               <article
                 key={lesson.id}
                 className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -254,6 +271,17 @@ export function HqlsExportsClient() {
             </div>
           )}
         </section>
+        {!loading && visibleLessons.length ? (
+          <div className="mt-4">
+            <RecordListPagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={visibleLessons.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        ) : null}
       </div>
     </main>
   );
