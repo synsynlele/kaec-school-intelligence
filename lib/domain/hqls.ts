@@ -23,33 +23,33 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 1,
     key: "awakening",
     title: "Awakening",
-    purpose: "Awaken learners' imagination with a vivid scenario that makes them picture, wonder and think before they know the lesson topic.",
+    purpose: "Create curiosity and meaning through a vivid scenario while the formal lesson topic remains hidden.",
     nonNegotiable:
-      "Present one short imagined scenario or situation and at most one thinking question. Do not test prior knowledge, assign a task, ask for a solution, reveal the topic or start teaching it.",
+      "Present one short scenario, image/headline/object/story or real-life situation and at most one central provocative question. Learners may wonder, react or take a position, but the teacher must not reveal the formal topic, define it, solve it or assign the first task.",
   },
   {
     index: 2,
     key: "exploration",
     title: "Exploration",
-    purpose: "Check learners' crude knowledge through critical thinking about the imagined situation.",
+    purpose: "Check learners' crude knowledge and critical thinking before any correction or teaching.",
     nonNegotiable:
-      "Ask one or two short oral questions that reveal what learners currently think and why. Wrong and incomplete ideas may surface. Do not correct, teach, assign group work or require a product.",
+      "Ask 3–5 short oral questions when useful to reveal what learners think, what clues/words/ideas might mean, why they think so and how they connect the situation to life. Wrong and incomplete ideas may surface. Keep the formal topic hidden. Do not correct, teach, assign formal group work or require a product.",
   },
   {
     index: 3,
     key: "micro_illumination",
     title: "Micro-Illumination",
-    purpose: "Give one tiny clue learners need for Trial — First Attempt.",
+    purpose: "Give only the minimal clarity learners need to enter Trial — First Attempt.",
     nonNegotiable:
-      "Say or show one small clue that directly prepares learners for Trial 1, then move on. Do not ask another question, create another task, explain the concept, reveal the topic or give the solution.",
+      "Give a brief orientation and, when useful, up to three guiding questions learners should keep in mind during Trial 1. Do not define the concept, correct the class, teach the lesson, reveal the formal topic, give the solution or create a separate learner activity.",
   },
   {
     index: 4,
     key: "trial_first",
     title: "Trial — First Attempt",
-    purpose: "Let learners use the Micro-Illumination clue together in a demanding first attempt before full teaching.",
+    purpose: "Give learners their first real collaborative struggle before full teaching.",
     nonNegotiable:
-      "Pairs or small teams use the Stage 3 clue, combine every learner's contribution and agree one justified shared response. The teacher gives the challenge clearly, observes, and does not rescue, correct, reveal the topic or remove meaningful cognitive effort.",
+      "Pairs or small teams complete a concrete challenge with 2–4 clear outputs using the clues available. Expect errors and incomplete reasoning. The teacher states the expected struggle and explicitly does not correct, define, solve, rescue groups or reveal the formal topic yet.",
   },
   {
     index: 5,
@@ -63,17 +63,17 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     index: 6,
     key: "trial_second",
     title: "Trial — Second Attempt",
-    purpose: "Let learners try again using what they have now learned.",
+    purpose: "Let learners revisit the first attempt and make the improvement visible after teaching.",
     nonNegotiable:
-      "Students reattempt with better tools and clearer reasoning while the teacher returns ownership to the learner.",
+      "Return to the same Stage 4 material or a very close equivalent wherever possible. Learners correct, improve, extend or redo the work using what they now understand while the teacher guides without taking ownership.",
   },
   {
     index: 7,
     key: "integration",
     title: "Integration",
-    purpose: "Help learners reflect on what changed and connect the lesson to real life.",
+    purpose: "Help learners reflect on changed thinking, connect learning to identity and apply it beyond the classroom.",
     nonNegotiable:
-      "Learners reflect on how thinking changed and connect the learning to life, future action or self-understanding.",
+      "Include 3–5 reflection questions, a short identity connection and a concrete real-life assignment or application.",
   },
 ] as const;
 
@@ -89,6 +89,7 @@ export const HQLS_AUTOMATIC_FAILURES = [
   "trial_first_has_no_productive_struggle",
   "trial_second_has_no_genuine_reattempt",
   "integration_missing",
+  "integration_identity_connection_missing",
 ] as const;
 
 export type HqlsAutomaticFailure =
