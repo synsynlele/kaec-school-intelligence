@@ -1223,6 +1223,8 @@ const refreshLessons = useCallback(async () => {
                     </div>
 
                     <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                      {stage.stageNumber !== 5 ? (
+                        <>
                       <TextArea
                         label={labels.experience}
                         value={stage.experience}
@@ -1279,6 +1281,8 @@ const refreshLessons = useCallback(async () => {
                         }
                         rows={4}
                       />
+                        </>
+                      ) : null}
 
                       {stage.stageNumber === 4 ? (
                         <TextArea
