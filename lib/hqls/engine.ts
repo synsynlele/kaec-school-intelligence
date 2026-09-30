@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.5";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.13";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.6";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.14";
 
 export type HqlsStageAction =
   | "improve"
@@ -432,32 +432,6 @@ function studentFacingStageText(stage: HqlsStageContent) {
   return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions].join(" ");
 }
 
-function reasoningCuePresent(text: string) {
-  return includesAny(text, [
-    /\bwhy\b/i,
-    /what makes you (?:think|say|believe)/i,
-    /what led you/i,
-    /how do you know/i,
-    /what suggests/i,
-    /what points to/i,
-    /what is your reason/i,
-    /give (?:a|your) reason/i,
-    /what did you notice/i,
-    /what have you seen/i,
-    /what experience/i,
-    /what (?:might|could) explain/i,
-    /which (?:clue|idea|explanation|possibility)/i,
-    /based on (?:what|this|the)/i,
-    /what does this (?:suggest|change)/i,
-    /change your (?:idea|thinking|prediction)/i,
-    /reconsider\w*/i,
-    /revis\w*/i,
-    /predict\w*/i,
-    /stronger|weaker/i,
-    /more likely|less likely|more plausible|less plausible/i,
-    /rule out|eliminate\w*/i,
-  ]);
-}
 
 function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
   const directText = [...stage.teacherPrompts, ...stage.learnerActions].join(" ");
@@ -533,21 +507,23 @@ export function validateHqlsLesson(
       return;
     }
 
-    if (!stage.experience || stage.learnerActions.length === 0) {
+    if (!stage.experience || (stage.stageNumber !== 3 && stage.learnerActions.length === 0)) {
       fail(
         definition.key,
         "learner_activity_missing",
-        `${definition.title} must make learner activity visible.`,
+        stage.stageNumber === 3
+          ? "Micro-Illumination must contain the tiny clue the teacher gives or shows."
+          : `${definition.title} must make learner activity visible.`,
       );
     }
-    if (stage.guideGuardrails.length === 0) {
+    if (stage.stageNumber !== 3 && stage.guideGuardrails.length === 0) {
       fail(
         definition.key,
         "guide_guardrail_missing",
         `${definition.title} must include explicit Guide Guardrails that protect learner ownership.`,
       );
     }
-    if (stage.evidenceToNotice.length === 0) {
+    if (stage.stageNumber !== 3 && stage.evidenceToNotice.length === 0) {
       fail(
         definition.key,
         "observable_evidence_missing",
@@ -633,27 +609,12 @@ export function validateHqlsLesson(
       "Exploration must permit crude or wrong thinking without premature correction.",
     );
   }
-  if (
-    !reasoningCuePresent(
-      [...exploration.teacherPrompts, ...exploration.learnerActions].join(" "),
-    )
-  ) {
-    fail(
-      "exploration",
-      "exploration_lacks_reasoning",
-      "Exploration must elicit learners' crude hypotheses and a brief reason, observation or experience behind their thinking.",
-    );
-  }
+  evidence.push(
+    "Exploration is structurally checked as an oral crude-thinking stage with no correction, product or group task; the quality of its critical-thinking questions is governed by the generation contract rather than keyword matching.",
+  );
 
   const micro = lesson.stages[2];
   const microText = studentFacingStageText(micro);
-  if (micro.guideGuardrails.length === 0) {
-    fail(
-      "micro_illumination",
-      "micro_guardrail_missing",
-      "Micro-Illumination needs an explicit Guide Guardrail that protects learner struggle.",
-    );
-  }
   if (
     includesAny(microText, [
       /is defined as/i,
@@ -712,45 +673,9 @@ export function validateHqlsLesson(
       "Trial 1 must state the productive struggle expected from learners.",
     );
   }
-  const trialHasReasoningMove = includesAny(firstAttemptText, [
-    /decid\w*/i,
-    /infer\w*/i,
-    /predict\w*/i,
-    /explain\w*/i,
-    /design\w*/i,
-    /solve\w*/i,
-    /choose\w*/i,
-    /rank\w*/i,
-    /interpret\w*/i,
-    /conclud\w*/i,
-    /determin\w*/i,
-    /figure out/i,
-    /work out/i,
-    /recommend\w*/i,
-    /argue\w*/i,
-    /make (?:a|your|their) case/i,
-  ]);
-  const trialHasJustification = includesAny(firstAttemptText, [
-    /justify\w*/i,
-    /defend\w*/i,
-    /reason\w*/i,
-    /evidence/i,
-    /clue/i,
-    /because/i,
-    /support\w*/i,
-    /show how/i,
-    /explain why/i,
-    /based on/i,
-    /what led/i,
-    /grounds? for/i,
-  ]);
-  if (!trialHasReasoningMove || !trialHasJustification) {
-    fail(
-      "trial_first",
-      "trial_first_lacks_reasoning",
-      "Trial 1 must demand a non-routine team decision, inference, prediction, design, solution or explanation and require learners to support the shared response with reasoning or evidence.",
-    );
-  }
+  evidence.push(
+    "Trial 1 is structurally checked for pairs/small-team collaboration, contribution from learners, one shared response and explicit productive struggle; the intellectual quality of the challenge and justification is governed by the generation contract rather than keyword matching.",
+  );
 
   const preIlluminationStages = lesson.stages.slice(0, 4);
   for (const stage of preIlluminationStages) {
@@ -763,10 +688,10 @@ export function validateHqlsLesson(
     }
   }
   evidence.push(
-    "Stages 1–4 are checked as a Curiosity → Hypothesis → Clue → Team Challenge arc with the formal topic concealed until Full Illumination.",
+    "Stages 1–4 are checked as an Imagination → Crude Thinking → Tiny Clue → First Trial sequence with the formal topic concealed until Full Illumination.",
   );
   evidence.push(
-    "Trial 1 is checked for collaborative evidence-based reasoning before normal full teaching begins.",
+    "Trial 1 is checked for collaborative first-attempt structure before normal full teaching begins.",
   );
 
   const illumination = lesson.stages[4];
