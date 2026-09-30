@@ -175,9 +175,9 @@ PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - productiveStruggle must explain the likely difficulty in plain English and why the teacher should allow learners to work through it.
 
 For Stages 1, 2, 3, 4, 6 and 7:
-- give a clear classroom moment in 2–4 short sentences; only the Trial stages need a task and an expected product;
-- use no more than 4 exact teacher prompts/actions where useful;
-- use no more than 4 expected learner actions;
+- give a clear classroom moment in 2–4 short sentences; only the Trial stages need a formal task and an expected product;
+- use no more than 5 exact teacher prompts/actions where useful; Stage 1 has at most one central question and Stage 3 has at most three guiding questions;
+- use no more than 5 expected learner actions;
 - use no more than 3 Guide Guardrails;
 - use no more than 4 observable evidence items.
 Use productiveStruggle only where struggle is meaningful; use an empty string elsewhere.
