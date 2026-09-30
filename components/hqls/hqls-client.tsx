@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
@@ -251,6 +252,8 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
   const [lessonSort, setLessonSort] = useState<
     "newest" | "oldest" | "title"
   >("newest");
+  const [lessonPage, setLessonPage] = useState(1);
+  const [lessonPageSize, setLessonPageSize] = useState<RecordPageSize>(20);
   const [stageActions, setStageActions] = useState<
     Record<number, HqlsStageAction>
   >({});
@@ -306,6 +309,20 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
     state?.lessons,
     state?.subjects,
   ]);
+
+  const pagedLessons = useMemo(() => {
+    const start = (lessonPage - 1) * lessonPageSize;
+    return visibleLessons.slice(start, start + lessonPageSize);
+  }, [lessonPage, lessonPageSize, visibleLessons]);
+
+  useEffect(() => {
+    setLessonPage(1);
+  }, [lessonPageSize, lessonSearch, lessonSort, lessonStatus]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleLessons.length / lessonPageSize));
+    setLessonPage((current) => Math.min(current, totalPages));
+  }, [lessonPageSize, visibleLessons.length]);
 
   const needsFinalValidation = Boolean(
   selectedLesson?.status === "draft" &&
@@ -974,8 +991,8 @@ const refreshLessons = useCallback(async () => {
               />
             </div>
             <div className="mt-4 space-y-2">
-              {visibleLessons.length ? (
-                visibleLessons.map((lesson) => (
+              {pagedLessons.length ? (
+                pagedLessons.map((lesson) => (
                   <Link
                     key={lesson.id}
                     href={`/hqls/edit?lesson=${encodeURIComponent(lesson.id)}`}
@@ -999,6 +1016,18 @@ const refreshLessons = useCallback(async () => {
                 </div>
               )}
             </div>
+            {visibleLessons.length ? (
+              <div className="mt-4">
+                <RecordListPagination
+                  compact
+                  page={lessonPage}
+                  pageSize={lessonPageSize}
+                  totalItems={visibleLessons.length}
+                  onPageChange={setLessonPage}
+                  onPageSizeChange={setLessonPageSize}
+                />
+              </div>
+            ) : null}
           </aside>
         </section> : null}
 
