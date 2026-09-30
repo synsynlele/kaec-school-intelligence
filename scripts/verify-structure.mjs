@@ -304,9 +304,9 @@ for (const requirement of [
   "hasSchoolLogo",
   "by KAEC-NG",
   "HQLS LESSON PLAN",
-  "What the teacher must not do",
-  "Full Illumination - complete teaching note",
-  "Reflection questions",
+  "Teacher must NOT do",
+  "Teacher explains clearly and in detail",
+  "Reflection prompts",
   "HQLS VALIDATED",
 ]) {
   assert(
