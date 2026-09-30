@@ -699,7 +699,7 @@ async function handleGenerate(
     });
 
     let lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(generated.data));
-    let validation = validateHqlsLesson(lesson);
+    let validation = validateHqlsLesson(lesson, input.topic);
     let repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson" = "none";
     let repairDurationMs = 0;
 
@@ -752,7 +752,7 @@ ${(
             replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage,
           ),
         });
-        validation = validateHqlsLesson(lesson);
+        validation = validateHqlsLesson(lesson, input.topic);
       } else {
         repairMode = "full_lesson";
         const repaired = await generateOpenAIJson<unknown>({
@@ -772,7 +772,7 @@ ${(
         });
         repairDurationMs = repaired.durationMs;
         lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(repaired.data));
-        validation = validateHqlsLesson(lesson);
+        validation = validateHqlsLesson(lesson, input.topic);
       }
     }
 
@@ -895,7 +895,7 @@ async function handleSaveEdits(
       parseHqlsStageContent(stage, index + 1),
     ),
   };
-  const validation = validateHqlsLesson(editedLesson);
+  const validation = validateHqlsLesson(editedLesson, current.lesson.topic);
 
   await Promise.all(
     editedLesson.stages.map(async (stage) => {
@@ -1076,7 +1076,7 @@ async function handleRegenerateStage(
         stage.stageNumber === stageNumber ? replacement : stage,
       ),
     };
-    let validation = validateHqlsLesson(candidate);
+    let validation = validateHqlsLesson(candidate, current.lesson.topic);
     let targetViolations = validation.violations.filter(
       (item) => item.stageKey === replacement.stageKey,
     );
@@ -1104,7 +1104,7 @@ async function handleRegenerateStage(
           stage.stageNumber === stageNumber ? replacement : stage,
         ),
       };
-      validation = validateHqlsLesson(candidate);
+      validation = validateHqlsLesson(candidate, current.lesson.topic);
       targetViolations = validation.violations.filter(
         (item) => item.stageKey === replacement.stageKey,
       );
