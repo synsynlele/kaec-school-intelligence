@@ -455,19 +455,15 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     state?.subjects,
   ]);
 
+  const assessmentTotalPages = Math.max(
+    1,
+    Math.ceil(visibleAssessments.length / assessmentPageSize),
+  );
+  const assessmentCurrentPage = Math.min(assessmentPage, assessmentTotalPages);
   const pagedAssessments = useMemo(() => {
-    const start = (assessmentPage - 1) * assessmentPageSize;
+    const start = (assessmentCurrentPage - 1) * assessmentPageSize;
     return visibleAssessments.slice(start, start + assessmentPageSize);
-  }, [assessmentPage, assessmentPageSize, visibleAssessments]);
-
-  useEffect(() => {
-    setAssessmentPage(1);
-  }, [assessmentPageSize, assessmentSearch, assessmentSort, assessmentStatus]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleAssessments.length / assessmentPageSize));
-    setAssessmentPage((current) => Math.min(current, totalPages));
-  }, [assessmentPageSize, visibleAssessments.length]);
+  }, [assessmentCurrentPage, assessmentPageSize, visibleAssessments]);
 
   const refreshAssessments = useCallback(async () => {
     if (!state) return;
@@ -1282,12 +1278,16 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               <RecordListToolbar
                 compact
                 searchValue={assessmentSearch}
-                onSearchChange={setAssessmentSearch}
+                onSearchChange={(value) => {
+                  setAssessmentSearch(value);
+                  setAssessmentPage(1);
+                }}
                 searchPlaceholder="Search title, type, subject or class…"
                 sortValue={assessmentSort}
-                onSortChange={(value) =>
-                  setAssessmentSort(value as "newest" | "oldest" | "title")
-                }
+                onSortChange={(value) => {
+                  setAssessmentSort(value as "newest" | "oldest" | "title");
+                  setAssessmentPage(1);
+                }}
                 sortOptions={[
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },
@@ -1301,7 +1301,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                         event.target.value as
                           | "all"
                           | AssessmentSummary["status"],
-                      )
+                      );
+                      setAssessmentPage(1)
                     }
                     aria-label="Filter assessments by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
@@ -1361,11 +1362,14 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               <div className="mt-4">
                 <RecordListPagination
                   compact
-                  page={assessmentPage}
+                  page={assessmentCurrentPage}
                   pageSize={assessmentPageSize}
                   totalItems={visibleAssessments.length}
                   onPageChange={setAssessmentPage}
-                  onPageSizeChange={setAssessmentPageSize}
+                  onPageSizeChange={(value) => {
+                    setAssessmentPageSize(value);
+                    setAssessmentPage(1);
+                  }}
                 />
               </div>
             ) : null}
