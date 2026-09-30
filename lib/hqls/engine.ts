@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.3";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.11";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.4";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.12";
 
 export type HqlsStageAction =
   | "improve"
@@ -425,10 +425,66 @@ function studentFacingStageText(stage: HqlsStageContent) {
   return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions].join(" ");
 }
 
-function topicIsExplicitlyRevealed(text: string, topic?: string) {
+function reasoningCuePresent(text: string) {
+  return includesAny(text, [
+    /\bwhy\b/i,
+    /what makes you (?:think|say|believe)/i,
+    /what led you/i,
+    /how do you know/i,
+    /what suggests/i,
+    /what points to/i,
+    /what is your reason/i,
+    /give (?:a|your) reason/i,
+    /what did you notice/i,
+    /what have you seen/i,
+    /what experience/i,
+    /what (?:might|could) explain/i,
+    /which (?:clue|idea|explanation|possibility)/i,
+    /based on (?:what|this|the)/i,
+    /what does this (?:suggest|change)/i,
+    /change your (?:idea|thinking|prediction)/i,
+    /reconsider\w*/i,
+    /revis\w*/i,
+    /predict\w*/i,
+    /stronger|weaker/i,
+    /more likely|less likely|more plausible|less plausible/i,
+    /rule out|eliminate\w*/i,
+  ]);
+}
+
+function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
+  const directText = [...stage.teacherPrompts, ...stage.learnerActions].join(" ");
+  if (
+    includesAny(directText, [
+      /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
+      /we (?:are|will be) (?:learning|studying|looking at)/i,
+      /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
+      /the (?:idea|concept|topic) is called/i,
+    ])
+  ) {
+    return true;
+  }
+
   const cleanTopic = topic?.trim();
   if (!cleanTopic || cleanTopic.length < 3) return false;
-  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(cleanTopic)}([^a-z0-9]|$)`, "i").test(text);
+  const topicPattern = new RegExp(
+    "(^|[^a-z0-9])" + escapeRegExp(cleanTopic) + "([^a-z0-9]|$)",
+    "i",
+  );
+  const revealAction = /^(?:say|tell|write|announce|reveal|name|state|introduce)\b/i;
+  const learnerReveal = /\b(?:name|state|repeat|write|copy|define|identify)\b/i;
+
+  return (
+    stage.teacherPrompts.some(
+      (prompt) =>
+        revealAction.test(prompt.trim()) &&
+        !/\b(?:do not|don't|avoid|without|withhold)\b/i.test(prompt) &&
+        topicPattern.test(prompt),
+    ) ||
+    stage.learnerActions.some(
+      (action) => learnerReveal.test(action) && topicPattern.test(action),
+    )
+  );
 }
 
 export function validateHqlsLesson(
@@ -533,30 +589,8 @@ export function validateHqlsLesson(
       "Awakening appears to begin with explanation, definition, rule or notes instead of curiosity/tension.",
     );
   }
-  if (
-    !includesAny(awakeningText, [
-      /surpris\w*/i,
-      /unexpected/i,
-      /puzzl\w*/i,
-      /myster\w*/i,
-      /contradict\w*/i,
-      /does(?:n't| not) fit/i,
-      /strange/i,
-      /odd/i,
-      /curious/i,
-      /wonder/i,
-      /dilemma/i,
-      /missing/i,
-    ])
-  ) {
-    fail(
-      "awakening",
-      "awakening_lacks_mystery",
-      "Awakening must create a genuine unresolved surprise, contradiction, dilemma or missing piece that makes learners wonder before they know the topic.",
-    );
-  }
   evidence.push(
-    "Awakening is checked for problem-first entry, genuine mystery and absence of premature full teaching.",
+    "Awakening is checked for problem-first entry, no assigned task and absence of premature teaching; mystery quality is governed by the HQLS generation contract rather than brittle keyword matching.",
   );
 
   const exploration = lesson.stages[1];
@@ -593,23 +627,14 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !includesAny(explorationText, [
-      /what makes you think/i,
-      /why do you think/i,
-      /what might/i,
-      /what could/i,
-      /which (?:idea|explanation|possibility)/i,
-      /because/i,
-      /reason/i,
-      /clue/i,
-      /evidence/i,
-      /experience/i,
-    ])
+    !reasoningCuePresent(
+      [...exploration.teacherPrompts, ...exploration.learnerActions].join(" "),
+    )
   ) {
     fail(
       "exploration",
       "exploration_lacks_reasoning",
-      "Exploration must elicit learners' crude hypotheses and at least a brief reason, clue or experience behind their thinking.",
+      "Exploration must elicit learners' crude hypotheses and a brief reason, observation or experience behind their thinking.",
     );
   }
 
@@ -623,37 +648,34 @@ export function validateHqlsLesson(
     );
   }
   if (
-    !includesAny(microText, [
-      /\bclue\b/i,
-      /\bhint\b/i,
-      /\bfact\b/i,
-      /\bevidence\b/i,
-      /\bconstraint\b/i,
-      /\bcounterexample\b/i,
-      /\bobservation\b/i,
-      /\bdata\b/i,
-      /\bnotice\b/i,
-    ]) ||
-    !includesAny(microText, [
-      /predict\w*/i,
-      /reconsider\w*/i,
-      /revis\w*/i,
-      /stronger|weaker/i,
-      /more plausible|less plausible/i,
-      /eliminate\w*/i,
-      /which idea/i,
-      /which explanation/i,
-      /choose\w*/i,
+    includesAny(microText, [
+      /is defined as/i,
+      /the formula is/i,
+      /the rule is/i,
+      /this (?:idea|concept) is called/i,
+      /the correct answer is/i,
+      /therefore the answer is/i,
     ])
   ) {
     fail(
       "micro_illumination",
-      "micro_illumination_not_clue",
-      "Micro-Illumination must add one small clue that makes learners reconsider earlier ideas without giving the answer or becoming a mini-lecture.",
+      "micro_illumination_becomes_full_solution",
+      "Micro-Illumination may add a small clue or orientation, but it must not define the concept, state the rule/formula or give the solution.",
+    );
+  }
+  if (
+    !reasoningCuePresent(
+      [...micro.teacherPrompts, ...micro.learnerActions].join(" "),
+    )
+  ) {
+    fail(
+      "micro_illumination",
+      "micro_illumination_lacks_reconsideration",
+      "Micro-Illumination must make learners reconsider, revise, predict, eliminate or otherwise update an earlier idea after receiving the new clue.",
     );
   }
   evidence.push(
-    "Micro-Illumination is checked as a clue that changes learner thinking without revealing the lesson.",
+    "Micro-Illumination is checked for a visible learner reconsideration move and absence of premature definition, rule, formula or solution.",
   );
 
   const trialFirst = lesson.stages[3];
@@ -676,52 +698,53 @@ export function validateHqlsLesson(
       "Trial 1 must state the productive struggle expected from learners.",
     );
   }
-  if (
-    !includesAny(firstAttemptText, [
-      /decid\w*/i,
-      /infer\w*/i,
-      /predict\w*/i,
-      /explain\w*/i,
-      /design\w*/i,
-      /solve\w*/i,
-      /choose\w*/i,
-      /rank\w*/i,
-      /interpret\w*/i,
-      /conclusion/i,
-    ]) ||
-    !includesAny(firstAttemptText, [
-      /justify\w*/i,
-      /defend\w*/i,
-      /reason\w*/i,
-      /evidence/i,
-      /clue/i,
-      /because/i,
-      /support\w*/i,
-    ])
-  ) {
+  const trialHasReasoningMove = includesAny(firstAttemptText, [
+    /decid\w*/i,
+    /infer\w*/i,
+    /predict\w*/i,
+    /explain\w*/i,
+    /design\w*/i,
+    /solve\w*/i,
+    /choose\w*/i,
+    /rank\w*/i,
+    /interpret\w*/i,
+    /conclud\w*/i,
+    /determin\w*/i,
+    /figure out/i,
+    /work out/i,
+    /recommend\w*/i,
+    /argue\w*/i,
+    /make (?:a|your|their) case/i,
+  ]);
+  const trialHasJustification = includesAny(firstAttemptText, [
+    /justify\w*/i,
+    /defend\w*/i,
+    /reason\w*/i,
+    /evidence/i,
+    /clue/i,
+    /because/i,
+    /support\w*/i,
+    /show how/i,
+    /explain why/i,
+    /based on/i,
+    /what led/i,
+    /grounds? for/i,
+  ]);
+  if (!trialHasReasoningMove || !trialHasJustification) {
     fail(
       "trial_first",
       "trial_first_lacks_reasoning",
-      "Trial 1 must demand a non-routine team decision, inference, prediction, design or explanation and require learners to justify the shared response with reasons, clues or evidence.",
+      "Trial 1 must demand a non-routine team decision, inference, prediction, design, solution or explanation and require learners to support the shared response with reasoning or evidence.",
     );
   }
 
   const preIlluminationStages = lesson.stages.slice(0, 4);
   for (const stage of preIlluminationStages) {
-    const learnerText = studentFacingStageText(stage);
-    if (
-      includesAny(learnerText, [
-        /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
-        /we (?:are|will be) (?:learning|studying|looking at)/i,
-        /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
-        /the (?:idea|concept|topic) is called/i,
-      ]) ||
-      topicIsExplicitlyRevealed(learnerText, topic)
-    ) {
+    if (topicIsExplicitlyRevealed(stage, topic)) {
       fail(
         stage.stageKey,
         "pre_illumination_topic_revealed",
-        "Stages 1–4 must preserve suspense. Do not explicitly name or reveal the lesson topic to learners before Full Illumination.",
+        "Stages 1–4 must preserve suspense. Do not explicitly announce, name or teach the lesson topic to learners before Full Illumination.",
       );
     }
   }

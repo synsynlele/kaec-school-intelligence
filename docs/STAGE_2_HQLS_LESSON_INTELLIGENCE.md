@@ -94,18 +94,20 @@ Each stage includes:
 
 Deterministic validation runs after generation and after repair.
 
-It verifies the constitutional sequence and laws, including:
-- Awakening creates genuine mystery without dumping teaching or becoming a task
-- Exploration surfaces hypotheses plus learner reasoning before correction
-- Micro-Illumination behaves as a clue that forces reconsideration without revealing the topic
-- the lesson topic is not explicitly revealed to learners anywhere in Stages 1–4
-- Trial 1 contains collaborative, non-routine reasoning, justification, productive struggle and Guide Guardrails
-- Full Illumination formally names/explains the concept after effort and responds to Trial 1 gaps
+The generator contract governs qualitative lesson design such as genuine mystery, suspense and clue quality. The deterministic validator is deliberately limited to rules that can be checked reliably from structured output instead of rejecting good pedagogy because a particular keyword was absent.
+
+It verifies the constitutional sequence and enforceable laws, including:
+- Awakening does not dump teaching, assign the first task or exceed the curiosity-question boundary
+- Exploration remains an oral prior-thinking check, surfaces reasoning and withholds correction
+- Micro-Illumination requires a visible reconsideration move and cannot define the concept, state the rule/formula or give the answer
+- explicit topic announcement/naming to learners is blocked throughout Stages 1–4
+- Trial 1 contains collaboration, every-learner contribution, non-routine reasoning, justification, productive struggle and Guide Guardrails
+- Full Illumination teaches only after Trial 1
 - Trial 2 requires genuine re-application and observable improvement
 - Integration contains changed-thinking reflection and transfer
 - learner cognitive ownership remains visible
 
-Still-invalid output is rejected.
+A targeted repair is attempted first when only one or two stages fail. If that repair still leaves the lesson invalid, KSI performs one final full-lesson repair before rejecting the generation. Still-invalid output is rejected.
 
 Every accepted generation writes a system-origin fidelity record through the secure authenticated Stage 2 RPC; browser clients cannot forge system fidelity results directly.
 

@@ -34,15 +34,17 @@ assert(
 );
 assert(
   route.includes('schemaName: "ksi_hqls_stage_repair"') &&
-    route.includes("failedStages.length === 1"),
-  "A single deterministic stage failure must use targeted repair rather than a full lesson rewrite.",
+    route.includes("failedStages.length === 1") &&
+    route.includes('repairMode !== "full_lesson"') &&
+    route.includes("KSI_HQLS_FIDELITY_FAILED"),
+  "HQLS generation must use targeted repair first, escalate one unresolved edge case to a full repair, and retain safe failure diagnostics.",
 );
 assert(
   !route.includes("maxOutputTokens: 14000"),
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.11') &&
+  engine.includes('HQLS_PROMPT_v1.12') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("teacherPrompts must be exact words or actions") &&
     engine.includes("roughly 350–550 words") &&
@@ -52,9 +54,9 @@ assert(
     engine.includes("CONTROLLED MYSTERY ARC") &&
     engine.includes("Curiosity → Hypothesis → Clue → Team Challenge") &&
     engine.includes("pre_illumination_topic_revealed") &&
-    engine.includes("awakening_lacks_mystery") &&
+    engine.includes("reasoningCuePresent") &&
     engine.includes("exploration_lacks_reasoning") &&
-    engine.includes("micro_illumination_not_clue") &&
+    engine.includes("micro_illumination_lacks_reconsideration") &&
     engine.includes("trial_first_lacks_reasoning") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
   "HQLS prompting must keep every stage plain-English, preserve the Curiosity → Hypothesis → Clue → Team Challenge mystery arc before Full Illumination, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
