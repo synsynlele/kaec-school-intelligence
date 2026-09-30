@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import {
   parseGeneratedAssessment,
@@ -376,6 +377,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [assessmentSort, setAssessmentSort] = useState<
     "newest" | "oldest" | "title"
   >("newest");
+  const [assessmentPage, setAssessmentPage] = useState(1);
+  const [assessmentPageSize, setAssessmentPageSize] = useState<RecordPageSize>(20);
 
   const subjectMatch = useMemo(
     () =>
@@ -451,6 +454,16 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     state?.classes,
     state?.subjects,
   ]);
+
+  const assessmentTotalPages = Math.max(
+    1,
+    Math.ceil(visibleAssessments.length / assessmentPageSize),
+  );
+  const assessmentCurrentPage = Math.min(assessmentPage, assessmentTotalPages);
+  const pagedAssessments = useMemo(() => {
+    const start = (assessmentCurrentPage - 1) * assessmentPageSize;
+    return visibleAssessments.slice(start, start + assessmentPageSize);
+  }, [assessmentCurrentPage, assessmentPageSize, visibleAssessments]);
 
   const refreshAssessments = useCallback(async () => {
     if (!state) return;
@@ -1265,12 +1278,16 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               <RecordListToolbar
                 compact
                 searchValue={assessmentSearch}
-                onSearchChange={setAssessmentSearch}
+                onSearchChange={(value) => {
+                  setAssessmentSearch(value);
+                  setAssessmentPage(1);
+                }}
                 searchPlaceholder="Search title, type, subject or class…"
                 sortValue={assessmentSort}
-                onSortChange={(value) =>
-                  setAssessmentSort(value as "newest" | "oldest" | "title")
-                }
+                onSortChange={(value) => {
+                  setAssessmentSort(value as "newest" | "oldest" | "title");
+                  setAssessmentPage(1);
+                }}
                 sortOptions={[
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },
@@ -1279,13 +1296,14 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 filters={
                   <select
                     value={assessmentStatus}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setAssessmentStatus(
                         event.target.value as
                           | "all"
                           | AssessmentSummary["status"],
-                      )
-                    }
+                      );
+                      setAssessmentPage(1);
+                    }}
                     aria-label="Filter assessments by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                   >
@@ -1300,8 +1318,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               />
             </div>
             <div className="mt-4 grid gap-2">
-              {visibleAssessments.length ? (
-                visibleAssessments.map((assessment) => {
+              {pagedAssessments.length ? (
+                pagedAssessments.map((assessment) => {
                   const blueprint = isRecord(assessment.blueprint)
                     ? assessment.blueprint
                     : {};
@@ -1340,6 +1358,21 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 </p>
               )}
             </div>
+            {visibleAssessments.length ? (
+              <div className="mt-4">
+                <RecordListPagination
+                  compact
+                  page={assessmentCurrentPage}
+                  pageSize={assessmentPageSize}
+                  totalItems={visibleAssessments.length}
+                  onPageChange={setAssessmentPage}
+                  onPageSizeChange={(value) => {
+                    setAssessmentPageSize(value);
+                    setAssessmentPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
           </aside>
         </section> : null}
 

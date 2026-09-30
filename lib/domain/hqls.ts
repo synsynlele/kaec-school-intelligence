@@ -82,11 +82,11 @@ export const HQLS_AUTOMATIC_FAILURES = [
   "pre_illumination_topic_revealed",
   "awakening_starts_with_content_dump",
   "exploration_corrects_too_early",
-  "exploration_lacks_reasoning",
   "micro_illumination_becomes_full_solution",
   "micro_illumination_becomes_task",
   "trial_first_is_rescued",
-  "trial_first_lacks_reasoning",
+  "trial_first_lacks_teamwork",
+  "trial_first_has_no_productive_struggle",
   "trial_second_has_no_genuine_reattempt",
   "integration_missing",
 ] as const;

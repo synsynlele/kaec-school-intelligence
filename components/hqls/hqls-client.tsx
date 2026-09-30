@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
@@ -251,6 +252,8 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
   const [lessonSort, setLessonSort] = useState<
     "newest" | "oldest" | "title"
   >("newest");
+  const [lessonPage, setLessonPage] = useState(1);
+  const [lessonPageSize, setLessonPageSize] = useState<RecordPageSize>(20);
   const [stageActions, setStageActions] = useState<
     Record<number, HqlsStageAction>
   >({});
@@ -306,6 +309,16 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
     state?.lessons,
     state?.subjects,
   ]);
+
+  const lessonTotalPages = Math.max(
+    1,
+    Math.ceil(visibleLessons.length / lessonPageSize),
+  );
+  const lessonCurrentPage = Math.min(lessonPage, lessonTotalPages);
+  const pagedLessons = useMemo(() => {
+    const start = (lessonCurrentPage - 1) * lessonPageSize;
+    return visibleLessons.slice(start, start + lessonPageSize);
+  }, [lessonCurrentPage, lessonPageSize, visibleLessons]);
 
   const needsFinalValidation = Boolean(
   selectedLesson?.status === "draft" &&
@@ -939,12 +952,16 @@ const refreshLessons = useCallback(async () => {
               <RecordListToolbar
                 compact
                 searchValue={lessonSearch}
-                onSearchChange={setLessonSearch}
+                onSearchChange={(value) => {
+                  setLessonSearch(value);
+                  setLessonPage(1);
+                }}
                 searchPlaceholder="Search HQLS title, topic, subject or class…"
                 sortValue={lessonSort}
-                onSortChange={(value) =>
-                  setLessonSort(value as "newest" | "oldest" | "title")
-                }
+                onSortChange={(value) => {
+                  setLessonSort(value as "newest" | "oldest" | "title");
+                  setLessonPage(1);
+                }}
                 sortOptions={[
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },
@@ -953,13 +970,14 @@ const refreshLessons = useCallback(async () => {
                 filters={
                   <select
                     value={lessonStatus}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setLessonStatus(
                         event.target.value as
                           | "all"
                           | LessonSummary["status"],
-                      )
-                    }
+                      );
+                      setLessonPage(1);
+                    }}
                     aria-label="Filter HQLS lessons by status"
                     className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-emerald-700"
                   >
@@ -974,8 +992,8 @@ const refreshLessons = useCallback(async () => {
               />
             </div>
             <div className="mt-4 space-y-2">
-              {visibleLessons.length ? (
-                visibleLessons.map((lesson) => (
+              {pagedLessons.length ? (
+                pagedLessons.map((lesson) => (
                   <Link
                     key={lesson.id}
                     href={`/hqls/edit?lesson=${encodeURIComponent(lesson.id)}`}
@@ -999,6 +1017,21 @@ const refreshLessons = useCallback(async () => {
                 </div>
               )}
             </div>
+            {visibleLessons.length ? (
+              <div className="mt-4">
+                <RecordListPagination
+                  compact
+                  page={lessonCurrentPage}
+                  pageSize={lessonPageSize}
+                  totalItems={visibleLessons.length}
+                  onPageChange={setLessonPage}
+                  onPageSizeChange={(value) => {
+                    setLessonPageSize(value);
+                    setLessonPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
           </aside>
         </section> : null}
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -46,6 +47,8 @@ export function SavedWorkClient() {
   const [typeFilter, setTypeFilter] = useState<"all" | SavedWorkType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "title">("newest");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<RecordPageSize>(20);
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -128,6 +131,13 @@ export function SavedWorkClient() {
       return sortOrder === "oldest" ? aTime - bTime : bTime - aTime;
     });
   }, [data, searchQuery, sortOrder, typeFilter, view]);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [currentPage, items, pageSize]);
 
   async function manage(item: SavedWorkItem, action: SavedWorkAction) {
     if (!item.canManage) return;
@@ -228,7 +238,10 @@ export function SavedWorkClient() {
         <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
           <button
             type="button"
-            onClick={() => setView("active")}
+            onClick={() => {
+              setView("active");
+              setPage(1);
+            }}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               view === "active"
                 ? "bg-emerald-950 text-white"
@@ -239,7 +252,10 @@ export function SavedWorkClient() {
           </button>
           <button
             type="button"
-            onClick={() => setView("archived")}
+            onClick={() => {
+              setView("archived");
+              setPage(1);
+            }}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${
               view === "archived"
                 ? "bg-emerald-950 text-white"
@@ -255,7 +271,10 @@ export function SavedWorkClient() {
             <button
               key={filter}
               type="button"
-              onClick={() => setTypeFilter(filter)}
+              onClick={() => {
+                setTypeFilter(filter);
+                setPage(1);
+              }}
               className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                 typeFilter === filter
                   ? "border-emerald-800 bg-emerald-50 text-emerald-950"
@@ -275,12 +294,16 @@ export function SavedWorkClient() {
       <div className="mt-4">
         <RecordListToolbar
           searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={(value) => {
+            setSearchQuery(value);
+            setPage(1);
+          }}
           searchPlaceholder="Search title, subject, class or status…"
           sortValue={sortOrder}
-          onSortChange={(value) =>
-            setSortOrder(value as "newest" | "oldest" | "title")
-          }
+          onSortChange={(value) => {
+            setSortOrder(value as "newest" | "oldest" | "title");
+            setPage(1);
+          }}
           sortOptions={[
             { value: "newest", label: "Newest" },
             { value: "oldest", label: "Oldest" },
@@ -294,8 +317,8 @@ export function SavedWorkClient() {
       </div>
 
       <section className="mt-5 grid gap-3">
-        {items.length ? (
-          items.map((item) => {
+        {pagedItems.length ? (
+          pagedItems.map((item) => {
             const archiveKey = `${item.artifactType}:${item.artifactId}:archive`;
             const restoreKey = `${item.artifactType}:${item.artifactId}:restore`;
             const deleteKey = `${item.artifactType}:${item.artifactId}:delete`;
@@ -406,6 +429,20 @@ export function SavedWorkClient() {
           </div>
         )}
       </section>
+      {items.length ? (
+        <div className="mt-4">
+          <RecordListPagination
+            page={currentPage}
+            pageSize={pageSize}
+            totalItems={items.length}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
+          />
+        </div>
+      ) : null}
     </main>
   );
 }

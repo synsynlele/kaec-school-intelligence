@@ -44,7 +44,7 @@ assert(
   "The HQLS generation path must not regress to the old 14k output ceiling.",
 );
 assert(
-  engine.includes('HQLS_PROMPT_v1.13') &&
+  engine.includes('HQLS_PROMPT_v1.14') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
     engine.includes("roughly 350–550 words") &&
@@ -54,10 +54,9 @@ assert(
     engine.includes("IMAGINATION TO FIRST TRIAL") &&
     engine.includes("Awakening the Imagination → Exploring Crude Thinking → Giving a Tiny Clue → First Trial") &&
     engine.includes("pre_illumination_topic_revealed") &&
-    engine.includes("reasoningCuePresent") &&
-    engine.includes("exploration_lacks_reasoning") &&
     engine.includes("micro_illumination_becomes_task") &&
-    engine.includes("trial_first_lacks_reasoning") &&
+    engine.includes("the quality of its critical-thinking questions is governed by the generation contract") &&
+    engine.includes("the intellectual quality of the challenge and justification is governed by the generation contract") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
   "HQLS prompting must keep teacher actions plain-English, preserve the Imagination → Crude Thinking → Tiny Clue → First Trial flow, keep Micro-Illumination clue-only, conceal the formal topic through Stage 4, enforce critical thinking, and keep Full Illumination focused, substantial and objective-led.",
 );
