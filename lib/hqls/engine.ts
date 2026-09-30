@@ -456,7 +456,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
   const directText = [...stage.teacherPrompts, ...stage.learnerActions].join(" ");
   if (
     includesAny(directText, [
-      /today(?:\'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
+      /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
       /we (?:are|will be) (?:learning|studying|looking at)/i,
       /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
       /the (?:idea|concept|topic) is called/i,
@@ -478,7 +478,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
     stage.teacherPrompts.some(
       (prompt) =>
         revealAction.test(prompt.trim()) &&
-        !/\b(?:do not|don\'t|avoid|without|withhold)\b/i.test(prompt) &&
+        !/\b(?:do not|don't|avoid|without|withhold)\b/i.test(prompt) &&
         topicPattern.test(prompt),
     ) ||
     stage.learnerActions.some(
@@ -486,6 +486,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
     )
   );
 }
+
 export function validateHqlsLesson(
   lesson: GeneratedHqlsLesson,
   topic?: string,
