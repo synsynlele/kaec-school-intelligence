@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
+import { hqlsTimingLabel } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import {
   parseHqlsStageContent,
@@ -902,7 +903,7 @@ const refreshLessons = useCallback(async () => {
             </div>
             <div className="mt-4">
               <TextArea
-                label="Lesson objective"
+                label="Lesson objective (what learners will demonstrate)"
                 value={objective}
                 onChange={setObjective}
                 placeholder="By the end of the lesson, learners should be able to…"
@@ -1106,7 +1107,7 @@ const refreshLessons = useCallback(async () => {
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${validation.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
                     >
-                      HQLS fidelity {validation.score}/100
+                      {validation.passed ? "HQLS sequence checks passed" : "HQLS sequence needs review"}
                     </span>
                   ) : null}
                 </div>
@@ -1187,6 +1188,7 @@ const refreshLessons = useCallback(async () => {
                         <h3 className="mt-1 text-2xl font-semibold tracking-tight">
                           {definition.title}
                         </h3>
+                        <p className="mt-2 text-sm font-medium text-emerald-800">{hqlsTimingLabel(selectedLesson.duration_minutes, stage.stageNumber)}</p>
                         <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
                           {definition.purpose} {definition.nonNegotiable}
                         </p>

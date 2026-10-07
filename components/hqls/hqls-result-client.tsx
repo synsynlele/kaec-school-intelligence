@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { hqlsTimingLabel } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import { parseHqlsStageContent, type HqlsStageContent } from "@/lib/hqls/engine";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -176,7 +177,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-900">{state.lesson.status}</span>
               {state.fidelity ? (
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${state.fidelity.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                  HQLS fidelity {state.fidelity.score}/100
+                  {state.fidelity.passed ? "HQLS sequence checks passed" : "HQLS sequence needs review"}
                 </span>
               ) : null}
             </div>
@@ -201,6 +202,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
         </div>
       </div>
 
+      <p className="mt-4 text-sm text-zinc-600">Suggested timings total the lesson duration. Adjust pacing to your class. Automated sequence checks do not certify subject accuracy; review examples, tasks and answers before teaching.</p>
       <div className="mt-5 grid gap-4">
         {state.stages.map((stage) => {
           const definition = HQLS_STAGES[stage.stageNumber - 1];
@@ -209,6 +211,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Stage {stage.stageNumber}</p>
               <h2 className="mt-1 text-xl font-semibold text-zinc-950 sm:text-2xl">{definition.title}</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{definition.purpose}</p>
+              <p className="mt-2 text-sm font-medium text-emerald-800">{hqlsTimingLabel(state.lesson.duration_minutes, stage.stageNumber)}</p>
               <ClassroomStage stage={stage} />
             </article>
           );

@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.16";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.17";
 
 export type HqlsStageAction =
   | "improve"
@@ -162,6 +162,16 @@ STAGES 6–7:
 
 const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
+
+SUBJECT ACCURACY AND TASK INTEGRITY:
+- Check factual statements, calculations, pronunciation symbols, examples and expected answers against the supplied curriculum/resources when available. Do not invent verification or claim certainty where sources are missing.
+- Every task must be solvable with the materials actually supplied. If asking learners to sort into categories and give examples from each, include valid examples for every required category. Do not manufacture struggle by contradictory instructions or missing materials.
+- Include all word cards, data, short source texts or other task material needed, plus teacher-facing expected answers/explanations after the first attempt. Distinguish genuine ambiguity from an accidental design error.
+- State prerequisites and accessible support in the existing teacher guidance fields. Clarify logistics without giving away the solution.
+- Trial 1 requires meaningful contributions from every team member. Trial 2 should improve the first work and include a brief individual check using a close equivalent so group success does not conceal individual misunderstanding.
+- Reflection must refer to evidence of changed understanding, not force claims of personal transformation. Offer a feasible offline option for home practice.
+- Never use throat vibration as a test distinguishing monophthongs from diphthongs; vibration indicates voicing. For pronunciation, specify the intended pronunciation model and use accurate listening/articulation examples.
+
 
 PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Write so a teacher can understand the plan immediately without knowing HQLS jargon.

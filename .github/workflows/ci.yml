@@ -39,6 +39,11 @@ jobs:
         run: npm run typecheck
       - name: Constitutional structure
         run: npm run verify:structure
+      - name: Export and quality regressions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y poppler-utils
+          npm run verify:quality
       - name: Production build
         run: npm run build
       - name: Dependency audit

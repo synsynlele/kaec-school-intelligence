@@ -170,7 +170,7 @@ assert(
   "Assessment PDF must retain protected body/footer separation.",
 );
 assert(
-  diagnosisPdf.includes("return this.y - height > 42;") && diagnosisPdf.includes("KSI_PDF_ATTRIBUTION"),
+  diagnosisPdf.includes("this.y - height <= 42") && diagnosisPdf.includes("this.pages.push(this.commands)") && diagnosisPdf.includes("KSI_PDF_ATTRIBUTION"),
   "Diagnosis PDF flow pages must retain protected body/footer separation.",
 );
 

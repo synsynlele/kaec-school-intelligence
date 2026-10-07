@@ -1,3 +1,5 @@
+import { hqlsTimingLabel } from "@/lib/hqls/timing";
+import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import type { HqlsStageContent } from "@/lib/hqls/engine";
 import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
@@ -41,68 +43,12 @@ const RED: [number, number, number] = [0.82, 0.19, 0.2];
 const TEXT: [number, number, number] = [0.12, 0.12, 0.14];
 const MUTED: [number, number, number] = [0.38, 0.4, 0.44];
 
-function ascii(value: string) {
-  return value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/\u2192/g, "->")
-    .replace(/\u2022/g, "-")
-    .replace(/\u00b2/g, "^2")
-    .replace(/\u00b3/g, "^3")
-    .replace(/\u2074/g, "^4")
-    .replace(/\u00d7/g, "x")
-    .replace(/\u00f7/g, "/")
-    .replace(/[^\x20-\x7E\n]/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-}
+const ascii = normalizePdfText;
 
-function pdfEscape(value: string) {
-  return ascii(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-}
+const pdfEscape = escapePdfText;
 
-function wrapText(
-  text: string,
-  maxWidth: number,
-  fontSize: number,
-  bold = false,
-) {
-  const clean = ascii(text);
-  if (!clean) return [];
-  const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
-  const maxChars = Math.max(12, Math.floor(maxWidth / averageGlyph));
-  const paragraphs = clean.split(/\n+/);
-  const lines: string[] = [];
-
-  for (const paragraph of paragraphs) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    let line = "";
-    for (const word of words) {
-      const next = line ? `${line} ${word}` : word;
-      if (next.length <= maxChars) {
-        line = next;
-      } else {
-        if (line) lines.push(line);
-        if (word.length <= maxChars) {
-          line = word;
-        } else {
-          for (let index = 0; index < word.length; index += maxChars) {
-            const part = word.slice(index, index + maxChars);
-            if (part.length === maxChars) lines.push(part);
-            else line = part;
-          }
-        }
-      }
-    }
-    if (line) lines.push(line);
-  }
-
-  return lines;
+function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
+  return wrapPdfText(text, maxWidth, fontSize, bold);
 }
 
 function canonicalStageDefinition(stageNumber: number) {
@@ -399,8 +345,8 @@ class PdfComposer {
 
     const fidelity =
       this.input.fidelityScore === null
-        ? "HQLS validation recorded"
-        : `HQLS VALIDATED - Fidelity ${this.input.fidelityScore}/100`;
+        ? "HQLS sequence check recorded"
+        : "HQLS sequence checks passed";
     this.line(fidelity, {
       bold: true,
       size: 9,
@@ -408,6 +354,7 @@ class PdfComposer {
       gapAfter: 8,
     });
 
+    this.line("Automated checks do not certify subject accuracy. Teacher review is required.", { size: 8.5, color: MUTED });
     this.rule();
     this.line(`Workspace: ${this.input.workspaceName}`, {
       bold: true,
@@ -452,6 +399,7 @@ class PdfComposer {
         gapBefore: 7,
         gapAfter: 3,
       });
+      this.line(hqlsTimingLabel(this.input.durationMinutes, stage.stageNumber), { size: 8.5, color: MUTED, gapAfter: 5 });
       if (stage.stageNumber === 1) {
         this.detailSection("Teacher says / shows", stage.experience);
         this.detailSection("Central question", stage.teacherPrompts, { bullets: true });
@@ -530,6 +478,24 @@ class PdfComposer {
           { label: "Teacher reminder", value: stage.guideGuardrails },
         ]);
       }
+      const visibleFields: Record<number, string[]> = {
+        1: ["experience", "teacherPrompts", "learnerActions", "evidenceToNotice", "guideGuardrails", "productiveStruggle"],
+        2: ["experience", "teacherPrompts", "learnerActions", "evidenceToNotice", "guideGuardrails", "productiveStruggle"],
+        3: ["experience", "teacherPrompts", "learnerActions", "evidenceToNotice", "guideGuardrails"],
+        4: ["experience", "learnerActions", "teacherPrompts", "productiveStruggle", "guideGuardrails", "evidenceToNotice"],
+        5: ["teachingContent", "respondsToFirstAttempt", "evidenceToNotice", "guideGuardrails"],
+        6: ["experience", "learnerActions", "teacherPrompts", "evidenceToNotice", "respondsToFirstAttempt", "guideGuardrails", "productiveStruggle"],
+        7: ["experience", "teacherPrompts", "reflectionPrompt", "transferTask", "learnerActions", "evidenceToNotice", "guideGuardrails"],
+      };
+      const extraFields = [
+        ["experience", "Additional teacher context"], ["teacherPrompts", "Additional teacher prompts"],
+        ["learnerActions", "Additional learner actions"], ["productiveStruggle", "Additional support context"],
+        ["respondsToFirstAttempt", "Connection to first attempt"], ["teachingContent", "Additional teaching content"],
+        ["reflectionPrompt", "Additional reflection"], ["transferTask", "Additional application"],
+      ] as const;
+      for (const [key, label] of extraFields) {
+        if (!visibleFields[stage.stageNumber].includes(key)) this.detailSection(label, stage[key]);
+      }
       this.rule();
   }
 }
@@ -566,7 +532,7 @@ function buildPdfObjects(pageCommands: string[][], input: HqlsLessonPdfInput) {
       `BT /F1 7.5 Tf 1 0 0 1 54 30 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | HQLS | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
-    const contentBytes = Buffer.from(content, "latin1");
+    const contentBytes = Buffer.from(content, "utf8");
     objects[contentRef] = Buffer.concat([
       Buffer.from(`<< /Length ${contentBytes.length} >>\nstream\n`),
       contentBytes,
@@ -581,6 +547,7 @@ function buildPdfObjects(pageCommands: string[][], input: HqlsLessonPdfInput) {
 }
 
 function serializePdf(objects: Buffer[]) {
+  embedUnicodePdfFonts(objects);
   const header = Buffer.from("%PDF-1.4\n%KSI\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
