@@ -188,7 +188,7 @@ for (const brandedSurface of [
 const stage2Engine = await text("lib/hqls/engine.ts");
 for (const required of [
   "HQLS_ENGINE_v1.8",
-  "HQLS_PROMPT_v1.16",
+  "HQLS_PROMPT_v1.17",
   "validateHqlsLesson",
   "full_illumination_teaching_missing",
   "trial_second_has_no_genuine_reattempt",
@@ -307,7 +307,7 @@ for (const requirement of [
   "Teacher must NOT do",
   "Teacher explains clearly and in detail",
   "Reflection prompts",
-  "HQLS VALIDATED",
+  "HQLS sequence checks passed",
 ]) {
   assert(
     pdfGenerator.includes(requirement),

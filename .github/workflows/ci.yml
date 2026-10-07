@@ -37,8 +37,15 @@ jobs:
         run: npm run lint
       - name: Strict TypeScript
         run: npm run typecheck
+      - name: Next lint root discovery compatibility
+        run: npm run verify:lint-glob
       - name: Constitutional structure
         run: npm run verify:structure
+      - name: Export and quality regressions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y poppler-utils
+          npm run verify:quality
       - name: Production build
         run: npm run build
       - name: Dependency audit

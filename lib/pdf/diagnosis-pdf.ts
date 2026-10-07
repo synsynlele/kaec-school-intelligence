@@ -1,3 +1,4 @@
+import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import type { GeneratedDiagnosis } from "@/lib/diagnosis/engine";
 import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
 
@@ -43,25 +44,9 @@ const HEADER_INFO_X = 210;
 const HEADER_INFO_WIDTH = 390;
 const HEADER_INFO_COLUMN_WIDTH = HEADER_INFO_WIDTH / 2;
 
-function ascii(value: string) {
-  return value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/\u2192/g, "->")
-    .replace(/\u2022/g, "-")
-    .replace(/[^\x20-\x7E\n]/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-}
+const ascii = normalizePdfText;
 
-function pdfEscape(value: string) {
-  return ascii(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-}
+const pdfEscape = escapePdfText;
 
 function rgb([r, g, b]: Color) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
@@ -72,26 +57,7 @@ function strokeRgb([r, g, b]: Color) {
 }
 
 function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
-  const clean = ascii(text);
-  if (!clean) return [];
-  const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
-  const maxChars = Math.max(10, Math.floor(maxWidth / averageGlyph));
-  const lines: string[] = [];
-  for (const paragraph of clean.split(/\n+/)) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    let line = "";
-    for (const word of words) {
-      const next = line ? `${line} ${word}` : word;
-      if (next.length <= maxChars) {
-        line = next;
-      } else {
-        if (line) lines.push(line);
-        line = word;
-      }
-    }
-    if (line) lines.push(line);
-  }
-  return lines;
+  return wrapPdfText(text, maxWidth, fontSize, bold);
 }
 
 function dateLabel(value: string) {
@@ -440,10 +406,16 @@ function firstPage(input: DiagnosisPdfInput) {
 }
 
 class FlowPage {
-  readonly commands: string[] = [];
+  commands: string[] = [];
+  private pages: string[][] = [];
   private y = PAGE_HEIGHT - 102;
 
   constructor(private readonly input: DiagnosisPdfInput) {
+    this.header();
+  }
+
+  private header() {
+    const input = this.input;
     if (input.hasSchoolLogo) {
       this.commands.push("q 36 0 0 36 30 523 cm /Im1 Do Q");
     } else {
@@ -453,9 +425,9 @@ class FlowPage {
     textAtTop(
       this.commands,
       "GROWTH & REVIEW NOTES",
-      PAGE_WIDTH - 220,
+      PAGE_WIDTH - 260,
       30,
-      15,
+      12,
       true,
       FOREST,
     );
@@ -466,7 +438,12 @@ class FlowPage {
   }
 
   private ensure(height: number) {
-    return this.y - height > 42;
+    if (this.y - height <= 42) {
+      this.pages.push(this.commands);
+      this.commands = [];
+      this.y = PAGE_HEIGHT - 102;
+      this.header();
+    }
   }
 
   line(value: string, options: FlowTextOptions = {}) {
@@ -478,11 +455,11 @@ class FlowPage {
     const lines = wrapText(value, CONTENT_WIDTH - indent, size, bold);
     if (!lines.length) return;
     const leading = size * 1.35;
-    const required = gapBefore + lines.length * leading + gapAfter;
-    if (!this.ensure(required)) return;
+    this.ensure(gapBefore + leading + gapAfter);
     this.y -= gapBefore;
-    this.commands.push(rgb(options.color ?? TEXT));
     for (const line of lines) {
+      this.ensure(leading + gapAfter);
+      this.commands.push(rgb(options.color ?? TEXT));
       this.commands.push(
         `BT /${bold ? "F2" : "F1"} ${size.toFixed(1)} Tf 1 0 0 1 ${(MARGIN_X + indent).toFixed(1)} ${this.y.toFixed(1)} Tm (${pdfEscape(line)}) Tj ET`,
       );
@@ -511,6 +488,39 @@ class FlowPage {
       `${this.input.studentName} | ${this.input.className} | ${this.input.academicSession} | ${this.input.term}`,
       { bold: true, size: 9.6, color: MUTED, gapAfter: 8 },
     );
+
+    this.section("Complete Findings & Action Plan");
+    this.line("The first page is a compact summary. Complete reviewed wording follows here.");
+    this.section("Diagnosis");
+    this.line(diagnosis.conciseDiagnosis);
+    const findings = [
+      ["Academic / Skill Strengths", diagnosis.academicSkillStrengths],
+      ["Academic / Skill Challenges", diagnosis.academicSkillChallenges],
+      ["Character Strengths", diagnosis.characterStrengths],
+      ["Character Challenges", diagnosis.characterChallenges],
+    ] as const;
+    for (const [label, items] of findings) {
+      this.section(label);
+      if (!items.length) this.line("Insufficient evidence to state a supported finding.");
+      items.forEach((item) => this.bullet(item.statement));
+    }
+    const actions = [
+      ["School: Academics / Skills", diagnosis.schoolAcademicActions],
+      ["Parents: Academics / Skills", diagnosis.parentAcademicActions],
+      ["School: Character", diagnosis.schoolCharacterActions],
+      ["Parents: Character", diagnosis.parentCharacterActions],
+    ] as const;
+    for (const [label, items] of actions) {
+      if (!items.length) continue;
+      this.section(label);
+      items.forEach((item) => this.bullet(`${item.action} (${item.timeframe})`));
+    }
+    if (diagnosis.observedEvidence.length) this.section("Observed Evidence");
+    diagnosis.observedEvidence.forEach((item) => this.bullet(item.statement));
+    if (diagnosis.detectedPatterns.length) this.section("Detected Patterns");
+    diagnosis.detectedPatterns.forEach((item) => this.bullet(item.statement));
+    if (diagnosis.possibleInterpretations.length) this.section("Possible Interpretations (not established facts)");
+    diagnosis.possibleInterpretations.forEach((item) => this.bullet(`${item.statement} ${item.uncertaintyNote}`));
 
     this.section("Builder Growth Direction");
     this.line(diagnosis.builderGrowthDirection, { size: 10 });
@@ -546,7 +556,7 @@ class FlowPage {
       { size: 8.5, color: MUTED, gapBefore: 12 },
     );
 
-    return this.commands;
+    return [...this.pages, this.commands];
   }
 }
 
@@ -582,7 +592,7 @@ function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
       `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Diagnosis | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
-    const contentBytes = Buffer.from(content, "latin1");
+    const contentBytes = Buffer.from(content, "utf8");
     objects[contentRef] = Buffer.concat([
       Buffer.from(`<< /Length ${contentBytes.length} >>\nstream\n`),
       contentBytes,
@@ -597,6 +607,7 @@ function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
 }
 
 function serializePdf(objects: Buffer[]) {
+  embedUnicodePdfFonts(objects);
   const header = Buffer.from("%PDF-1.4\n%KSI\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
@@ -639,7 +650,7 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
     throw new Error("Parent diagnosis PDF requires Academic Session and Term.");
   }
 
-  const pages = [firstPage(input), new FlowPage(input).build()];
+  const pages = [firstPage(input), ...new FlowPage(input).build()];
   return serializePdf(buildPdfObjects(pages, input));
 }
 

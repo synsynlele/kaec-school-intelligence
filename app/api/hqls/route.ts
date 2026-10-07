@@ -1,3 +1,4 @@
+import { HQLS_QUALITY_SCHEMA, HQLS_QUALITY_INSTRUCTION, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -237,7 +238,7 @@ function validateGenerateInput(value: unknown): HqlsLessonRequest {
     ageRange: requireString(input.ageRange, "Age or age range"),
     durationMinutes: Math.round(durationMinutes),
     topic: requireString(input.topic, "Topic"),
-    objective: requireString(input.objective, "Lesson objective"),
+    objective: requireObservableObjective(requireString(input.objective, "Lesson objective")),
     previousLearning:
       typeof input.previousLearning === "string"
         ? input.previousLearning.trim()
@@ -828,6 +829,24 @@ ${(
       );
     }
 
+    let qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+    if (!qualityReview.passed) {
+      const contentRepair = await generateOpenAIJson<unknown>({
+        systemInstruction: buildHqlsGenerationSystemInstruction(),
+        parts: [{ text: `${lessonContextSummary(input)}\nRepair only these grounded subject/task defects, preserving all seven HQLS stages and useful content:\n${JSON.stringify(qualityReview.issues)}\nLesson:\n${JSON.stringify(lesson)}` }, ...resources.parts],
+        responseSchema: HQLS_LESSON_JSON_SCHEMA, schemaName: "ksi_hqls_content_repair",
+        reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
+      });
+      repairDurationMs += contentRepair.durationMs;
+      lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
+      validation = validateHqlsLesson(lesson, input.topic);
+      qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+    }
+    if (!qualityReview.passed || !validation.passed) {
+      await completeAiRun(supabase, runId, "failed", "HQLS_CONTENT_REVIEW_FAILED");
+      return json({ error: "Subject or task errors were found. The generated lesson was not saved. " + [...qualityReview.issues.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`), ...validation.violations.map((issue) => issue.message)].join(" "), code: "HQLS_CONTENT_REVIEW_FAILED", qualityReview, validation }, 422);
+    }
+
     const persisted = await createLesson(supabase, {
       workspaceId: input.workspaceId,
       title: lesson.title,
@@ -854,6 +873,7 @@ ${(
         durationMinutes: input.durationMinutes,
         objective: input.objective,
         resourceCount: resources.rows.length,
+        qualityReview,
         timing: {
           firstPassMs: generated.durationMs,
           repairMs: repairDurationMs,
@@ -893,6 +913,7 @@ ${(
       lesson: refreshed.lesson,
       stages: refreshed.stages,
       validation,
+      qualityReview,
       sources: resources.labels,
       sourceWarnings: resources.warnings,
       provider: generated.provider,
@@ -1018,6 +1039,19 @@ async function resolveSavedLessonNames(
     if (data?.name) classLevel = data.name;
   }
   return { subject, classLevel };
+}
+
+async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: string, parts: OpenAIPart[] = []) {
+  return runHqlsQualityReview(lesson, async (retry) => {
+    const result = await generateOpenAIJson<unknown>({
+      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? "\nYour previous response contained evidence that could not be traced to its stage. Review the same lesson again. Copy a contiguous quotation directly from the stated stage; do not paraphrase or join separate fields. Report genuine defects only. Do not return an empty list merely to pass validation." : ""),
+      parts: [{ text: `${context}\nReview this complete lesson:\n${JSON.stringify(lesson)}` }, ...parts],
+      responseSchema: HQLS_QUALITY_SCHEMA,
+      schemaName: "ksi_hqls_subject_task_review",
+      reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000,
+    });
+    return result.data;
+  });
 }
 
 async function handleRegenerateStage(
@@ -1162,6 +1196,12 @@ async function handleRegenerateStage(
       );
     }
 
+    const qualityReview = await reviewGeneratedContent(candidate, context, resources.parts);
+    if (!qualityReview.passed) {
+      await completeAiRun(supabase, runId, "failed", "HQLS_CONTENT_REVIEW_FAILED");
+      return json({ error: "Subject or task errors were found. The saved lesson was not changed. " + [...qualityReview.issues.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`), ...validation.violations.map((issue) => issue.message)].join(" "), code: "HQLS_CONTENT_REVIEW_FAILED", qualityReview, validation }, 422);
+    }
+
     const { error: stageError } = await supabase
       .from("lesson_stages")
       .update({
@@ -1204,6 +1244,7 @@ async function handleRegenerateStage(
       stages: refreshed.stages,
       stage: replacement,
       validation,
+      qualityReview,
       sources: resources.labels,
       sourceWarnings: resources.warnings,
       provider: first.provider,

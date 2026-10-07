@@ -1,3 +1,4 @@
+import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import type {
   GeneratedAssessment,
   GeneratedAssessmentItem,
@@ -75,56 +76,12 @@ const SECTIONS: SectionDefinition[] = [
   },
 ];
 
-function ascii(value: string) {
-  return value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/\u2192/g, "->")
-    .replace(/\u2022/g, "-")
-    .replace(/\u00d7/g, "x")
-    .replace(/\u00f7/g, "/")
-    .replace(/[^\x20-\x7E\n]/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-}
+const ascii = normalizePdfText;
 
-function pdfEscape(value: string) {
-  return ascii(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-}
+const pdfEscape = escapePdfText;
 
-function wrapText(
-  text: string,
-  maxWidth: number,
-  fontSize: number,
-  bold = false,
-) {
-  const clean = ascii(text);
-  if (!clean) return [];
-  const averageGlyph = fontSize * (bold ? 0.56 : 0.51);
-  const maxChars = Math.max(12, Math.floor(maxWidth / averageGlyph));
-  const lines: string[] = [];
-
-  for (const paragraph of clean.split(/\n+/)) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    let line = "";
-    for (const word of words) {
-      const next = line ? `${line} ${word}` : word;
-      if (next.length <= maxChars) {
-        line = next;
-      } else {
-        if (line) lines.push(line);
-        line = word;
-      }
-    }
-    if (line) lines.push(line);
-  }
-
-  return lines;
+function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
+  return wrapPdfText(text, maxWidth, fontSize, bold);
 }
 
 function rgb([r, g, b]: [number, number, number]) {
@@ -200,7 +157,7 @@ class PdfComposer {
       this.current.push("48 757 34 4 re f");
     }
 
-    const schoolX = this.input.hasSchoolLogo ? 101 : 48;
+    const schoolX = 101;
     this.current.push(rgb(NAVY));
     this.current.push(
       `BT /F2 12.5 Tf 1 0 0 1 ${schoolX} 780 Tm (${pdfEscape(this.input.workspaceName.toUpperCase())}) Tj ET`,
@@ -507,7 +464,7 @@ function buildPdfObjects(
       `BT /F1 7.2 Tf 1 0 0 1 48 28 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
-    const contentBytes = Buffer.from(content, "latin1");
+    const contentBytes = Buffer.from(content, "utf8");
     objects[contentRef] = Buffer.concat([
       Buffer.from(`<< /Length ${contentBytes.length} >>\nstream\n`),
       contentBytes,
@@ -522,6 +479,7 @@ function buildPdfObjects(
 }
 
 function serializePdf(objects: Buffer[]) {
+  embedUnicodePdfFonts(objects);
   const header = Buffer.from("%PDF-1.4\n%KSI\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];

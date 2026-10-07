@@ -8,6 +8,9 @@ const aiCorsHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/api/**/pdf": ["./public/fonts/*.ttf"],
+  },
   async headers() {
     return [
       { source: "/api/diagnosis", headers: aiCorsHeaders },
