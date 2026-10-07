@@ -29,9 +29,15 @@ This change does not rewrite school governance, diagnosis standards, assessments
 
 ## Dependency audit
 
-The initial audit identified existing Next.js, sharp, source-map-js and braces advisories. Patch updates pin Next.js and its ESLint config to 16.3.6, sharp to 0.35.5, and source-map-js to 1.2.2. The remaining full-audit failure is the development-only chain eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces (GHSA-vfj7-8cjw-p6xm). The upstream advisory reports no patched braces release. No audit exception, package downgrade or CI bypass has been introduced. This is an open release gate; a production-only audit does not replace the repository's full-audit requirement.
+The initial audit identified existing Next.js, sharp, source-map-js and braces advisories. Patch updates pin Next.js and its ESLint config to 16.3.6, sharp to 0.35.5, and source-map-js to 1.2.2. The first GitHub CI run passed lint, types, structural checks, PDF/quality regressions and production build, then failed the full dependency audit on the development-only chain eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces (GHSA-vfj7-8cjw-p6xm).
+
+The follow-up removes that dependency chain with an override scoped solely to the Next ESLint plugin. The small local `tooling/next-root-glob` adapter uses pinned tinyglobby 0.2.17 for the plugin's sole consumed API: synchronous directory root discovery. It preserves exact directory roots, absolute/relative results and recursive directory matching, disables automatic directory expansion, and normalises trailing slashes. The file override resolves relative to the installed plugin directory; clean-install CI and adapter-resolution assertions guard that installation layout. This is not a general-purpose fast-glob replacement. Review the adapter when upgrading the plugin or adding new root-pattern syntax.
+
+The actual Next `getRootDirs` function is tested against ten directory cases, including static roots, wildcards, brace alternatives, arrays, recursive roots, missing roots and Windows-style separators. Next/React lint rules remain enabled and the complete high-severity audit is unchanged. The clean-install full audit now reports zero vulnerabilities locally. GitHub CI must confirm the updated exact head before promotion. No audit exception, package downgrade or CI bypass has been introduced.
 
 Sources: https://github.com/advisories/GHSA-vcvr-r3jv-pc5j and https://github.com/advisories/GHSA-vfj7-8cjw-p6xm.
+
+Adapter API/migration references: https://superchupu.dev/tinyglobby/documentation and https://superchupu.dev/tinyglobby/migration.
 
 ## Release
 

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "verify:structure": "node scripts/verify-structure.mjs && node scripts/verify-stage3.mjs && node scripts/verify-stage4.mjs && node scripts/verify-stage5.mjs && node scripts/verify-stage6.mjs && node scripts/verify-ksi2.mjs && node scripts/verify-ksi2-completion.mjs && node scripts/verify-stage12.mjs && node scripts/verify-stage14.mjs && node scripts/verify-stage15.mjs && node scripts/verify-stage16.mjs && node scripts/verify-v1-stability.mjs && node scripts/verify-prerelease-2026-08-20.mjs && node scripts/verify-ai-generation-transport.mjs && node scripts/verify-lite-distribution.mjs && node scripts/verify-teacher-artifact-isolation.mjs && node scripts/verify-hqls-draft-recovery.mjs && node scripts/verify-hqls-pdf-teacher-focus.mjs && node scripts/verify-hqls-generation-performance.mjs && node scripts/verify-record-search-controls.mjs && node scripts/verify-academic-setup-linkage.mjs && node scripts/verify-scheme-class-context.mjs && node scripts/verify-product-branding-exam-pdf.mjs",
     "validate": "npm run lint && npm run typecheck && npm run verify:structure && npm run build",
-    "verify:quality": "node --import tsx scripts/verify-ksi-quality-runtime.ts"
+    "verify:quality": "node --import tsx scripts/verify-ksi-quality-runtime.ts",
+    "verify:lint-glob": "node scripts/verify-next-root-glob.mjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "1.1.1",
@@ -39,6 +40,9 @@
     "nanoid": "3.3.18",
     "sharp": "0.35.5",
     "js-yaml": "4.3.2",
-    "source-map-js": "1.2.2"
+    "source-map-js": "1.2.2",
+    "@next/eslint-plugin-next": {
+      "fast-glob": "file:../../../tooling/next-root-glob"
+    }
   }
 }
