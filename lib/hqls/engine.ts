@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.19";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.20";
 
 export type HqlsStageAction =
   | "improve"
@@ -164,6 +164,7 @@ const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
 SUBJECT ACCURACY AND TASK INTEGRITY:
+- Micro-Illumination is only the actual tiny clue needed for Trial 1, written as one or two short teacher sentences without the formal topic name. Put optional oral guiding questions in teacherPrompts. learnerActions may be empty or contain listening/noticing/thinking only. Do not assign pairs/groups, writing, sorting, solving, completing a table or preparing/presenting a product here. Instructions about the forthcoming Trial 1 belong in Stage 4, not Stage 3. Keep teacher restraints in guideGuardrails, not mixed into student-facing speech.
 - For every explicitly counted list promised as below/provided/listed/shown/above, put the actual learner material in experience as a block: 'Word cards (16):' followed by 1. actual word, 2. actual word, through 16., one entry per line. Use the exact plural material name from the promise (Words, Sentences, Examples, Scenarios, Cards, Passages, Sentence cards or Scenario cards). Keep material headings separate from task-output lists. References to an earlier list must name its stage number. Do not put the materials only in teacher answers, support cues or teachingContent.
 - Check distribution arithmetic: all promised items must be allocated. For sixteen words and three team members, use 5/5/6 or an explicit shared final word, not five each. Fit the number of outputs and materials to the available stage time; do not reduce useful teaching or omit promised material to be brief.
 - Check factual statements, calculations, pronunciation symbols, examples and expected answers against the supplied curriculum/resources when available. Do not invent verification or claim certainty where sources are missing.
@@ -340,7 +341,9 @@ export function buildStageRegenerationPrompt(args: {
 }) {
   const definition = HQLS_STAGES[args.targetStage.stageNumber - 1];
   const actionInstruction =
-    definition.index === 5
+    definition.index === 3
+      ? `${ACTION_INSTRUCTIONS[args.action]} Replace this stage with only the tiny clue needed for the existing Trial 1: one or two short teacher sentences with no formal topic name, definition, rule, answer or assigned activity. teacherPrompts may contain up to three short oral guiding questions. learnerActions may be empty or listening/noticing/thinking only. Do not include even future instructions to work in pairs, write, solve, sort, complete or produce; those belong to Stage 4. Keep teacher-only restraints in guideGuardrails.`
+      : definition.index === 5
       ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve focused, accurate conventional teaching with enough connected explanation to carry the lesson seriously, written in simple plain English.`
       : ACTION_INSTRUCTIONS[args.action];
 
@@ -456,7 +459,12 @@ function escapeRegExp(value: string) {
 }
 
 function studentFacingStageText(stage: HqlsStageContent) {
-  return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions].join(" ");
+  // A standalone restraint addressed to the teacher is not an instruction
+  // delivered to learners. Keep positive clauses and quoted teacher speech.
+  return [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions]
+    .flatMap((text) => text.split(/[.!?;\n]+/))
+    .filter((clause) => !/^\s*(?:teacher\s*:\s*)?(?:do not|don't|never)\s+(?:announce|mention|name|reveal|teach|define|explain|work|discuss|collaborate|write|solve|calculate|design|produce|create|complete|prepare|present|submit|fill)\b/i.test(clause))
+    .join(" ");
 }
 
 
@@ -682,11 +690,7 @@ export function validateHqlsLesson(
       "Micro-Illumination may add a small clue or orientation, but it must not define the concept, state the rule/formula or give the solution.",
     );
   }
-  const microActivityText = [
-    micro.experience,
-    ...micro.teacherPrompts,
-    ...micro.learnerActions,
-  ].join(" ");
+  const microActivityText = studentFacingStageText(micro);
   if (
     includesAny(microActivityText, [
       /\b(?:work|discuss|collaborate)\s+in\s+(?:pairs|groups|teams)\b/i,

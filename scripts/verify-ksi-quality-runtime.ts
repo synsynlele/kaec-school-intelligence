@@ -7,6 +7,7 @@ import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
+import { validateHqlsLesson } from "../lib/hqls/engine";
 import { resolvePdfBranding } from "../lib/pdf/pdf-branding";
 import { createHqlsLessonPdf } from "../lib/pdf/hqls-lesson-pdf";
 import { createAssessmentPdf } from "../lib/pdf/assessment-pdf";
@@ -28,6 +29,17 @@ async function verifyQuality() {
   const notation = "ɪ æ ɑː ɒ ɔː ʊ ʌ ɜː ə aɪ ₦ × ÷ √ ≤ ≥ α β é";
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
+  const microCodes = (experience: string, learnerActions: string[] = []) => validateHqlsLesson({ ...lesson,
+    stages: stages.map((stage) => stage.stageNumber === 3 ? { ...stage, experience, teacherPrompts: [], learnerActions } : { ...stage }),
+  }, "Syllable stress").violations.filter((issue) => issue.stageKey === "micro_illumination").map((issue) => issue.code);
+  assert.deepEqual(microCodes("Notice which part of the word your voice makes more noticeable. Do not work in pairs. Do not reveal syllable stress."), []);
+  assert(microCodes("Work in pairs and write two answers.").includes("micro_illumination_becomes_task"));
+  assert(microCodes("Do not work in pairs; learners must write two answers.").includes("micro_illumination_becomes_task"));
+  assert(microCodes("Today the topic is syllable stress.").includes("pre_illumination_topic_revealed"));
+  assert(microCodes("Do not write; this concept is called syllable stress.").includes("pre_illumination_topic_revealed"));
+  assert(microCodes('Say: "Do not reveal syllable stress."').includes("pre_illumination_topic_revealed"), "Quoted speech still exposes the topic to learners.");
+  assert(microCodes("The rule is to stress the first part.").includes("micro_illumination_becomes_full_solution"));
+  assert(microCodes("Listen for the noticeable part.", ["Learners produce a poster."]).includes("micro_illumination_becomes_task"));
   const brokenTask = "Put learners in teams of three. Give each team the 16 word cards below. Each team must produce: (1) two piles, (2) a group paragraph, and (3) an individual slip listing five assigned words.";
   const materialLesson = (experience: string) => ({ ...lesson, stages: stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience } : { ...stage }) });
   const words = ["TAble", "DOCtor", "WINdow", "TEAcher", "GARden", "HAPpy", "PICture", "MARket", "aBOUT", "beGIN", "reLAX", "deCIDE", "aLONE", "inVITE", "toDAY", "beLIEVE"];
