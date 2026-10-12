@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.18";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.19";
 
 export type HqlsStageAction =
   | "improve"
@@ -164,6 +164,8 @@ const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
 SUBJECT ACCURACY AND TASK INTEGRITY:
+- For every explicitly counted list promised as below/provided/listed/shown/above, put the actual learner material in experience as a block: 'Word cards (16):' followed by 1. actual word, 2. actual word, through 16., one entry per line. Use the exact plural material name from the promise (Words, Sentences, Examples, Scenarios, Cards, Passages, Sentence cards or Scenario cards). Keep material headings separate from task-output lists. References to an earlier list must name its stage number. Do not put the materials only in teacher answers, support cues or teachingContent.
+- Check distribution arithmetic: all promised items must be allocated. For sixteen words and three team members, use 5/5/6 or an explicit shared final word, not five each. Fit the number of outputs and materials to the available stage time; do not reduce useful teaching or omit promised material to be brief.
 - Check factual statements, calculations, pronunciation symbols, examples and expected answers against the supplied curriculum/resources when available. Do not invent verification or claim certainty where sources are missing.
 - Every task must be solvable with the materials actually supplied. If asking learners to sort into categories and give examples from each, include valid examples for every required category. Do not manufacture struggle by contradictory instructions or missing materials.
 - Include all word cards, data, short source texts or other task material needed, plus teacher-facing expected answers/explanations after the first attempt. Distinguish genuine ambiguity from an accidental design error.

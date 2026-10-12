@@ -829,18 +829,48 @@ ${(
       );
     }
 
-    let qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+    let reviewDurationMs = 0;
+    let reviewCalls = 0;
+    const reviewContent = async () => {
+      const startedAt = Date.now();
+      const result = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+      reviewDurationMs += Date.now() - startedAt;
+      reviewCalls += result.attempts;
+      return result;
+    };
+    let qualityReview = await reviewContent();
+    let contentRepairMode: "none" | "stages" | "full_lesson" = "none";
     if (!qualityReview.passed) {
-      const contentRepair = await generateOpenAIJson<unknown>({
-        systemInstruction: buildHqlsGenerationSystemInstruction(),
-        parts: [{ text: `${lessonContextSummary(input)}\nRepair only these grounded subject/task defects, preserving all seven HQLS stages and useful content:\n${JSON.stringify(qualityReview.issues)}\nLesson:\n${JSON.stringify(lesson)}` }, ...resources.parts],
-        responseSchema: HQLS_LESSON_JSON_SCHEMA, schemaName: "ksi_hqls_content_repair",
-        reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
-      });
-      repairDurationMs += contentRepair.durationMs;
-      lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
+      const affectedStages = lesson.stages.filter((stage) => qualityReview.issues.some((issue) => issue.stageNumber === stage.stageNumber));
+      const repairStartedAt = Date.now();
+      if (affectedStages.length > 0 && affectedStages.length <= 2) {
+        contentRepairMode = "stages";
+        const replacements = await Promise.all(affectedStages.map(async (targetStage) => {
+          const result = await generateOpenAIJson<unknown>({
+            systemInstruction: buildHqlsGenerationSystemInstruction(),
+            parts: [{ text: buildStageRegenerationPrompt({ lesson, targetStage, action: "improve", lessonContext: lessonContextSummary(input) }) +
+              "\nFix these grounded defects; supply all promised materials:\n" + JSON.stringify(qualityReview.issues.filter((issue) => issue.stageNumber === targetStage.stageNumber)) }, ...resources.parts],
+            responseSchema: HQLS_STAGE_JSON_SCHEMA,
+            schemaName: "ksi_hqls_content_stage_repair",
+            reasoningEffort: "low", textVerbosity: "low",
+            maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
+          });
+          return parseHqlsStageContent(result.data, targetStage.stageNumber);
+        }));
+        lesson = keepOneAwakeningQuestion({ ...lesson, stages: lesson.stages.map((stage) => replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage) });
+      } else {
+        contentRepairMode = "full_lesson";
+        const contentRepair = await generateOpenAIJson<unknown>({
+          systemInstruction: buildHqlsGenerationSystemInstruction(),
+          parts: [{ text: `${lessonContextSummary(input)}\nRepair only these grounded subject/task defects, preserving all seven HQLS stages and useful content:\n${JSON.stringify(qualityReview.issues)}\nLesson:\n${JSON.stringify(lesson)}` }, ...resources.parts],
+          responseSchema: HQLS_LESSON_JSON_SCHEMA, schemaName: "ksi_hqls_content_repair",
+          reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
+        });
+        lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
+      }
+      repairDurationMs += Date.now() - repairStartedAt;
       validation = validateHqlsLesson(lesson, input.topic);
-      qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+      qualityReview = await reviewContent();
     }
     if (!qualityReview.passed || !validation.passed) {
       await completeAiRun(supabase, runId, "failed", "HQLS_CONTENT_REVIEW_FAILED");
@@ -878,6 +908,9 @@ ${(
           firstPassMs: generated.durationMs,
           repairMs: repairDurationMs,
           repairMode,
+          contentRepairMode,
+          reviewMs: reviewDurationMs,
+          reviewCalls,
           totalBeforeCompletionMs: Date.now() - generationStartedAt,
         },
       }),
@@ -904,7 +937,10 @@ ${(
         firstPassMs: generated.durationMs,
         repairMs: repairDurationMs,
         repairMode,
-        providerMs: generated.durationMs + repairDurationMs,
+        contentRepairMode,
+        reviewMs: reviewDurationMs,
+        reviewCalls,
+        providerMs: generated.durationMs + repairDurationMs + reviewDurationMs,
         totalFromGenerationStartMs: Date.now() - generationStartedAt,
         resourceCount: resources.rows.length,
       }),
