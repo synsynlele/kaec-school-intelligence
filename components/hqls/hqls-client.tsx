@@ -492,7 +492,8 @@ const refreshLessons = useCallback(async () => {
       const fidelity = isRecord(payload.validation)
         ? readViolationList(payload.validation.violations)
         : [];
-      const detail = fidelity.map((item) => item.message).join(" ");
+      const detail = [...new Set(fidelity.map((item) => item.message))]
+        .filter((message) => !baseMessage.includes(message)).join(" ");
       throw new Error(detail ? `${baseMessage} ${detail}` : baseMessage);
     }
     return payload;

@@ -52,7 +52,7 @@ assert(
 
 
 assert(
-  engine.includes('HQLS_PROMPT_v1.23') &&
+  engine.includes('HQLS_PROMPT_v1.24') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&

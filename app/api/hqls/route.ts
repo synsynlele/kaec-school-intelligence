@@ -1,5 +1,6 @@
 import { HQLS_QUALITY_SCHEMA, HQLS_QUALITY_INSTRUCTION, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
 import { mergeStageRepairs, needsCoordinatedRepair } from "@/lib/hqls/coordinated-repair";
+import { repairContentFidelity } from "@/lib/hqls/repair-fidelity";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -883,6 +884,21 @@ ${(
         lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
       }
       repairDurationMs += Date.now() - repairStartedAt;
+      const fidelityRepairStartedAt = Date.now();
+      const checked = await repairContentFidelity(lesson, input.topic, async (targetStage, defects) => {
+        const result = await generateOpenAIJson<unknown>({
+          systemInstruction: buildHqlsGenerationSystemInstruction(),
+          parts: [{ text: buildStageRegenerationPrompt({ lesson, targetStage, action: "improve", lessonContext: lessonContextSummary(input) }) +
+            "\nThe subject/task repair introduced these fidelity defects. Fix them while retaining the corrected facts, all supplied materials and consistent grouping. Trial 1 must retain one shared attempt and a concrete contribution from every learner.\n" + defects.join("\n") }, ...resources.parts],
+          responseSchema: HQLS_STAGE_JSON_SCHEMA,
+          schemaName: "ksi_hqls_content_fidelity_repair",
+          model, reasoningEffort: "low", textVerbosity: "low",
+          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
+        });
+        return parseHqlsStageContent(result.data, targetStage.stageNumber);
+      });
+      if (checked.repairedStages) repairDurationMs += Date.now() - fidelityRepairStartedAt;
+      lesson = keepOneAwakeningQuestion(checked.lesson);
       validation = validateHqlsLesson(lesson, input.topic);
       qualityReview = await reviewContent();
     }

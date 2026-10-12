@@ -8,6 +8,7 @@ import { hqlsStageTimings } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs } from "../lib/hqls/coordinated-repair";
+import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
 import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
 import { resolveLearningLevel, learningLevelGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
@@ -53,6 +54,35 @@ async function verifyQuality() {
   const notation = "ɪ æ ɑː ɒ ɔː ʊ ʌ ɜː ə aɪ ₦ × ÷ √ ≤ ≥ α β é";
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
+  const collaborationCodes = (experience: string) => validateHqlsLesson({ ...lesson, stages: stages.map((stage) =>
+    stage.stageNumber === 4 ? { ...stage, experience, teacherPrompts: [], learnerActions: [] } : stage),
+  }).violations.filter((issue) => issue.code === "trial_first_lacks_teamwork");
+  assert.equal(collaborationCodes("Work in pairs. Both partners propose a choice, explain it and agree on one answer.").length, 0);
+  assert.equal(collaborationCodes("Work in small teams. Every member explains a choice and the team produces a shared arrangement.").length, 0);
+  assert.equal(collaborationCodes("Work in pairs. Each learner independently submits a separate answer.").length, 1);
+  assert.equal(collaborationCodes("Each learner completes the task alone.").length, 1);
+  const regressionLesson = { ...lesson, stages: stages.map((stage) => ({ ...stage,
+    teachingContent: stage.stageNumber === 5 ? stage.teachingContent : "",
+    reflectionPrompt: stage.stageNumber === 7 ? "What changed in your reasoning and why?" : "",
+    transferTask: stage.stageNumber === 7 ? "Explain the new idea to someone at home using an example." : "",
+    experience: stage.stageNumber === 4 ? "Each learner completes the task alone." : stage.experience,
+    learnerActions: stage.stageNumber === 4 ? ["Submit an individual answer."] : stage.learnerActions,
+  })) };
+  let regressionCalls = 0;
+  const repairedRegression = await repairContentFidelity(regressionLesson, "Unrelated topic", async (stage, defects) => {
+    regressionCalls++;
+    assert.equal(stage.stageNumber, 4);
+    assert(defects.some((defect) => defect.includes("trial_first_lacks_teamwork")));
+    return { ...stage, experience: "Work in pairs. Each partner explains a choice; both agree on one shared answer." };
+  });
+  assert.equal(regressionCalls, 1);
+  assert.equal(repairedRegression.validation.passed, true, JSON.stringify(repairedRegression.validation.violations));
+  assert.equal(repairedRegression.lesson.stages[4], regressionLesson.stages[4]);
+  await repairContentFidelity(repairedRegression.lesson, "Unrelated topic", async () => { throw new Error("Valid repairs must not add AI calls."); });
+  let failedFidelityCalls = 0;
+  const stillInvalid = await repairContentFidelity(regressionLesson, "Unrelated topic", async (stage) => { failedFidelityCalls++; return stage; });
+  assert.equal(failedFidelityCalls, 1, "Repair failure must not create a retry loop.");
+  assert.equal(stillInvalid.validation.passed, false);
   assert.equal(needsCoordinatedRepair([{ stageNumber: 1, category: "task_integrity" }, { stageNumber: 4, category: "task_integrity" }]), true);
   assert.equal(needsCoordinatedRepair([{ stageNumber: 4, category: "task_integrity" }]), false);
   assert.equal(needsCoordinatedRepair([{ stageNumber: 1, category: "subject_accuracy" }, { stageNumber: 5, category: "subject_accuracy" }]), false);

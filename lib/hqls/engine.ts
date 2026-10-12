@@ -2,7 +2,7 @@ import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.23";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.24";
 
 export type HqlsStageAction =
   | "improve"
@@ -178,7 +178,7 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - Referenced material is a delivery requirement: whenever you say "words below", "sentences below", "examples below", "scenarios below", "these cards", "the passage", "the table" or similar, include the actual complete material in that stage, or explicitly identify the earlier stage containing it. A heading or an instruction to the teacher to invent it is not supplied material. Include the promised number of entries; do not use ellipses, placeholders or "etc." to replace required entries. Keep teacher-only answers in Stage 5 or later, separate from the learner-facing material.
 - Write the actual scenario or story, not "present a scenario" or "discuss a real-life situation". Where a scenario is needed, supply a specific person/group, setting, event/problem and relevant facts or constraints. For decision tasks, include a meaningful tension and enough evidence to compare choices and justify a response. Keep details age-appropriate, objective-relevant and feasible; drama or length alone does not make a scenario strong.
 - Use one connected opening situation across Awakening and Exploration. Micro-Illumination adds only the tiny clue for Trial 1. Supply Trial 1's complete case/material and collaborative outputs; Stage 5 explains with actual examples; Trial 2 supplies its equivalent case or names exactly which earlier material to revisit and what changes; Integration gives a concrete feasible transfer context. Do not force a new scenario into every stage or turn Stages 1–3 into tasks.
-- Trial 1 requires meaningful contributions from every team member. Trial 2 should improve the first work and include a brief individual check using a close equivalent so group success does not conceal individual misunderstanding.
+- Trial 1 must explicitly state three things: pairs/small teams, one shared first attempt (an agreed answer, arrangement, demonstration or product), and how every learner contributes before agreement. For example: "Work in pairs. Each partner proposes and explains a choice; both partners discuss and agree on one shared arrangement." Adapt the contribution to age: nursery children can each place an object or point and explain orally. Separate individual slips may support evidence but cannot replace the shared attempt. During every repair, preserve this collaboration contract even when correcting unrelated subject facts or materials. Trial 1 requires meaningful contributions from every team member. Trial 2 should improve the first work and include a brief individual check using a close equivalent so group success does not conceal individual misunderstanding.
 - Reflection must refer to evidence of changed understanding, not force claims of personal transformation. Offer a feasible offline option for home practice.
 - Never use throat vibration as a test distinguishing monophthongs from diphthongs; vibration indicates voicing. For pronunciation, specify the intended pronunciation model and use accurate listening/articulation examples.
 
@@ -722,8 +722,8 @@ export function validateHqlsLesson(
   const firstAttemptText = [trialFirst.experience, ...trialFirst.teacherPrompts, ...trialFirst.learnerActions].join(" ");
   if (
     !includesAny(firstAttemptText, [/\b(?:pairs?|teams?|groups?|partners?)\b/i]) ||
-    !includesAny(firstAttemptText, [/\b(?:each|every|share|discuss|agree|joint|together|contribut\w*|take turns|members?)\b/i]) ||
-    !includesAny(firstAttemptText, [/\b(?:shared|joint|group|team|together|collaborat\w*)\b/i])
+    !includesAny(firstAttemptText, [/\b(?:each|every|both|share|discuss|agree\w*|joint|together|contribut\w*|take turns|members?)\b/i]) ||
+    !includesAny(firstAttemptText, [/\b(?:shared|joint|group|team|together|collaborat\w*|agree\w*|consensus)\b/i])
   ) {
     fail(
       "trial_first",
