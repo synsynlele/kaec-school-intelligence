@@ -1,7 +1,8 @@
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
+import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const DIAGNOSIS_ENGINE_VERSION = "DIAGNOSIS_ENGINE_v1.0";
-export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.0";
+export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.1";
 export const DIAGNOSIS_QUALITY_VERSION = "KAEC_DIAGNOSIS_QUALITY_v1.0";
 
 export const DIAGNOSIS_DOMAINS = ["academic", "skill", "character"] as const;
@@ -24,6 +25,7 @@ export type DiagnosisEvidencePacket = {
 export type DiagnosisGenerationContext = {
   studentName: string;
   className: string;
+  ageRange?: string;
   mode: DiagnosisMode;
   assessmentTitle: string;
   evidence: DiagnosisEvidencePacket[];
@@ -578,6 +580,7 @@ export function buildDiagnosisPrompt(context: DiagnosisGenerationContext) {
 
 Student: ${context.studentName}
 Class: ${context.className}
+${learningLevelGuidance(context.className, context.ageRange ?? "")}
 Mode: ${context.mode}
 Assessment: ${context.assessmentTitle || "Not used in this mode"}
 

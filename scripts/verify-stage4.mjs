@@ -68,7 +68,7 @@ for (const required of [
 
 for (const required of [
   "DIAGNOSIS_ENGINE_v1.0",
-  "DIAGNOSIS_PROMPT_v1.0",
+  "DIAGNOSIS_PROMPT_v1.1",
   "KAEC_DIAGNOSIS_QUALITY_v1.0",
   "validateDiagnosis",
   "buildDiagnosisRepairPrompt",

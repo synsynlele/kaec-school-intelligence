@@ -1,7 +1,8 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
+import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.21";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.22";
 
 export type HqlsStageAction =
   | "improve"
@@ -169,6 +170,7 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - For every explicitly counted list promised as below/provided/listed/shown/above, put the actual learner material in experience as a block: 'Word cards (16):' followed by 1. actual word, 2. actual word, through 16., one entry per line. Use the exact plural material name from the promise (Words, Sentences, Examples, Scenarios, Cards, Passages, Sentence cards or Scenario cards). Keep material headings separate from task-output lists. References to an earlier list must name its stage number. Do not put the materials only in teacher answers, support cues or teachingContent.
 - Check distribution arithmetic: all promised items must be allocated. For sixteen words and three team members, use 5/5/6 or an explicit shared final word, not five each. Fit the number of outputs and materials to the available stage time; do not reduce useful teaching or omit promised material to be brief.
 - Check factual statements, calculations, pronunciation symbols, examples and expected answers against the supplied curriculum/resources when available. Do not invent verification or claim certainty where sources are missing.
+- Apply learning-level guidance to language, task load, evidence and teaching-note length. The substantial Stage 5 prose target suits older learners, not a minimum for nursery: early-years teachingContent should be a complete brief spoken explanation/demonstration script, with adult setup, concrete examples and no assumed independent literacy. A long requested nursery session needs short episodes and movement/rest, not prolonged seated work. Tertiary teaching should retain the actual discipline's conceptual depth rather than generic school-level notes. Never remove a stage to adapt the level.
 - Every task must be solvable with the materials actually supplied. If asking learners to sort into categories and give examples from each, include valid examples for every required category. Do not manufacture struggle by contradictory instructions or missing materials.
 - Include all word cards, data, short source texts or other task material needed, plus teacher-facing expected answers/explanations after the first attempt. Distinguish genuine ambiguity from an accidental design error.
 - State prerequisites and accessible support in the existing teacher guidance fields. Clarify logistics without giving away the solution.
@@ -290,6 +292,8 @@ CLASS CONTEXT: ${clean(input.classContext)}
 TEACHER INSTRUCTIONS: ${clean(input.teacherInstructions)}
 AUTHORISED SOURCE MATERIALS: ${sourceLabels.length ? sourceLabels.join(", ") : "None selected"}
 
+${learningLevelGuidance(input.classLevel, input.ageRange)}
+
 Design the seven stages in exact order.
 
 Stages 1–4 must feel like one connected suspense journey:
@@ -364,7 +368,9 @@ ${JSON.stringify(args.lesson)}
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
 
-Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in very simple plain English with short teacher actions. For Stages 1–4 keep the formal topic name hidden. If the target is Stage 1, use one vivid scenario/headline/image/object/story or real-life situation and one central provocative question; no definition, task or solution. If the target is Stage 2, continue from the same situation and ask 3–5 short oral questions that reveal crude thinking, meanings, reasons and life connections; no correction, formal group task or product. If the target is Stage 3, give brief minimal clarity plus at most three guiding questions learners should carry into Trial 1; do not define, correct, solve or create a separate learner activity. If the target is Stage 4, give pairs or small teams a concrete challenge with 2–4 clear outputs, state the expected struggle, and include explicit guardrails saying what the teacher must not do. If the target is Stage 5, teachingContent must reveal/name the topic and provide a proper teacher-ready lesson note: clear explanation, key ideas/vocabulary or process, useful example/application, correct summary and common mistakes corrected. Stage 6 should revisit the same first-attempt material or a very close equivalent and make improvement visible. Stage 7 should keep 3–5 reflection questions, an identity connection and a concrete real-life assignment/application.
+Apply the learning-level guidance in the lesson context to the replacement. For early years use play, concrete materials and short oral/gestural responses, not formal written outputs. For tertiary learners preserve disciplinary depth, evidence and autonomy. Do not remove or reorder stages.
+
+Return only one stage object with stageNumber ${definition.index} and stageKey "${definition.key}". Do not rewrite any other stage. Write the stage in very simple plain English with short teacher actions. For Stages 1–4 keep the formal topic name hidden. If the target is Stage 1, use one vivid scenario/headline/image/object/story or real-life situation and one central provocative question; no definition, task or solution. If the target is Stage 2, continue from the same situation and ask 3–5 short oral questions that reveal crude thinking, meanings, reasons and life connections; no correction, formal group task or product. If the target is Stage 3, give brief minimal clarity plus at most three guiding questions learners should carry into Trial 1; do not define, correct, solve or create a separate learner activity. If the target is Stage 4, give pairs or small teams a concrete challenge with 2–4 clear outputs, state the expected struggle, and include explicit guardrails saying what the teacher must not do. If the target is Stage 5, teachingContent must reveal/name the topic and provide a proper teacher-ready lesson note: clear explanation, key ideas/vocabulary or process, useful example/application, correct summary and common mistakes corrected. Stage 6 should revisit the same first-attempt material or a very close equivalent and make improvement visible. Stage 7 should keep an age-appropriate set of reflection questions (one or two oral questions may suit early years), an identity connection and a concrete real-life assignment/application.
 `;
 }
 
@@ -850,5 +856,6 @@ export function lessonContextSummary(args: {
     `Objective: ${args.objective}`,
     `Age: ${args.ageRange || "Not provided"}`,
     `Duration: ${args.durationMinutes ? `${args.durationMinutes} minutes` : "Not provided"}`,
+    learningLevelGuidance(args.classLevel, args.ageRange ?? ""),
   ].join("\n");
 }

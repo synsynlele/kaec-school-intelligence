@@ -7,7 +7,10 @@ import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
-import { validateHqlsLesson } from "../lib/hqls/engine";
+import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
+import { resolveLearningLevel, learningLevelGuidance } from "../lib/domain/learning-level";
+import { buildAssessmentPrompt } from "../lib/assessment/engine";
+import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
 import { resolvePdfBranding } from "../lib/pdf/pdf-branding";
 import { createHqlsLessonPdf } from "../lib/pdf/hqls-lesson-pdf";
 import { createAssessmentPdf } from "../lib/pdf/assessment-pdf";
@@ -17,6 +20,26 @@ import type { GeneratedAssessment } from "../lib/assessment/engine";
 import type { GeneratedDiagnosis } from "../lib/diagnosis/engine";
 
 async function verifyQuality() {
+  for (const [name, age, level] of [
+    ["Nursery 1", "3–4", "early_years"], ["KG2", "5", "early_years"],
+    ["Primary 4", "8–9", "primary"], ["JSS 1", "11–12", "secondary"],
+    ["Primary", "", "primary"], ["Primary1", "", "primary"], ["NCE1", "18–22", "tertiary"],
+    ["SS2", "15–16", "secondary"], ["100 Level", "18–22", "tertiary"],
+    ["University Year 1", "18–22", "tertiary"], ["Postgraduate", "", "tertiary"],
+    ["Year 1", "18–22", "unspecified"], ["Year 1", "5–6", "primary"],
+    ["College", "", "unspecified"], ["Adult literacy", "35", "unspecified"],
+    ["Custom group", "4–5", "early_years"], ["Custom group", "5–16", "unspecified"],
+  ]) assert.equal(resolveLearningLevel(name, age), level, `${name} (${age})`);
+  for (const [name, age] of [["Nursery 1", "3–4"], ["Primary 3", "7–8"], ["SS2", "15–16"], ["University 100 Level", "18–22"]]) {
+    const level = resolveLearningLevel(name, age);
+    const context = { workspaceId: "test", subject: "Example subject", topic: "Example topic", objective: "Explain a choice using evidence", classLevel: name, ageRange: age, durationMinutes: 30 };
+    assert(buildHqlsGenerationPrompt(context, []).includes(`; ${level})`));
+    assert(lessonContextSummary(context).includes(`; ${level})`));
+    assert(buildAssessmentPrompt({ ...context, subjectId: null, classId: null, sourceLessonId: null, resourceIds: [], title: "Practice", assessmentMode: "subjective", totalItems: 1, totalMarks: 5, purpose: "Practice", teacherInstructions: "", itemCounts: { objective: 0, subjective: 1, critical_thinking: 0, project: 0 } }, "", []).includes(`; ${level})`));
+    assert(buildDiagnosisPrompt({ studentName: "Fictional learner", className: name, ageRange: age, mode: "quick_teacher", assessmentTitle: "", evidence: [] }).includes(`; ${level})`));
+  }
+  assert(learningLevelGuidance("Nursery 1").includes("Do not assume independent reading or writing"));
+  assert(learningLevelGuidance("100 Level").includes("Do not invent research sources"));
   for (let duration = 10; duration <= 240; duration++) {
     const schedule = hqlsStageTimings(duration)!;
     assert.equal(schedule.reduce((sum, item) => sum + item.minutes, 0), duration);

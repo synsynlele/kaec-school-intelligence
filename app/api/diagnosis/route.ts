@@ -267,11 +267,13 @@ async function loadStudent(supabase: KsiSupabaseClient, workspaceId: string, stu
     .single();
   if (error || !data || !data.active) throw new Error("The selected student is not active in this workspace.");
   let className = "Class not linked";
+  let ageRange = "";
   if (data.class_id) {
-    const { data: classRow } = await supabase.from("classes").select("name").eq("workspace_id", workspaceId).eq("id", data.class_id).maybeSingle();
+    const { data: classRow } = await supabase.from("classes").select("name,age_range").eq("workspace_id", workspaceId).eq("id", data.class_id).maybeSingle();
     if (classRow?.name) className = classRow.name;
+    ageRange = classRow?.age_range ?? "";
   }
-  return { ...data, className };
+  return { ...data, className, ageRange };
 }
 
 async function loadAssessment(
@@ -506,6 +508,7 @@ async function handleGenerate(supabase: KsiSupabaseClient, userId: string, raw: 
     const context = {
       studentName: student.display_name,
       className: student.className,
+      ageRange: student.ageRange,
       mode: input.mode,
       assessmentTitle: assessment.assessment?.title ?? "",
       evidence,

@@ -1,0 +1,31 @@
+export type LearningLevel = "early_years" | "primary" | "secondary" | "tertiary" | "unspecified";
+
+export const LEARNING_LEVEL_GUIDANCE_VERSION = "LEARNING_LEVEL_v1.0";
+
+export function resolveLearningLevel(className: string, ageRange = ""): LearningLevel {
+  const name = className.toLowerCase().replace(/[_–—-]/g, " ").replace(/\s+/g, " ").trim();
+  const ages = ageRange.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (/\b(?:nursery|kindergarten|reception|preschool|pre school|early years|creche|crèche|kg\s*\d*)\b/.test(name)) return "early_years";
+  if (/\b(?:university|undergraduate|postgraduate|polytechnic|college of education|hnd|nd|nce|bsc|msc|phd)\b|\b(?:hnd|nd|nce)\s*[1-3]\b|\b[1-9]00\s*(?:level|lvl)\b|\blevel\s*[1-9]00\b/.test(name)) return "tertiary";
+  if (/\bprimary(?:\s*[1-6])?\b|\bbasic\s*[1-6]\b|\bgrade\s*[1-6]\b/.test(name)) return "primary";
+  if (/\byear\s*[1-6]\b/.test(name) && ages.length && ages.every((age) => age >= 4 && age <= 12)) return "primary";
+  if (/\b(?:jss|sss|ss)\s*[1-3]\b|\b(?:junior|senior)\s*(?:secondary|school)\b|\bsecondary\b|\bgrade\s*(?:[7-9]|1[0-3])\b|\bbasic\s*[7-9]\b/.test(name)) return "secondary";
+  if (/\byear\s*(?:[7-9]|1[0-3])\b/.test(name) && ages.length && ages.every((age) => age >= 10 && age <= 18)) return "secondary";
+  // Age alone can guide child accessibility, never imply university enrolment.
+  if (ages.length && ages.every((age) => age >= 2 && age < 6)) return "early_years";
+  if (ages.length && ages.every((age) => age >= 6 && age <= 11)) return "primary";
+  if (ages.length && ages.every((age) => age >= 12 && age <= 18)) return "secondary";
+  return "unspecified";
+}
+
+export function learningLevelGuidance(className: string, ageRange = "") {
+  const level = resolveLearningLevel(className, ageRange);
+  const guidance: Record<LearningLevel, string> = {
+    early_years: "EARLY YEARS / NURSERY: Use play, familiar objects, short stories, movement, songs, demonstration and oral/gestural responses. Do not assume independent reading or writing. Keep each episode brief; use a movement/rest transition if a long session was requested, rather than prolonged seated work. Preserve all seven HQLS stages in a compact sequence: wonder, oral existing ideas, tiny clue, adult-supported paired/shared exploration, short explicit teaching, another attempt, simple oral reflection/transfer. Collaboration can be two children taking turns with objects; do not demand paragraphs, posters or formal group reports. Give complete safe materials and adult setup. Assess through showing, pointing, sorting objects, speaking or making; subjective responses can be oral, critical thinking can be a simple justified choice, and a project can be a small practical creation. If objective items are requested, retain the required four choices but make them concrete named objects or teacher-read options, not an independent reading test. Record observed responses and the support provided; do not infer diagnoses or developmental delay from age alone.",
+    primary: "PRIMARY: Start with concrete familiar cases and examples; progress toward simple explanations and independent reasoning. Match reading load to the actual class and stated literacy needs. Use short clear instructions, manageable paired/group roles, small practical tasks and brief written or oral responses where appropriate. Assess understanding rather than handwriting or reading speed unless these are the intended objectives. Supply all task material and clear marking evidence. Younger primary learners may show or explain orally; older learners can produce longer reasoned work. Intervention should name a feasible scaffold and a measurable classroom check.",
+    secondary: "SECONDARY: Use subject-accurate concepts, meaningful local or wider-world cases, collaborative reasoning in Trial 1, explicit substantial teaching, and a second attempt with individual evidence. Match junior/senior difficulty to the specified class, curriculum and prerequisites. Assess application, explanation, analysis and projects alongside recall; align marks and task load with the actual duration. Separate observations from inferred needs and connect interventions to evidence of improved understanding.",
+    tertiary: "TERTIARY / UNIVERSITY: Use the stated discipline, programme level, prerequisites and learning objective, not generic secondary worksheets or merely longer prose. Build authentic cases, data interpretation, competing explanations, design choices, research critique or professional applications where the discipline needs them. Trial 1 remains a collaborative attempt; teaching can address advanced theory/methods; Trial 2 requires justified independent transfer. Supply usable cases/data and appropriate rubrics; assess reasoning, evidence, disciplinary methods and limitations. Do not invent research sources, statistics, quotations or citations: use authorised supplied sources, or label a constructed teaching case as fictional. Distinguish undergraduate from postgraduate demands when specified. Do not infantilise adult learners. Retain diagnosis evidence/uncertainty and human approval; do not assume adult reports or parent actions are shared with parents. Where parent action is not appropriate, state that explicitly in the required field and refer to learner-authorised support without inventing consent.",
+    unspecified: "LEVEL NOT ESTABLISHED: Use the explicit class, age, prerequisites, learner needs and teacher-provided context. Do not assume JSS/SS, a Nigerian examination syllabus, or university enrolment from adulthood alone. Do not invent an age or programme. Keep language and response modes accessible to the information actually supplied; if the curriculum or level is unclear, state the limitation and ask the teacher to provide it before relying on specialised expectations.",
+  };
+  return `LEARNING LEVEL GUIDANCE (${LEARNING_LEVEL_GUIDANCE_VERSION}; ${level})\n${guidance[level]}\nThese are task-design adaptations, not new HQLS stages or permission changes. Keep the requested objective, supplied curriculum and existing validation/human-review rules. Treat observed difficulty as evidence to investigate, not proof of a hidden condition. A level label is not a certification of suitability.`;
+}
