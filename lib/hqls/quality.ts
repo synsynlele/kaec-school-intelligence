@@ -6,11 +6,10 @@ export const HQLS_QUALITY_SCHEMA = {
   properties: {
     issues: { type: "array", items: {
       type: "object", properties: {
-        stageNumber: { type: "integer" },
+        evidenceId: { type: "string" },
         category: { type: "string", enum: ["subject_accuracy", "task_integrity"] },
-        evidence: { type: "string" },
         correction: { type: "string" },
-      }, required: ["stageNumber", "category", "evidence", "correction"],
+      }, required: ["evidenceId", "category", "correction"],
     } },
   }, required: ["issues"],
 };
@@ -23,7 +22,7 @@ Verify the factual accuracy of your own proposed correction, not only the lesson
 Check assignment arithmetic: the number of learners times their assigned items must cover the promised set, or the instructions must explicitly allocate the remainder. Three learners assigned five words each cover fifteen words, not sixteen. Check task time against stage pacing and flag concrete impossible requirements.
 Check grouping/materials continuity across stages. Distinguish containers from learner groups: two pairs may deliberately share one box. Surplus materials or spare boxes are not a defect. Report a contradiction or missing allocation that prevents running the stated task, not a preference for a different grouping. Base totals only on a stated class size. Your correction must give a concrete workable allocation, not X/Y placeholders or an invented enrolment count. Teacher preparation before Trial 1 is not itself a learner activity.
 Do not enforce an alternative pedagogy or criticise HQLS sequence rules, suspense or permitted Stage 5 teaching. Respect the stated pronunciation model and legitimate regional variation.
-Report only material errors with an exact quote from the relevant stage plus a specific correction. Copy the evidence directly from one of that stage's text fields. Do not paraphrase, add quotation marks, use ellipses, or cite the lesson context or reference resources as stage evidence. Uncertainty alone is not proof of error. Return an empty issues list when no concrete defect is found. This is an automated review, not a certification of correctness.`;
+Report only material errors with a specific correction and an evidenceId copied from the supplied source catalogue. Select the field containing the concrete defect; the app retrieves its original text and stage. Do not invent IDs or cite lesson context or reference resources as stage evidence. Uncertainty alone is not proof of error. Return an empty issues list when no concrete defect is found. This is an automated review, not a certification of correctness.`;
 
 export class HqlsQualityGroundingError extends Error {
   constructor() {
@@ -54,11 +53,42 @@ function stageTextValues(value: unknown): string[] {
   return [];
 }
 
+// IDs are built from the unchanged candidate and resolved locally, never from model prose.
+export function hqlsReviewSources(lesson: GeneratedHqlsLesson) {
+  return lesson.stages.flatMap((stage) => Object.entries(stage).flatMap(([field, value]) => {
+    if (typeof value === "string" && value.trim()) {
+      return [{ evidenceId: `stage${stage.stageNumber}.${field}`, stageNumber: stage.stageNumber, text: value }];
+    }
+    if (Array.isArray(value)) return value.flatMap((text, index) => typeof text === "string" && text.trim()
+      ? [{ evidenceId: `stage${stage.stageNumber}.${field}.${index + 1}`, stageNumber: stage.stageNumber, text }]
+      : []);
+    return [];
+  }));
+}
+
+export function hqlsQualityReviewSchema(lesson: GeneratedHqlsLesson) {
+  return { ...HQLS_QUALITY_SCHEMA, properties: { issues: {
+    ...HQLS_QUALITY_SCHEMA.properties.issues,
+    items: { ...HQLS_QUALITY_SCHEMA.properties.issues.items, properties: {
+      ...HQLS_QUALITY_SCHEMA.properties.issues.items.properties,
+      evidenceId: { type: "string", enum: hqlsReviewSources(lesson).map((source) => source.evidenceId) },
+    } },
+  } } };
+}
+
 export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLesson) {
   if (!value || typeof value !== "object" || !Array.isArray((value as { issues?: unknown }).issues)) throw new Error("The lesson content review was incomplete. Retry before saving generated changes.");
   const issues = ((value as { issues: unknown[] }).issues).map((raw) => {
     if (!raw || typeof raw !== "object") throw new Error("Invalid content-review issue.");
-    const item = raw as Record<string, unknown>;
+    const original = raw as Record<string, unknown>;
+    const source = typeof original.evidenceId === "string"
+      ? hqlsReviewSources(lesson).find((entry) => entry.evidenceId === original.evidenceId)
+      : undefined;
+    if ("evidenceId" in original && !source) throw new HqlsQualityGroundingError();
+    const item: Record<string, unknown> = source
+      ? { ...original, stageNumber: source.stageNumber, evidence: source.text }
+      : original; // Retain strict quotation validation for historical callers.
+
     const stage = lesson.stages.find((s) => s.stageNumber === item.stageNumber);
     if (!stage || !["subject_accuracy", "task_integrity"].includes(String(item.category)) ||
       typeof item.evidence !== "string" || !item.evidence.trim() ||
@@ -73,10 +103,11 @@ export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLess
       throw new HqlsQualityCorrectionError();
     }
     return { stageNumber: stage.stageNumber, category: String(item.category), evidence: item.evidence, correction: item.correction,
-      evidenceMatch: exact ? "exact" : "format_normalised" };
+      ...(source ? { evidenceId: source.evidenceId } : {}),
+      evidenceMatch: source ? "source_reference" : exact ? "exact" : "format_normalised" };
   });
   const checkedIssues = [...issues, ...checkPromisedMaterials(lesson)];
-  return { passed: checkedIssues.length === 0, issues: checkedIssues, reviewer: "automated_subject_and_task_review_v1.3" };
+  return { passed: checkedIssues.length === 0, issues: checkedIssues, reviewer: "automated_subject_and_task_review_v1.4" };
 }
 
 export async function runHqlsQualityReview(
