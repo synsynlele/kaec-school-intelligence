@@ -7,6 +7,7 @@ import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
+import { needsCoordinatedRepair, mergeStageRepairs } from "../lib/hqls/coordinated-repair";
 import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
 import { resolveLearningLevel, learningLevelGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
@@ -52,6 +53,20 @@ async function verifyQuality() {
   const notation = "ɪ æ ɑː ɒ ɔː ʊ ʌ ɜː ə aɪ ₦ × ÷ √ ≤ ≥ α β é";
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
+  assert.equal(needsCoordinatedRepair([{ stageNumber: 1, category: "task_integrity" }, { stageNumber: 4, category: "task_integrity" }]), true);
+  assert.equal(needsCoordinatedRepair([{ stageNumber: 4, category: "task_integrity" }]), false);
+  assert.equal(needsCoordinatedRepair([{ stageNumber: 1, category: "subject_accuracy" }, { stageNumber: 5, category: "subject_accuracy" }]), false);
+  const jointReplacements = [
+    { ...stages[0], experience: "Teacher preparation: each box serves two pairs, with one complete card set per pair." },
+    { ...stages[3], experience: "Two pairs share each box. Give each pair one complete card set." },
+  ];
+  const joinedLesson = mergeStageRepairs(lesson, jointReplacements, [1, 4]);
+  assert.equal(joinedLesson.stages[0].experience, jointReplacements[0].experience);
+  assert.equal(joinedLesson.stages[3].experience, jointReplacements[1].experience);
+  assert.equal(joinedLesson.stages[4], lesson.stages[4], "Untouched teaching content must be preserved.");
+  assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0], jointReplacements[0]], [1, 4]));
+  assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0]], [1, 4]));
+  assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0], stages[4]], [1, 4]));
   const microCodes = (experience: string, learnerActions: string[] = []) => validateHqlsLesson({ ...lesson,
     stages: stages.map((stage) => stage.stageNumber === 3 ? { ...stage, experience, teacherPrompts: [], learnerActions } : { ...stage }),
   }, "Syllable stress").violations.filter((issue) => issue.stageKey === "micro_illumination").map((issue) => issue.code);

@@ -1,4 +1,5 @@
 import { HQLS_QUALITY_SCHEMA, HQLS_QUALITY_INSTRUCTION, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
+import { mergeStageRepairs, needsCoordinatedRepair } from "@/lib/hqls/coordinated-repair";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -839,11 +840,24 @@ ${(
       return result;
     };
     let qualityReview = await reviewContent();
-    let contentRepairMode: "none" | "stages" | "full_lesson" = "none";
+    let contentRepairMode: "none" | "stages" | "coordinated_stages" | "full_lesson" = "none";
     if (!qualityReview.passed) {
       const affectedStages = lesson.stages.filter((stage) => qualityReview.issues.some((issue) => issue.stageNumber === stage.stageNumber));
       const repairStartedAt = Date.now();
-      if (affectedStages.length > 0 && affectedStages.length <= 2) {
+      if (affectedStages.length > 1 && affectedStages.length <= 2 && needsCoordinatedRepair(qualityReview.issues)) {
+        contentRepairMode = "coordinated_stages";
+        const expectedStages = affectedStages.map((stage) => stage.stageNumber);
+        const result = await generateOpenAIJson<{ stages: unknown[] }>({
+          systemInstruction: buildHqlsGenerationSystemInstruction(),
+          parts: [{ text: `${lessonContextSummary(input)}\nRepair ONLY stages ${expectedStages.join(", ")} together as one coherent plan. Choose one explicit grouping/materials allocation and apply it consistently to both stages and the unchanged surrounding lesson. State children per group/pair, pairs per container, sets per group/pair, and items per set when relevant. Do not invent a class size. Do not make Awakening into a learner task or remove suspense. Return exactly those stage objects; preserve all other stages.\nGrounded defects:\n${JSON.stringify(qualityReview.issues)}\nFull lesson for continuity:\n${JSON.stringify(lesson)}` }, ...resources.parts],
+          responseSchema: { type: "object", properties: { stages: { type: "array", minItems: expectedStages.length, maxItems: expectedStages.length, items: HQLS_STAGE_JSON_SCHEMA } }, required: ["stages"] },
+          schemaName: "ksi_hqls_coordinated_content_repair",
+          reasoningEffort: "low", textVerbosity: "low",
+          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS * expectedStages.length,
+        });
+        if (!Array.isArray(result.data?.stages)) throw new Error("The coordinated stage repair was incomplete. No generated changes were saved.");
+        lesson = keepOneAwakeningQuestion(mergeStageRepairs(lesson, result.data.stages, expectedStages));
+      } else if (affectedStages.length > 0 && affectedStages.length <= 2) {
         contentRepairMode = "stages";
         const replacements = await Promise.all(affectedStages.map(async (targetStage) => {
           const result = await generateOpenAIJson<unknown>({
@@ -857,7 +871,7 @@ ${(
           });
           return parseHqlsStageContent(result.data, targetStage.stageNumber);
         }));
-        lesson = keepOneAwakeningQuestion({ ...lesson, stages: lesson.stages.map((stage) => replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage) });
+        lesson = keepOneAwakeningQuestion(mergeStageRepairs(lesson, replacements, affectedStages.map((stage) => stage.stageNumber)));
       } else {
         contentRepairMode = "full_lesson";
         const contentRepair = await generateOpenAIJson<unknown>({
