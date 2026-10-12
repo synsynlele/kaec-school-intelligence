@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.17";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.18";
 
 export type HqlsStageAction =
   | "improve"
@@ -168,6 +168,9 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - Every task must be solvable with the materials actually supplied. If asking learners to sort into categories and give examples from each, include valid examples for every required category. Do not manufacture struggle by contradictory instructions or missing materials.
 - Include all word cards, data, short source texts or other task material needed, plus teacher-facing expected answers/explanations after the first attempt. Distinguish genuine ambiguity from an accidental design error.
 - State prerequisites and accessible support in the existing teacher guidance fields. Clarify logistics without giving away the solution.
+- Referenced material is a delivery requirement: whenever you say "words below", "sentences below", "examples below", "scenarios below", "these cards", "the passage", "the table" or similar, include the actual complete material in that stage, or explicitly identify the earlier stage containing it. A heading or an instruction to the teacher to invent it is not supplied material. Include the promised number of entries; do not use ellipses, placeholders or "etc." to replace required entries. Keep teacher-only answers in Stage 5 or later, separate from the learner-facing material.
+- Write the actual scenario or story, not "present a scenario" or "discuss a real-life situation". Where a scenario is needed, supply a specific person/group, setting, event/problem and relevant facts or constraints. For decision tasks, include a meaningful tension and enough evidence to compare choices and justify a response. Keep details age-appropriate, objective-relevant and feasible; drama or length alone does not make a scenario strong.
+- Use one connected opening situation across Awakening and Exploration. Micro-Illumination adds only the tiny clue for Trial 1. Supply Trial 1's complete case/material and collaborative outputs; Stage 5 explains with actual examples; Trial 2 supplies its equivalent case or names exactly which earlier material to revisit and what changes; Integration gives a concrete feasible transfer context. Do not force a new scenario into every stage or turn Stages 1–3 into tasks.
 - Trial 1 requires meaningful contributions from every team member. Trial 2 should improve the first work and include a brief individual check using a close equivalent so group success does not conceal individual misunderstanding.
 - Reflection must refer to evidence of changed understanding, not force claims of personal transformation. Offer a feasible offline option for home practice.
 - Never use throat vibration as a test distinguishing monophthongs from diphthongs; vibration indicates voicing. For pronunciation, specify the intended pronunciation model and use accurate listening/articulation examples.
