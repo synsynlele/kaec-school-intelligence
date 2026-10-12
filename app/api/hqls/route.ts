@@ -1078,9 +1078,9 @@ async function resolveSavedLessonNames(
 }
 
 async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: string, parts: OpenAIPart[] = []) {
-  return runHqlsQualityReview(lesson, async (retry) => {
+  return runHqlsQualityReview(lesson, async (retry, reason) => {
     const result = await generateOpenAIJson<unknown>({
-      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? "\nYour previous response contained evidence that could not be traced to its stage. Review the same lesson again. Copy a contiguous quotation directly from the stated stage; do not paraphrase or join separate fields. Report genuine defects only. Do not return an empty list merely to pass validation." : ""),
+      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? `\nThe previous review was invalid: ${reason ?? "Check evidence and correction accuracy."} Review the same unchanged lesson again. Copy a contiguous quotation directly from the stated stage; do not paraphrase or join separate fields. Verify each proposed correction. Report genuine defects only. Do not return an empty list merely to pass validation.` : ""),
       parts: [{ text: `${context}\nReview this complete lesson:\n${JSON.stringify(lesson)}` }, ...parts],
       responseSchema: HQLS_QUALITY_SCHEMA,
       schemaName: "ksi_hqls_subject_task_review",

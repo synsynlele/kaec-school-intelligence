@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings } from "../lib/hqls/timing";
-import { HqlsQualityGroundingError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
+import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { validateHqlsLesson } from "../lib/hqls/engine";
 import { resolvePdfBranding } from "../lib/pdf/pdf-branding";
@@ -59,6 +59,18 @@ async function verifyQuality() {
   assert.equal(checkPromisedMaterials(answerOnly).length, 1, "Later teacher answers do not supply Trial 1 materials.");
   assert.equal(checkPromisedMaterials(materialLesson("Three learners each explain their idea." )).length, 0);
   assert.equal(parseHqlsQualityReview({ issues: [] }, lesson).passed, true);
+  const pronounFinding = (correction: string) => ({ issues: [{ stageNumber: 5, category: "subject_accuracy", evidence: stages[4].experience, correction }] });
+  assert.throws(() => parseHqlsQualityReview(pronounFinding("Pronouns are usually function words but can be content words when contrastively stressed."), lesson), HqlsQualityCorrectionError);
+  assert.equal(parseHqlsQualityReview(pronounFinding("Pronouns are not content words merely because they are stressed. Explain that function words can receive contrastive stress."), lesson).passed, false);
+  const correctionRetries: boolean[] = [];
+  const reviewedCorrection = await runHqlsQualityReview(lesson, async (retry, reason) => {
+    correctionRetries.push(retry);
+    if (retry) assert(reason?.includes("incorrect reclassification"));
+    return retry ? pronounFinding("Function words can receive contrastive stress; pronouns remain function words.") : pronounFinding("Pronouns can be content words when stressed.");
+  });
+  assert.deepEqual(correctionRetries, [false, true]);
+  assert.equal(reviewedCorrection.passed, false, "Re-review must preserve genuine findings rather than silently approving.");
+  await assert.rejects(runHqlsQualityReview(lesson, async () => pronounFinding("Pronouns can be content words when stressed.")), HqlsQualityCorrectionError);
   assert.equal(parseHqlsQualityReview({ issues: [{ stageNumber: 1, category: "task_integrity", evidence: stages[0].experience, correction: "Provide a mixed card set." }] }, lesson).passed, false);
   assert.throws(() => parseHqlsQualityReview({ issues: [{ stageNumber: 1, category: "subject_accuracy", evidence: "invented quotation", correction: "Change it." }] }, lesson));
   const finding = (evidence: string, stageNumber = 1) => ({ issues: [{ stageNumber, category: "task_integrity", evidence, correction: "Supply both required categories." }] });

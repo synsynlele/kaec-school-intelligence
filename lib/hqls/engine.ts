@@ -1,7 +1,7 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.20";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.21";
 
 export type HqlsStageAction =
   | "improve"
@@ -164,6 +164,7 @@ const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
 SUBJECT ACCURACY AND TASK INTEGRITY:
+- In sentence-stress lessons, distinguish word class from spoken prominence. Pronouns are normally function words, but they can carry contrastive stress without becoming content words. Content words usually carry neutral stress; function words can be emphasised to contrast or correct. Show the stressed word explicitly in each example and supply a matching context/interpretation. For example, 'HE gave Anna the book' contrasts the giver with someone else, while 'He gave ANNA the book' contrasts the recipient. Do not suggest stress alone changes 'gave' into 'borrowed' or 'lent'. Avoid absolute claims that function words never carry stress. Teacher-only interpretation keys belong after Trial 1; keep earlier learner cases unresolved.
 - Micro-Illumination is only the actual tiny clue needed for Trial 1, written as one or two short teacher sentences without the formal topic name. Put optional oral guiding questions in teacherPrompts. learnerActions may be empty or contain listening/noticing/thinking only. Do not assign pairs/groups, writing, sorting, solving, completing a table or preparing/presenting a product here. Instructions about the forthcoming Trial 1 belong in Stage 4, not Stage 3. Keep teacher restraints in guideGuardrails, not mixed into student-facing speech.
 - For every explicitly counted list promised as below/provided/listed/shown/above, put the actual learner material in experience as a block: 'Word cards (16):' followed by 1. actual word, 2. actual word, through 16., one entry per line. Use the exact plural material name from the promise (Words, Sentences, Examples, Scenarios, Cards, Passages, Sentence cards or Scenario cards). Keep material headings separate from task-output lists. References to an earlier list must name its stage number. Do not put the materials only in teacher answers, support cues or teachingContent.
 - Check distribution arithmetic: all promised items must be allocated. For sixteen words and three team members, use 5/5/6 or an explicit shared final word, not five each. Fit the number of outputs and materials to the available stage time; do not reduce useful teaching or omit promised material to be brief.
