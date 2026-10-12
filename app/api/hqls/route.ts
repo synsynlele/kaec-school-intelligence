@@ -1,4 +1,4 @@
-import { HQLS_QUALITY_SCHEMA, HQLS_QUALITY_INSTRUCTION, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
+import { hqlsQualityReviewSchema, HQLS_QUALITY_INSTRUCTION, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
 import { mergeStageRepairs, needsCoordinatedRepair } from "@/lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "@/lib/hqls/repair-fidelity";
 import { createClient } from "@supabase/supabase-js";
@@ -1112,9 +1112,9 @@ async function resolveSavedLessonNames(
 async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: string, parts: OpenAIPart[] = []) {
   return runHqlsQualityReview(lesson, async (retry, reason) => {
     const result = await generateOpenAIJson<unknown>({
-      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? `\nThe previous review was invalid: ${reason ?? "Check evidence and correction accuracy."} Review the same unchanged lesson again. Copy a contiguous quotation directly from the stated stage; do not paraphrase or join separate fields. Verify each proposed correction. Report genuine defects only. Do not return an empty list merely to pass validation.` : ""),
-      parts: [{ text: `${context}\nReview this complete lesson:\n${JSON.stringify(lesson)}` }, ...parts],
-      responseSchema: HQLS_QUALITY_SCHEMA,
+      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? `\nThe previous review was invalid: ${reason ?? "Check evidence and correction accuracy."} Review the same unchanged lesson again. Choose an existing evidenceId from the source catalogue; do not invent an ID. Verify each proposed correction. Report genuine defects only. Do not return an empty list merely to pass validation.` : ""),
+      parts: [{ text: `${context}\nReview this complete lesson: ${lesson.title}\nLesson intent: ${lesson.lessonIntent}\nAll stage fields in source catalogue (select evidenceId; do not rewrite evidence):\n${JSON.stringify(hqlsReviewSources(lesson))}` }, ...parts],
+      responseSchema: hqlsQualityReviewSchema(lesson),
       schemaName: "ksi_hqls_subject_task_review",
       reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000,
     });
