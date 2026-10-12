@@ -120,6 +120,10 @@ async function verifyQuality() {
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock([...words.slice(0, 15), words[0]]))).length, 1);
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock([...words.slice(0, 15), "etc."]))).length, 1);
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask.replace("16", "sixteen") + materialBlock(words))).length, 0);
+  const integrationMaterials = (experience: string) => ({ ...lesson, stages: stages.map((stage) => stage.stageNumber === 7 ? { ...stage, experience } : { ...stage }) });
+  assert.equal(checkPromisedMaterials(integrationMaterials("Use the two cards below.\nCards (2):\n1. at\n2. bus")).length, 0);
+  assert.equal(checkPromisedMaterials(integrationMaterials("Use the two cards below. Reflect on how you learned.")).length, 1);
+  assert.equal(checkPromisedMaterials(integrationMaterials("Use the two cards below.\nCards (2):\n1. at")).length, 1);
   const earlierMaterials = { ...lesson, stages: stages.map((stage) => stage.stageNumber === 1 ? { ...stage, experience: materialBlock(words) } : stage.stageNumber === 4 ? { ...stage, experience: brokenTask.replace("below", "provided in Stage 1") } : stage) };
   assert.equal(checkPromisedMaterials(earlierMaterials).length, 0);
   const answerOnly = materialLesson(brokenTask);
