@@ -1,5 +1,5 @@
 import { hqlsQualityReviewSchema, HQLS_QUALITY_INSTRUCTION, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
-import { mergeStageRepairs, needsCoordinatedRepair } from "@/lib/hqls/coordinated-repair";
+import { mergeStageRepairs, needsCoordinatedRepair, contentRepairStageNumbers } from "@/lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "@/lib/hqls/repair-fidelity";
 import { createClient } from "@supabase/supabase-js";
 
@@ -845,9 +845,10 @@ ${(
     // A grounded defect may survive the first repair or emerge during fidelity repair.
     // Retry once using the latest review; never save an unchecked result.
     for (let contentRepairAttempt = 0; !qualityReview.passed && contentRepairAttempt < 2; contentRepairAttempt += 1) {
-      const affectedStages = lesson.stages.filter((stage) => qualityReview.issues.some((issue) => issue.stageNumber === stage.stageNumber));
+      const repairStages = contentRepairStageNumbers(qualityReview.issues);
+      const affectedStages = lesson.stages.filter((stage) => repairStages.includes(stage.stageNumber));
       const repairStartedAt = Date.now();
-      if (affectedStages.length > 1 && affectedStages.length <= 2 && needsCoordinatedRepair(qualityReview.issues)) {
+      if (affectedStages.length > 1 && affectedStages.length <= 2 && (needsCoordinatedRepair(qualityReview.issues) || affectedStages.length > new Set(qualityReview.issues.map((issue) => issue.stageNumber)).size)) {
         contentRepairMode = "coordinated_stages";
         const expectedStages = affectedStages.map((stage) => stage.stageNumber);
         const result = await generateOpenAIJson<{ stages: unknown[] }>({
