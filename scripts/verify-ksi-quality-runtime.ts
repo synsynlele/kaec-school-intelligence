@@ -126,6 +126,16 @@ async function verifyQuality() {
   assert.equal(checkPromisedMaterials(integrationMaterials("Use the two cards below.\nCards (2):\n1. at")).length, 1);
   const earlierMaterials = { ...lesson, stages: stages.map((stage) => stage.stageNumber === 1 ? { ...stage, experience: materialBlock(words) } : stage.stageNumber === 4 ? { ...stage, experience: brokenTask.replace("below", "provided in Stage 1") } : stage) };
   assert.equal(checkPromisedMaterials(earlierMaterials).length, 0);
+  const sentenceSet = "\nSentence cards (12):\n" + Array.from({ length: 12 }, (_, index) => `${index + 1}. The learner builds example ${index + 1}.`).join("\n");
+  const subsetLesson = (instruction: string, supplied = sentenceSet) => ({ ...lesson, stages: stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Use the 12 sentence cards below." + supplied } : stage.stageNumber === 5 ? { ...stage, experience: instruction, teachingContent: "" } : stage) });
+  assert.equal(checkPromisedMaterials(subsetLesson("Use 1 sentence cards from Stage 4 to model a choice.")).length, 0, "A supplied subset must not require a new one-card list.");
+  assert.equal(checkPromisedMaterials(subsetLesson("Show card 1 sentence cards from Stage 4.")).length, 0, "A card label is not a quantity promise.");
+  assert.equal(checkPromisedMaterials(subsetLesson("Use 1 cards from Stage 4 to model a choice.")).length, 0, "Generic card references resolve to supplied sentence cards.");
+  assert(checkPromisedMaterials(subsetLesson("Use 1 sentence cards from Stage 4.", sentenceSet.replace("12. The learner builds example 12.", ""))).length > 0, "Incomplete source lists still block subsets.");
+  assert(checkPromisedMaterials(subsetLesson("Use 1 word cards from Stage 4.")).length > 0, "Typed word-card requests cannot resolve to sentence cards.");
+  assert(checkPromisedMaterials(subsetLesson("Use 13 sentence cards from Stage 4.")).length > 0, "A subset cannot exceed the source set.");
+  assert(checkPromisedMaterials(subsetLesson("Use the 1 sentence cards below.")).some((issue) => issue.stageNumber === 5), "A new missing set must still be rejected.");
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock(words).replace(/\d+\. /g, "- "))).length, 0, "Bullets may supply complete materials.");
   const answerOnly = materialLesson(brokenTask);
   answerOnly.stages[4].teachingContent = materialBlock(words);
   assert.equal(checkPromisedMaterials(answerOnly).length, 1, "Later teacher answers do not supply Trial 1 materials.");

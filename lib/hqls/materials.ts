@@ -21,37 +21,46 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
       for (const match of text.matchAll(promise)) {
         const before = text.slice(0, match.index);
         const after = text.slice(match.index + match[0].length);
+        // "Card 1: sentence cards" labels an existing item; 1 is not a quantity.
+        if (/^\d+$/.test(match[1]) && /\b(?:card|word|sentence|example|scenario|passage|item)\s*$/i.test(before)) continue;
         if (!/^\s+(?:below|provided|listed|shown|above)\b/i.test(after) &&
           !/\b(?:give|use|read|sort|compare|study|show|distribute|classify)\b[^.!?\n]{0,90}$/i.test(before)) continue;
         const expected = /^\d+$/.test(match[1]) ? Number(match[1]) : numberWords.indexOf(match[1].toLowerCase());
         const kind = match[2].toLowerCase();
+        const subset = /\b(?:choose|select|pick|reuse|revisit|model)\b[^.!?\n]{0,90}$/i.test(before) ||
+          /^\s+(?:from|out of|of the)\b/i.test(after);
         const reference = text.match(/\b(?:from|in|see)\s+stage\s+(\d)\b/i);
         const earlier = reference ? lesson.stages.find((item) => item.stageNumber === Number(reference[1]) && item.stageNumber < stage.stageNumber) : undefined;
         const materialTexts = [stage.experience, ...(stage.stageNumber === 5 ? [stage.teachingContent] : []), ...(earlier ? [earlier.experience] : [])];
-        const heading = new RegExp(`^\\s*(?:#{1,4}\\s*)?(?:\\*\\*)?(?:materials\\s*[-—:]\\s*)?${kind}(?:\\s*\\(\\d+\\))?(?:\\*\\*)?[ \t]*:[ \t]*(.*)$`, "im");
+        const headingKind = kind === "cards" ? "(?:word cards|sentence cards|scenario cards|word-only cards|cards)"
+          : kind === "word cards" ? "(?:word cards|word-only cards|cards)"
+          : /cards$/.test(kind) ? `(?:${kind}|cards)` : kind;
+        const heading = new RegExp(`^\\s*(?:#{1,4}\\s*)?(?:\\*\\*)?(?:materials\\s*[-—:]\\s*)?${headingKind}(?:\\s*\\(\\d+\\))?(?:\\*\\*)?[ \t]*:[ \t]*(.*)$`, "im");
         let found = false;
         for (const source of materialTexts) {
           const header = heading.exec(source);
           if (!header) continue;
           const headerCount = header[0].match(/\((\d+)\)/);
-          if (headerCount && Number(headerCount[1]) !== expected) continue;
+          const listedCount = headerCount ? Number(headerCount[1]) : expected;
+          if (listedCount !== expected && !(subset && listedCount >= expected)) continue;
           const tail = source.slice(header.index + header[0].length);
           const entries: { position: number; value: string }[] = [];
           for (const line of tail.split(/\r?\n/)) {
             if (!line.trim() && !entries.length) continue;
             const entry = line.match(/^\s*(\d+)[.)]\s+(.+?)\s*$/);
-            if (!entry) break;
-            entries.push({ position: Number(entry[1]), value: entry[2] });
+            const bullet = line.match(/^\s*[-*•]\s+(.+?)\s*$/);
+            if (!entry && !bullet) break;
+            entries.push({ position: entry ? Number(entry[1]) : entries.length + 1, value: entry ? entry[2] : bullet![1] });
           }
-          found = entries.length === expected && entries.every((entry, index) => entry.position === index + 1 && !/\b(?:etc\.?|tbd|placeholder|insert here)\b|\.\.\.|…/i.test(entry.value));
+          found = entries.length === listedCount && entries.every((entry, index) => entry.position === index + 1 && !/\b(?:etc\.?|tbd|placeholder|insert here)\b|\.\.\.|…/i.test(entry.value));
           if (found && /^(?:words|word cards)$/.test(kind)) {
-            found = new Set(entries.map((entry) => entry.value.trim().toLowerCase())).size === expected;
+            found = new Set(entries.map((entry) => entry.value.trim().toLowerCase())).size === listedCount;
           }
           if (found) break;
         }
         if (!found) {
           issues.push({ stageNumber: stage.stageNumber, category: "task_integrity", evidence: match[0], evidenceMatch: "exact",
-            correction: `Supply exactly ${expected} actual ${kind} in this stage's experience under '${kind} (${expected}):', numbered 1 through ${expected}, one complete entry per line. Do not count task instructions, placeholders or answers as materials. If reusing an earlier stage, name its stage number and ensure its complete numbered material list exists.` });
+            correction: `Supply exactly ${expected} actual ${kind} in this stage's experience under '${kind} (${expected}):', one complete entry per line, numbered 1 through ${expected} or bulleted. A subset may reuse a complete larger list if the instructions identify the earlier stage and selection. Do not count task instructions, placeholders or answers as materials. If reusing an earlier stage, name its stage number and ensure its complete material list exists.` });
         }
       }
     }
