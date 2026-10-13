@@ -202,7 +202,12 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
         ...current,
         lesson: payload.lesson as Lesson,
       } : current);
-      setNotice("Lesson validated by you. Automated suggestions remain advisory.");
+      // The download control is a sibling of this result view, so update it
+      // immediately after the authenticated server confirms teacher approval.
+      window.dispatchEvent(new CustomEvent("ksi:hqls-lesson-validated", {
+        detail: { lessonId: state.lesson.id },
+      }));
+      setNotice("Lesson validated by you. Download Lesson PDF is now available. Automated suggestions remain advisory.");
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Teacher validation failed.");
