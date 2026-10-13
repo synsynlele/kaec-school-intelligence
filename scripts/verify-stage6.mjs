@@ -124,7 +124,7 @@ for (const required of [
   "requestedLessonId",
   'new URLSearchParams(window.location.search).get("lesson")',
   'id="hqls-selected-lesson"',
-  'selectedLesson.status === "validated"',
+  'selectedLesson?.status === "validated"',
   "Build Assessment",
 ]) {
   assert(hqlsClient.includes(required), `HQLS workflow continuity is missing: ${required}`);

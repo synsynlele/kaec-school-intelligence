@@ -5,7 +5,7 @@ import { parseHqlsQualityReview } from "./quality";
 export type HqlsAdvice = {
   kind: "hqls_content_advice";
   reviewer: "advisory_content_review_v1";
-  reviewStatus: "available" | "unavailable";
+  reviewStatus: "available" | "unavailable" | "not_run";
   attempts: number;
   suggestions: { stageNumber: number; priority: "correct_before_teaching" | "suggestion"; correction: string }[];
   teacherReview: { userId: string; reviewedAt: string } | null;
@@ -33,7 +33,7 @@ export async function reviewHqlsAdvisory(lesson: GeneratedHqlsLesson, request: (
 export function readHqlsAdvice(sourceContext: unknown): HqlsAdvice | null {
   if (!Array.isArray(sourceContext)) return null;
   const item = sourceContext.find((value) => value && typeof value === "object" && value.kind === "hqls_content_advice");
-  if (!item || !["available", "unavailable"].includes(item.reviewStatus) || !Array.isArray(item.suggestions)) return null;
+  if (!item || !["available", "unavailable", "not_run"].includes(item.reviewStatus) || !Array.isArray(item.suggestions)) return null;
   return { ...item, suggestions: item.suggestions.filter((value: HqlsAdvice["suggestions"][number]) =>
     value && Number.isInteger(value.stageNumber) && value.stageNumber >= 1 && value.stageNumber <= 7 &&
     ["correct_before_teaching", "suggestion"].includes(value.priority) && typeof value.correction === "string") };
@@ -43,11 +43,15 @@ export function replaceHqlsAdvice(sourceContext: unknown, advice: HqlsAdvice): u
   return [...(Array.isArray(sourceContext) ? sourceContext.filter((value) => !value || typeof value !== "object" || value.kind !== "hqls_content_advice") : []), advice];
 }
 
+export function legacyHqlsAdvice(): HqlsAdvice {
+  return { kind: "hqls_content_advice", reviewer: "advisory_content_review_v1", reviewStatus: "not_run", attempts: 0, suggestions: [], teacherReview: null, stale: false };
+}
+
 export function updateTeacherReview(advice: HqlsAdvice, userId: string, markReviewed: boolean): HqlsAdvice {
   return { ...advice, stale: true, teacherReview: markReviewed ? { userId, reviewedAt: new Date().toISOString() } : null };
 }
 
-export function hqlsAdviceStatus(fidelityPassed: boolean, sourceContext: unknown): "draft" | "validated" {
-  const advice = readHqlsAdvice(sourceContext);
-  return fidelityPassed && (!advice || advice.teacherReview) ? "validated" : "draft";
+export function hqlsAdviceStatus(sourceContext: unknown): "draft" | "validated" {
+  // Automated feedback never approves or vetoes the authenticated teacher's decision.
+  return readHqlsAdvice(sourceContext)?.teacherReview ? "validated" : "draft";
 }

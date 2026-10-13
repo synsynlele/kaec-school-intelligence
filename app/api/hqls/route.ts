@@ -1,5 +1,5 @@
 import { hqlsQualityReviewSchema, HQLS_QUALITY_INSTRUCTION, hqlsReviewSources, requireObservableObjective } from "@/lib/hqls/quality";
-import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus } from "@/lib/hqls/advisory-review";
+import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus, legacyHqlsAdvice } from "@/lib/hqls/advisory-review";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -598,7 +598,7 @@ async function saveLessonValidation(args: {
   const { data, error } = await args.supabase
     .from("lessons")
     .update({
-      status: hqlsAdviceStatus(args.validation.passed, sourceContext),
+      status: hqlsAdviceStatus(sourceContext),
       source_context: toJson(sourceContext),
       validation_summary: toJson(args.validation),
       engine_version: HQLS_ENGINE_VERSION,
@@ -951,13 +951,12 @@ async function handleSaveEdits(
   };
   const validation = validateHqlsLesson(editedLesson, current.lesson.topic);
 
-  if (body.markReviewed === true && !validation.passed) {
-    throw new Error("Fix the HQLS sequence before marking this lesson reviewed. You can still save it as a draft.");
-  }
-  const previousAdvice = readHqlsAdvice(current.lesson.source_context);
-  const sourceContext = previousAdvice
-    ? replaceHqlsAdvice(current.lesson.source_context, updateTeacherReview(previousAdvice, userId, body.markReviewed === true))
-    : current.lesson.source_context;
+  // Save Draft never implies approval; only the teacher can confirm validation.
+  const previousAdvice = readHqlsAdvice(current.lesson.source_context) ?? legacyHqlsAdvice();
+  const sourceContext = replaceHqlsAdvice(
+    current.lesson.source_context,
+    updateTeacherReview(previousAdvice, userId, body.markReviewed === true),
+  );
 
   await Promise.all(
     editedLesson.stages.map(async (stage) => {

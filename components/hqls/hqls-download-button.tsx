@@ -89,7 +89,7 @@ export function HqlsDownloadButton({ lessonId }: { lessonId: string }) {
         {downloading ? "Preparing PDF…" : "Download Lesson PDF"}
       </button>
       {validated === false ? (
-        <span className="text-[11px] text-zinc-500">Available after HQLS validation.</span>
+        <span className="text-[11px] text-zinc-500">Available after the teacher manually validates the lesson.</span>
       ) : null}
       {error ? <span className="max-w-xs text-[11px] text-red-700">{error}</span> : null}
     </div>

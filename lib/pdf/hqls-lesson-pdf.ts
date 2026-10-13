@@ -17,6 +17,7 @@ export type HqlsLessonPdfInput = {
   topic: string;
   objective: string;
   fidelityScore: number | null;
+  fidelityPassed?: boolean | null;
   sources: string[];
   stages: HqlsStageContent[];
   contentAdvice?: HqlsAdvice | null;
@@ -345,19 +346,20 @@ class PdfComposer {
       gapAfter: 8,
     });
 
-    const fidelity =
-      this.input.fidelityScore === null
-        ? "HQLS sequence check recorded"
-        : "HQLS sequence checks passed";
-    this.line(fidelity, {
+    const sequenceMessage = this.input.fidelityPassed === false
+      ? "Automated sequence feedback has outstanding suggestions."
+      : this.input.fidelityPassed === true
+        ? "Automated HQLS sequence checks passed (not an approval)."
+        : "Automated HQLS sequence check not available.";
+    this.line(sequenceMessage, {
       bold: true,
       size: 9,
-      color: [0.03, 0.42, 0.25],
+      color: this.input.fidelityPassed === false ? MUTED : [0.03, 0.42, 0.25],
       gapAfter: 8,
     });
 
     this.line(this.input.contentAdvice?.teacherReview
-      ? "Teacher review recorded. Automated checks do not certify subject accuracy."
+      ? "Teacher validated this lesson. Automated feedback does not certify subject accuracy."
       : "Automated checks do not certify subject accuracy. Teacher review is required.", { size: 8.5, color: MUTED });
     this.rule();
     this.line(`Workspace: ${this.input.workspaceName}`, {

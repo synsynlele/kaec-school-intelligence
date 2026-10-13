@@ -193,7 +193,7 @@ export function HqlsExportsClient() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Download HQLS lesson PDFs</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
-          PDFs are prepared from the final saved lesson, use the active school’s branding with KSI endorsement, and are available only when the lesson has a passing HQLS fidelity record.
+          PDFs use the school’s branding with KSI endorsement. A teacher must manually validate the lesson before it can be exported; automated sequence findings remain advisory.
         </p>
 
         {state ? (
@@ -246,7 +246,7 @@ export function HqlsExportsClient() {
                     <span
                       className={`rounded-full px-2 py-1 text-[11px] font-semibold ${lesson.status === "validated" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
                     >
-                      {lesson.status === "validated" ? "HQLS Validated" : lesson.status}
+                      {lesson.status === "validated" ? "Teacher Validated" : lesson.status}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-zinc-500">{lesson.topic}</p>
