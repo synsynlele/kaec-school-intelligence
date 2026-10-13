@@ -14,3 +14,12 @@ export function mergeStageRepairs(lesson: GeneratedHqlsLesson, rawStages: unknow
   const byNumber = new Map<number, HqlsStageContent>(replacements.map((stage) => [stage.stageNumber, stage]));
   return { ...lesson, stages: lesson.stages.map((stage) => byNumber.get(stage.stageNumber) ?? stage) };
 }
+
+export function contentRepairStageNumbers(issues: { stageNumber: number; category: string; correction: string }[]) {
+  const stages = new Set(issues.map((issue) => issue.stageNumber));
+  if (issues.some((issue) => issue.category === "task_integrity" && /\b(?:take[- ]home|homework|at home|home materials)\b/i.test(issue.correction))) {
+    stages.add(4);
+    stages.add(7);
+  }
+  return [...stages].sort((a, b) => a - b);
+}
