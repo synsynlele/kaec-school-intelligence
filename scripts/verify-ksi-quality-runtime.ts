@@ -247,6 +247,27 @@ async function verifyQuality() {
   assert.equal(coverageReview.passed, false);
   assert.deepEqual(contentRepairStageNumbers(coverageReview.issues), [4, 5, 6, 7]);
   assert.throws(() => parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Correct it.", repairScope: "invented" }] }, quoteLesson));
+  const prematureFinding = { evidenceId: "stage4.experience", category: "task_integrity", impact: "optional_improvement", impactExplanation: "The provisional labels differ; the task is still runnable before teaching.", repairScope: "materials_chain", correction: 'Change the required label list in Stage 4 to the exact labels used in Stage 6: subject, object, possessive adjective, possessive pronoun, reflexive, special.' };
+  const provisionalReview = parseHqlsQualityReview({ issues: [prematureFinding] }, quoteLesson);
+  assert.equal(provisionalReview.passed, true, "Different crude and taught labels alone must not reject Trial 1.");
+  assert.equal(provisionalReview.warnings.length, 1);
+  assert.equal(provisionalReview.warnings[0].category, "teacher_guidance");
+  const provisionalWithError = parseHqlsQualityReview({ issues: [prematureFinding, { evidenceId: "stage5.teachingContent", category: "subject_accuracy", correction: "Correct the factual definition." }] }, quoteLesson);
+  assert.equal(provisionalWithError.passed, false, "Permitting provisional labels must not hide a separate factual defect.");
+  assert.equal(provisionalWithError.issues.length, 1);
+  const missingCategory = parseHqlsQualityReview({ issues: [{ ...prematureFinding, impact: "missing_essential_content", impactExplanation: "The required reflexive identification has no actual reflexive example.", correction: "Supply the missing example." }] }, quoteLesson);
+  assert.equal(missingCategory.passed, false, "An actual missing category remains blocking.");
+  for (const explanation of ["A clearer chemistry diagram would help but the data already suffice.", "The history source uses an equivalent heading.", "The mathematics pairs could use a different role split.", "The business discussion could use an extra case."]) {
+    const review = parseHqlsQualityReview({ issues: [{ ...prematureFinding, impactExplanation: explanation, correction: "Optional preparation improvement." }] }, quoteLesson);
+    assert.equal(review.passed, true, "Optional improvements across subjects must not reject usable lessons.");
+  }
+  for (const [impact, category] of [["wrong_fact_or_answer", "subject_accuracy"], ["missing_essential_content", "task_integrity"], ["impossible_required_task", "task_integrity"]]) {
+    assert.equal(parseHqlsQualityReview({ issues: [{ ...prematureFinding, impact, category, impactExplanation: "A concrete required result is invalid or unavailable.", correction: "Repair the specific defect." }] }, quoteLesson).passed, false);
+  }
+  assert.throws(() => parseHqlsQualityReview({ issues: [{ ...prematureFinding, impact: "wrong_fact_or_answer", impactExplanation: "" }] }, quoteLesson));
+  assert.equal(parseHqlsQualityReview({ issues: [{ ...prematureFinding, impact: "wrong_fact_or_answer", category: "teacher_guidance" }] }, quoteLesson).passed, false, "Concrete wrong facts cannot be hidden by a mismatched advisory category.");
+  assert(hqlsQualityReviewSchema(quoteLesson).properties.issues.items.required.includes("impactExplanation"));
+
   const requiredContext = { subject: "English Language", objective: "Identify reflexive pronouns in sentences." };
   const reportedLesson = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 5
     ? { ...stage, teachingContent: "Mistake: Calling a proper noun (Mary, teacher) a pronoun. Fix: Proper nouns are names." }
@@ -262,14 +283,17 @@ async function verifyQuality() {
   assert.equal(checkKnownEnglishContradictions(pluralKey, { subject: "English" }).length, 0, "A plural subject legitimately takes ourselves.");
   assert.equal(checkKnownEnglishContradictions(reportedLesson, { subject: "French" }).length, 0);
 
-  assert.deepEqual(checkRequiredReflexiveForms(quoteLesson, requiredContext).map((issue) => issue.stageNumber), [4, 5]);
+  assert.deepEqual(checkRequiredReflexiveForms(quoteLesson, requiredContext).map((issue) => issue.stageNumber), [5]);
   assert.equal(parseHqlsQualityReview({ issues: [] }, quoteLesson, requiredContext).passed, false, "An AI all-clear cannot bypass missing required reflexive forms.");
   const withForms = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Sentence cards (1):\n1. Mary taught herself to play the piano." } : stage.stageNumber === 5 ? { ...stage, teachingContent: "She washed herself. Here herself refers back to She." } : stage) };
   assert.equal(checkRequiredReflexiveForms(withForms, requiredContext).length, 0);
   assert.equal(checkRequiredReflexiveForms(quoteLesson, { subject: "French", objective: "Identify reflexive pronouns." }).length, 0, "English forms must not be imposed on another language.");
   assert.equal(checkRequiredReflexiveForms(quoteLesson, { subject: "English", objective: "Identify personal pronouns." }).length, 0);
   const stage6Requires = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 6 ? { ...stage, experience: "Label the Reflexive group." } : stage) };
-  assert.equal(checkRequiredReflexiveForms(stage6Requires, { subject: "English" }).length, 2);
+  assert.equal(checkRequiredReflexiveForms(stage6Requires, { subject: "English" }).length, 1);
+  const firstExplicitlyRequires = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Find the reflexive example in the supplied set." } : stage) };
+  assert.deepEqual(checkRequiredReflexiveForms(firstExplicitlyRequires, requiredContext).map((issue) => issue.stageNumber), [4, 5]);
+
   const beforeReview = JSON.stringify(quoteLesson);
   const calls: boolean[] = [];
   const retried = await runHqlsQualityReview(quoteLesson, async (retry) => {

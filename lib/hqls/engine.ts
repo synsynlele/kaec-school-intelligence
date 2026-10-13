@@ -3,7 +3,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.33";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.34";
 
 export type HqlsStageAction =
   | "improve"
@@ -174,7 +174,7 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - Prefer board examples, teacher voice and familiar objects unless printed cards are useful or requested. Write one complete master set in Stage 4. Later stages can say "Use the same set from Stage 4" and identify any selected entries; do not copy the whole list again.
 - Materials may use numbered lines, bullets, a compact inline list or clearly quoted examples. A particular heading or layout is not a learning requirement. Counts and required categories must agree with the actual content. Physical counters need a quantity, not a numbered list of identical stones.
 - Keep grouping practical: specify pairs or teams, what each learner contributes and one shared first attempt. Give only the allocation needed to run the task. Do not invent class enrolment or demand unnecessary container arithmetic.
-- For sorting that depends on context, supply short sentences with one clearly marked target word/item; isolated words are insufficient when their type changes with use. Otherwise let learners classify each word separately. A sentence with several word types need not fit one exclusive pile. Allow reasoned provisional groups in Trial 1; teach accurate labels in Stage 5.
+- For sorting that depends on context, supply short sentences with one clearly marked target word/item; isolated words are insufficient when their type changes with use. Otherwise let learners classify each word separately. A sentence with several word types need not fit one exclusive pile. Allow reasoned provisional groups in Trial 1; their everyday labels may differ from the formal categories taught in Stage 5 and used in Trial 2. Compare improved reasoning on the same examples, not identical labels.
 - Match task load, reading demand and teaching depth to the age, objective and previous learning. Supply support without giving away the solution. Nursery/younger primary use concrete objects and short oral responses; tertiary work retains disciplinary depth.
 - Stage 5 explains the required concept with accurate worked examples and answers to the first task. Include examples of categories learners are required to identify; do not force every subset or every stage to demonstrate every category.
 - Stage 6 improves the first work and includes a brief individual check. Stage 7 connects changed thinking to identity and one feasible real-life application. Prefer household objects, observation or oral explanation rather than taking shared classroom cards home.
