@@ -1152,7 +1152,7 @@ const refreshLessons = useCallback(async () => {
 
             {hqlsPacingNotes(selectedLesson.source_context).length ? (
               <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-                <p className="font-semibold">Teacher pacing notes</p>
+                <p className="font-semibold">Teacher preparation notes</p>
                 <p className="mt-1">Use the suggested stage timings shown below. Adjust the pace to your learners.</p>
                 <ul className="mt-2 list-disc pl-5">{hqlsPacingNotes(selectedLesson.source_context).map((note, index) => <li key={index}>{note}</li>)}</ul>
               </div>

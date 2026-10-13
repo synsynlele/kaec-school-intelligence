@@ -135,8 +135,19 @@ async function verifyQuality() {
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask.replace(" below", ""))).length, 1, "Removing 'below' must not evade a direct material assignment.");
   assert.equal(parseHqlsQualityReview({ issues: [] }, materialLesson(brokenTask)).passed, false, "An AI all-clear cannot bypass the material count gate.");
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock(words))).length, 0);
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock(words).replace(/\n/g, " "))).length, 0, "A complete inline numbered list must not be rejected as missing.");
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + "\nWord cards (16): " + words.join(", "))).length, 0, "A compact word list supplies actual material.");
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + "\nWord cards (16): " + words.slice(0, 15).join(", "))).length, 1, "A genuinely short list still fails.");
+  const inlineSentences = "Use the two sentence cards below. Sentence cards (2): 1. She washed herself. 2. He blamed himself.";
+  assert.equal(checkPromisedMaterials(materialLesson(inlineSentences)).length, 0, "Complete inline sentences are valid cards.");
+  const unheaded = materialLesson('Use the two sentence cards below. "She washed herself." "He blamed himself."');
+  assert.equal(parseHqlsQualityReview({ issues: [] }, unheaded).passed, true, "Alternative complete material layout must not become a false missing-material rejection.");
+  assert.equal(parseHqlsQualityReview({ issues: [] }, unheaded).warnings[0].category, "teacher_guidance");
+  assert.equal(parseHqlsQualityReview({ issues: [] }, materialLesson('Use the two sentence cards below. "She washed herself."')).passed, false, "One supplied card must not fulfil a two-card promise.");
+
+
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock(words.slice(0, 15)))).length, 1);
-  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock([...words.slice(0, 15), words[0]]))).length, 1);
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock([...words.slice(0, 15), words[0]]))).length, 0, "Repeated practice words are valid physical cards.");
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask + materialBlock([...words.slice(0, 15), "etc."]))).length, 1);
   assert.equal(checkPromisedMaterials(materialLesson(brokenTask.replace("16", "sixteen") + materialBlock(words))).length, 0);
   const integrationMaterials = (experience: string) => ({ ...lesson, stages: stages.map((stage) => stage.stageNumber === 7 ? { ...stage, experience } : { ...stage }) });
@@ -217,6 +228,11 @@ async function verifyQuality() {
   const timingReview = parseHqlsQualityReview({ issues: [timingFinding] }, timingLesson);
   assert.equal(timingReview.passed, true, "Minor pacing discrepancies must not reject usable lessons.");
   assert.equal(timingReview.warnings.length, 1);
+  const advice = { evidenceId: "stage5.teachingContent", category: "teacher_guidance", correction: "Optionally add a familiar example." };
+  assert.equal(parseHqlsQualityReview({ issues: [advice] }, timingLesson).passed, true);
+  assert.equal(parseHqlsQualityReview({ issues: [advice] }, timingLesson).warnings.length, 1);
+  assert.equal(parseHqlsQualityReview({ issues: [advice, { evidenceId: "stage1.experience", category: "subject_accuracy", correction: "Correct 2 + 3 to 5." }] }, timingLesson).passed, false, "Advice must not hide factual errors.");
+
   assert.equal(timingReview.issues.length, 0);
   const mixedReview = parseHqlsQualityReview({ issues: [timingFinding, { evidenceId: "stage1.experience", category: "subject_accuracy", correction: "Correct 2 + 3 to 5." }] }, timingLesson);
   assert.equal(mixedReview.passed, false, "A pacing note must not hide a factual error.");
