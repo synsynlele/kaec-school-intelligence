@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings, hqlsPacingNotes } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, hqlsQualityReviewSchema, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
+import { checkKnownEnglishContradictions } from "../lib/hqls/english-contradictions";
 import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs, contentRepairStageNumbers } from "../lib/hqls/coordinated-repair";
@@ -247,6 +248,20 @@ async function verifyQuality() {
   assert.deepEqual(contentRepairStageNumbers(coverageReview.issues), [4, 5, 6, 7]);
   assert.throws(() => parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Correct it.", repairScope: "invented" }] }, quoteLesson));
   const requiredContext = { subject: "English Language", objective: "Identify reflexive pronouns in sentences." };
+  const reportedLesson = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 5
+    ? { ...stage, teachingContent: "Mistake: Calling a proper noun (Mary, teacher) a pronoun. Fix: Proper nouns are names." }
+    : stage.stageNumber === 6 ? { ...stage, experience: 'D) "I did the work by _____ ."', evidenceToNotice: ["Correct reflexive usage in sentence D when expected (myself, ourselves)"] } : stage) };
+  assert.deepEqual(checkKnownEnglishContradictions(reportedLesson, { subject: "English Language" }).map((issue) => issue.stageNumber), [5, 6]);
+  assert.equal(parseHqlsQualityReview({ issues: [] }, reportedLesson, { subject: "English" }).passed, false, "The confirmed wrong teaching keys must not pass an AI all-clear.");
+  const correctedKeys = { ...reportedLesson, stages: reportedLesson.stages.map((stage) => stage.stageNumber === 5
+    ? { ...stage, teachingContent: "Teacher is a common noun; Mary is a proper noun." }
+    : stage.stageNumber === 6 ? { ...stage, evidenceToNotice: ["Sentence D: myself, not ourselves."] } : stage) };
+  assert.equal(checkKnownEnglishContradictions(correctedKeys, { subject: "English" }).length, 0);
+  const pluralKey = { ...reportedLesson, stages: correctedKeys.stages.map((stage) => stage.stageNumber === 6
+    ? { ...stage, experience: 'D) "We did the work by _____ ."', evidenceToNotice: ["Sentence D: ourselves."] } : stage) };
+  assert.equal(checkKnownEnglishContradictions(pluralKey, { subject: "English" }).length, 0, "A plural subject legitimately takes ourselves.");
+  assert.equal(checkKnownEnglishContradictions(reportedLesson, { subject: "French" }).length, 0);
+
   assert.deepEqual(checkRequiredReflexiveForms(quoteLesson, requiredContext).map((issue) => issue.stageNumber), [4, 5]);
   assert.equal(parseHqlsQualityReview({ issues: [] }, quoteLesson, requiredContext).passed, false, "An AI all-clear cannot bypass missing required reflexive forms.");
   const withForms = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Sentence cards (1):\n1. Mary taught herself to play the piano." } : stage.stageNumber === 5 ? { ...stage, teachingContent: "She washed herself. Here herself refers back to She." } : stage) };
