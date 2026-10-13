@@ -1,4 +1,5 @@
 import type { GeneratedHqlsLesson } from "@/lib/hqls/engine";
+import { checkRequiredReflexiveForms, type CoverageContext } from "./category-coverage";
 import { checkPromisedMaterials } from "./materials";
 
 export const HQLS_QUALITY_SCHEMA = {
@@ -79,7 +80,7 @@ export function hqlsQualityReviewSchema(lesson: GeneratedHqlsLesson) {
   } } };
 }
 
-export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLesson) {
+export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLesson, context: CoverageContext = {}) {
   if (!value || typeof value !== "object" || !Array.isArray((value as { issues?: unknown }).issues)) throw new Error("The lesson content review was incomplete. Retry before saving generated changes.");
   const issues = ((value as { issues: unknown[] }).issues).map((raw) => {
     if (!raw || typeof raw !== "object") throw new Error("Invalid content-review issue.");
@@ -111,19 +112,20 @@ export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLess
       evidenceMatch: source ? "source_reference" : exact ? "exact" : "format_normalised" };
   });
   const warnings = issues.filter((issue) => issue.category === "pacing_guidance");
-  const checkedIssues = [...issues.filter((issue) => issue.category !== "pacing_guidance"), ...checkPromisedMaterials(lesson)];
-  return { passed: checkedIssues.length === 0, issues: checkedIssues, warnings, reviewer: "automated_subject_and_task_review_v1.8" };
+  const checkedIssues = [...issues.filter((issue) => issue.category !== "pacing_guidance"), ...checkPromisedMaterials(lesson), ...checkRequiredReflexiveForms(lesson, context)];
+  return { passed: checkedIssues.length === 0, issues: checkedIssues, warnings, reviewer: "automated_subject_and_task_review_v1.9" };
 }
 
 export async function runHqlsQualityReview(
   lesson: GeneratedHqlsLesson,
   request: (retry: boolean, reason?: string) => Promise<unknown>,
+  context: CoverageContext = {},
 ) {
   let reason: string | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
     const data = await request(attempt > 0, reason);
     try {
-      return { ...parseHqlsQualityReview(data, lesson), attempts: attempt + 1 };
+      return { ...parseHqlsQualityReview(data, lesson, context), attempts: attempt + 1 };
     } catch (error) {
       if (!(error instanceof HqlsQualityGroundingError) || attempt === 1) throw error;
       reason = error.message;

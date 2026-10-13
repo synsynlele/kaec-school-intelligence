@@ -52,7 +52,7 @@ assert(
 
 
 assert(
-  engine.includes('HQLS_PROMPT_v1.30') &&
+  engine.includes('HQLS_PROMPT_v1.31') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
@@ -86,3 +86,8 @@ for (const requirement of [
 console.log(
   "HQLS generation performance verification passed: HQLS-specific Terra selection, platform cost fallback, concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
 );
+
+for (const schemaName of ["ksi_hqls_coordinated_content_repair", "ksi_hqls_content_stage_repair", "ksi_hqls_content_repair"]) {
+  const at = route.indexOf(`schemaName: "${schemaName}"`);
+  assert(at >= 0 && /\bmodel, reasoningEffort: configuredHqlsReasoningEffort\(model\)/.test(route.slice(at, at + 300)), `${schemaName} must pin the configured HQLS model.`);
+}

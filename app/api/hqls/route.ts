@@ -856,7 +856,7 @@ ${(
           parts: [{ text: `${lessonContextSummary(input)}\nRepair ONLY stages ${expectedStages.join(", ")} together as one coherent plan. Choose one explicit grouping/materials allocation and apply it consistently to both stages and the unchanged surrounding lesson. State children per group/pair, pairs per container, sets per group/pair, and items per set when relevant. Do not invent a class size. Do not make Awakening into a learner task or remove suspense. Preserve the objective and include an actual example of every category learners must identify. Update the master material set, teaching answers, second-attempt labels and dependent mini-card/transfer pools together. Keep the declared set size by replacing an unsuitable entry when needed. Permit reasoned borderline grouping before formal teaching rather than forcing overlapping labels into mutually exclusive piles. Count the actual entries, reconcile every total and category split with the list, and supply complete numbered material blocks in each affected stage, including Integration. Correct dependent answers and references in these stages. Return exactly those stage objects; preserve all other stages.\nGrounded defects:\n${JSON.stringify(qualityReview.issues)}\nFull lesson for continuity:\n${JSON.stringify(lesson)}` }, ...resources.parts],
           responseSchema: { type: "object", properties: { stages: { type: "array", minItems: expectedStages.length, maxItems: expectedStages.length, items: HQLS_STAGE_JSON_SCHEMA } }, required: ["stages"] },
           schemaName: "ksi_hqls_coordinated_content_repair",
-          reasoningEffort: "low", textVerbosity: "low",
+          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
           maxOutputTokens: Math.min(HQLS_MAX_OUTPUT_TOKENS, HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS * expectedStages.length),
         });
         if (!Array.isArray(result.data?.stages)) throw new Error("The coordinated stage repair was incomplete. No generated changes were saved.");
@@ -870,7 +870,7 @@ ${(
               "\nFix these grounded defects; supply all promised materials:\n" + JSON.stringify(qualityReview.issues.filter((issue) => issue.stageNumber === targetStage.stageNumber)) }, ...resources.parts],
             responseSchema: HQLS_STAGE_JSON_SCHEMA,
             schemaName: "ksi_hqls_content_stage_repair",
-            reasoningEffort: "low", textVerbosity: "low",
+            model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
             maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
           });
           return parseHqlsStageContent(result.data, targetStage.stageNumber);
@@ -882,7 +882,7 @@ ${(
           systemInstruction: buildHqlsGenerationSystemInstruction(),
           parts: [{ text: `${lessonContextSummary(input)}\nRepair only these grounded subject/task defects, preserving all seven HQLS stages and useful content:\n${JSON.stringify(qualityReview.issues)}\nLesson:\n${JSON.stringify(lesson)}` }, ...resources.parts],
           responseSchema: HQLS_LESSON_JSON_SCHEMA, schemaName: "ksi_hqls_content_repair",
-          reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
+          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
         });
         lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
       }
@@ -895,7 +895,7 @@ ${(
             "\nThe subject/task repair introduced these fidelity defects. Fix them while retaining the corrected facts, all supplied materials and consistent grouping. Trial 1 must retain one shared attempt and a concrete contribution from every learner.\n" + defects.join("\n") }, ...resources.parts],
           responseSchema: HQLS_STAGE_JSON_SCHEMA,
           schemaName: "ksi_hqls_content_fidelity_repair",
-          model, reasoningEffort: "low", textVerbosity: "low",
+          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
           maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
         });
         return parseHqlsStageContent(result.data, targetStage.stageNumber);
@@ -1120,7 +1120,7 @@ async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: stri
       reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000,
     });
     return result.data;
-  });
+  }, { subject: context.match(/^Subject: (.*)$/m)?.[1], objective: context.match(/^Objective: (.*)$/m)?.[1] });
 }
 
 async function handleRegenerateStage(
