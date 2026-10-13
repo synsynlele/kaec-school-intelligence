@@ -41,16 +41,21 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
           : kind === "word cards" ? "(?:word cards|word-only cards|cards)"
           : /picture[- ]word cards/.test(kind) ? "(?:picture[- ]word cards|cards)"
           : /cards$/.test(kind) ? `(?:${kind}|cards)` : kind;
-        const heading = new RegExp(`^\\s*(?:#{1,4}\\s*)?(?:\\*\\*)?(?:materials\\s*[-—:]\\s*)?${headingKind}(?:\\s+per\\s+(?:pair|group|team|learner|child))?(?:\\s*\\(\\d+\\))?(?:\\*\\*)?[ \t]*:[ \t]*(.*)$`, "im");
+        const heading = new RegExp(`(?<!sentence )(?<!scenario )(?<!word )(?<!picture )(?<!picture-word )\\b(?:#{1,4}\\s*)?(?:\\*\\*)?(?:materials\\s*[-—:]\\s*)?${headingKind}(?:\\s+per\\s+(?:pair|group|team|learner|child))?(?:\\s*\\(\\d+\\))?(?:\\*\\*)?[ \t]*:[ \t]*(.*)$`, "im");
         let found = false;
+        let hasRecognisedHeading = false;
         let validImpliedSources = 0;
         for (const source of materialTexts) {
           const header = heading.exec(source);
           if (!header) continue;
+          hasRecognisedHeading = true;
           const headerCount = header[0].match(/\((\d+)\)/);
           const listedCount = headerCount ? Number(headerCount[1]) : expected;
           if (listedCount !== expected && !(subset && listedCount >= expected)) continue;
-          const tail = header[1] + "\n" + source.slice(header.index + header[0].length);
+          // Inline numbering is presentation-equivalent to separate lines.
+          // Only a whitespace-delimited item marker starts a new entry.
+          const tail = (header[1] + "\n" + source.slice(header.index + header[0].length))
+            .replace(/[ \t]+(?=\d+[.)][ \t]+)/g, "\n");
           const entries: { position: number; value: string }[] = [];
           for (const line of tail.split(/\r?\n/)) {
             if (!line.trim() && !entries.length) continue;
@@ -60,8 +65,11 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
             entries.push({ position: entry ? Number(entry[1]) : entries.length + 1, value: entry ? entry[2] : bullet![1] });
           }
           found = entries.length === listedCount && entries.every((entry, index) => entry.position === index + 1 && !/\b(?:etc\.?|tbd|placeholder|insert here)\b|\.\.\.|…/i.test(entry.value));
-          if (found && /^(?:words|word cards)$/.test(kind)) {
-            found = new Set(entries.map((entry) => entry.value.trim().toLowerCase())).size === listedCount;
+          // Repeated words can be intentional practice materials, not omissions.
+          if (!entries.length && /^(?:words|word cards)$/.test(kind)) {
+            const values = header[1].split(/[,;]/).map((value) => value.trim()).filter(Boolean);
+            found = values.length === listedCount && values.every((value) =>
+              /^[\p{L}\p{M}'’\-]+$/u.test(value) && !/^(?:etc|tbd|placeholder)$/i.test(value));
           }
           if (found && impliedEarlier.some((item) => item.experience === source)) {
             validImpliedSources++;
@@ -69,9 +77,31 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
           } else if (found) break;
         }
         if (!found && validImpliedSources === 1) found = true;
+        // An unknown layout is not evidence that materials are absent. Defer
+        // plausible complete content to the semantic reviewer, with a visible note.
+        const alternativeContent = !hasRecognisedHeading && materialTexts.some((source) => {
+          const lines = source.split(/\r?\n/);
+          let count = 0;
+          for (const line of lines) {
+            const entry = line.match(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/);
+            if (entry && !/\b(?:tbd|placeholder|etc)\b|\.\.\.|…/i.test(entry[1]) &&
+              !/^(?:write|sort|discuss|agree|explain|choose|reflect|label|produce|work|give|ask)\b/i.test(entry[1])) count++;
+            else count = 0;
+            if (count === expected) return true;
+          }
+          const quotes = [...source.matchAll(/["“]([^"“”\n]+)["”]/g)];
+          return quotes.length === expected && quotes.every((quote) =>
+            !/\b(?:tbd|placeholder|etc)\b|\.\.\.|…/i.test(quote[1]));
+        });
+        if (!found && alternativeContent) {
+          issues.push({ stageNumber: stage.stageNumber, category: "teacher_guidance", evidence: match[0], evidenceMatch: "layout_uncertain",
+            correction: `The ${expected} ${kind} appear in an alternative layout. Confirm the intended set when preparing; a specific heading or numbering style is optional.` });
+          continue;
+        }
+
         if (!found) {
           issues.push({ stageNumber: stage.stageNumber, category: "task_integrity", evidence: match[0], evidenceMatch: "exact",
-            correction: `Supply exactly ${expected} actual ${kind} in this stage's experience under '${kind} (${expected}):', one complete entry per line, numbered 1 through ${expected} or bulleted. A subset may reuse a complete larger list if the instructions identify the earlier stage and selection. Do not count task instructions, placeholders or answers as materials. If reusing an earlier stage, name its stage number and ensure its complete material list exists.` });
+            correction: `The checker could not locate the promised ${expected} ${kind}. Supply their actual content or clearly identify an earlier complete set and any selected entries. Inline lists, bullets and numbered lists are valid; no particular heading or repeated copy is required. Do not substitute placeholders or teacher-only answers for essential learner material.` });
         }
       }
     }
