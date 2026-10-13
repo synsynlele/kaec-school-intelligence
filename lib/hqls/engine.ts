@@ -3,7 +3,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.32";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.33";
 
 export type HqlsStageAction =
   | "improve"
@@ -174,7 +174,7 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - Prefer board examples, teacher voice and familiar objects unless printed cards are useful or requested. Write one complete master set in Stage 4. Later stages can say "Use the same set from Stage 4" and identify any selected entries; do not copy the whole list again.
 - Materials may use numbered lines, bullets, a compact inline list or clearly quoted examples. A particular heading or layout is not a learning requirement. Counts and required categories must agree with the actual content. Physical counters need a quantity, not a numbered list of identical stones.
 - Keep grouping practical: specify pairs or teams, what each learner contributes and one shared first attempt. Give only the allocation needed to run the task. Do not invent class enrolment or demand unnecessary container arithmetic.
-- For sorting, identify the target word/item, or let learners classify each word separately. A sentence with several word types need not fit one exclusive pile. Allow reasoned provisional groups in Trial 1; teach accurate labels in Stage 5.
+- For sorting that depends on context, supply short sentences with one clearly marked target word/item; isolated words are insufficient when their type changes with use. Otherwise let learners classify each word separately. A sentence with several word types need not fit one exclusive pile. Allow reasoned provisional groups in Trial 1; teach accurate labels in Stage 5.
 - Match task load, reading demand and teaching depth to the age, objective and previous learning. Supply support without giving away the solution. Nursery/younger primary use concrete objects and short oral responses; tertiary work retains disciplinary depth.
 - Stage 5 explains the required concept with accurate worked examples and answers to the first task. Include examples of categories learners are required to identify; do not force every subset or every stage to demonstrate every category.
 - Stage 6 improves the first work and includes a brief individual check. Stage 7 connects changed thinking to identity and one feasible real-life application. Prefer household objects, observation or oral explanation rather than taking shared classroom cards home.
@@ -188,6 +188,7 @@ PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Use short, direct sentences and everyday words. Avoid vague academic phrases such as "facilitate discussion", "activate prior knowledge", "promote metacognition" or "engage learners" unless you explain exactly what the teacher should do.
 - Make every instruction concrete. Say exactly what the teacher says or does, what learners do, what difficulty is expected, and what the teacher should look for. Exploration is an oral prior-thinking check, not an activity or a product to make.
 - Keep teacher directions extremely simple. Prefer one action per sentence. A teacher should be able to scan the stage and know immediately: "Say this", "Show this", "Ask this", "Listen for this", or "Put learners into teams and give this challenge."
+- Put all essential task steps, materials and the meaning of any necessary label in experience, beside the task. teacherPrompts may remind or guide, but support cues must not be the only place a teacher can find how to run the task. Prefer full everyday labels to invented letter codes such as R/N; use conventional subject symbols only when useful and explain them on first use.
 - teacherPrompts must be short exact words or actions the teacher can use immediately in class, not abstract labels or professional-development language.
 - learnerActions must describe visible learner behaviour using simple verbs such as say, compare, write, draw, solve, explain, choose, build or present. Micro-Illumination is the exception: learnerActions may be empty when learners simply receive the tiny clue before Trial 1.
 - guideGuardrails must be simple "Do not..." instructions. Micro-Illumination may leave guideGuardrails empty when no extra guardrail is needed beyond giving the clue and moving on.
@@ -210,7 +211,7 @@ BENCHMARK TEACHER-PLAN SHAPE:
 - Stage 2: experience = brief continuation of the same situation; teacherPrompts = 3–5 crude-thinking questions; learnerActions = expected guesses, arguments, comparisons, predictions or experience-based ideas.
 - Stage 3: experience = the short minimal-clarity statement/hint; teacherPrompts = up to three guiding questions learners carry into Trial 1; learnerActions should stay minimal because this is not a separate task.
 - Stage 4: experience = the actual collaborative task; learnerActions = the 2–4 clear things students must produce/do; productiveStruggle = the mistakes/confusions expected; guideGuardrails = what the teacher must NOT do before Full Illumination.
-- Stage 5: teachingContent = the complete lesson note the teacher can teach from directly; respondsToFirstAttempt = the misconceptions/gaps from Trial 1 that this teaching resolves.
+- Stage 5: teachingContent = the complete lesson note, including a concise teacher answer key for Trial 1 and any later closed questions. List acceptable alternatives when more than one answer works; verify each against its exact sentence, data or constraints. Do not present expected misconceptions as observed facts before classroom delivery. Write the note so the teacher can teach from it directly; respondsToFirstAttempt = the misconceptions/gaps from Trial 1 that this teaching resolves.
 - Stage 6: experience = the second-attempt task using the same Stage 4 material or close equivalent; learnerActions = what students now correct/improve/extend; evidenceToNotice = expected improvement; teacherPrompts = feedback questions without taking ownership; respondsToFirstAttempt = the explicit link back to Trial 1.
 - Stage 7: reflectionPrompt = age-appropriate reflection questions (one or two brief oral questions for younger primary; normally 3–5 for older learners); experience = the identity connection; transferTask = the concrete real-life assignment/application.
 
