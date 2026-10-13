@@ -53,7 +53,7 @@ for (const required of [
 const worldClass = await text("lib/assessment/world-class.ts");
 for (const required of [
   "ASSESSMENT_ENGINE_v1.1",
-  "ASSESSMENT_PROMPT_v1.2",
+  "ASSESSMENT_PROMPT_v1.3",
   "KAEC_ASSESSMENT_QUALITY_v1.0",
   "assignment",
   "quiz",

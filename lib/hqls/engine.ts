@@ -3,7 +3,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.27";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.28";
 
 export type HqlsStageAction =
   | "improve"
@@ -191,6 +191,9 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - Never use throat vibration as a test distinguishing monophthongs from diphthongs; vibration indicates voicing. For pronunciation, specify the intended pronunciation model and use accurate listening/articulation examples.
 
 
+CLASSROOM USABILITY AND MANAGEABLE CHALLENGE:
+The existing structured fields are the teacher guide: experience = actual say/show or trial challenge; learnerActions = visible learner response; evidenceToNotice = observable sign; guideGuardrails = brief support cue. Do not add a new section for each repeated instruction. Stages 1–3 remain curiosity, existing ideas and the tiny clue, never separate assigned tasks. Keep the connected real-life example familiar to this age and supplied context. Stage 5 remains accurate normal teaching with actual worked examples; depth is determined by the objective, not unnecessary prose. Stage 6 changes only the difficulty dimensions learners are ready to handle and includes a brief individual check. Stage 7 transfer should use accessible materials and include an option that does not require family help. Do not assume a six-year-old can read symbolic missing-number task cards independently.
+
 PLAIN-ENGLISH RULES FOR EVERY STAGE:
 - Write so a teacher can understand the plan immediately without knowing HQLS jargon.
 - Use short, direct sentences and everyday words. Avoid vague academic phrases such as "facilitate discussion", "activate prior knowledge", "promote metacognition" or "engage learners" unless you explain exactly what the teacher should do.
@@ -220,7 +223,7 @@ BENCHMARK TEACHER-PLAN SHAPE:
 - Stage 4: experience = the actual collaborative task; learnerActions = the 2–4 clear things students must produce/do; productiveStruggle = the mistakes/confusions expected; guideGuardrails = what the teacher must NOT do before Full Illumination.
 - Stage 5: teachingContent = the complete lesson note the teacher can teach from directly; respondsToFirstAttempt = the misconceptions/gaps from Trial 1 that this teaching resolves.
 - Stage 6: experience = the second-attempt task using the same Stage 4 material or close equivalent; learnerActions = what students now correct/improve/extend; evidenceToNotice = expected improvement; teacherPrompts = feedback questions without taking ownership; respondsToFirstAttempt = the explicit link back to Trial 1.
-- Stage 7: reflectionPrompt = 3–5 reflection questions; experience = the identity connection; transferTask = the concrete real-life assignment/application.
+- Stage 7: reflectionPrompt = age-appropriate reflection questions (one or two brief oral questions for younger primary; normally 3–5 for older learners); experience = the identity connection; transferTask = the concrete real-life assignment/application.
 
 STAGE-SPECIFIC CLARITY:
 - Stage 1 Awakening (Curiosity & Meaning): begin with one vivid situation learners can picture or recognise. Use a short story, headline, image, object, quotation, surprising result or real-life dilemma when useful. Keep the formal topic name hidden. Ask at most one central question that makes learners wonder, agree/disagree, predict or take a position. Do not define, explain or solve the lesson yet.
@@ -344,7 +347,7 @@ ${validation.violations.map((item) => `- ${item.code}: ${item.message}`).join("\
 DRAFT JSON:
 ${JSON.stringify(lesson)}
 
-Return the full corrected seven-stage lesson in very simple plain English. Never move Full Illumination before Trial 1. Preserve this exact flow: Awakening = vivid curiosity/meaning scenario with one central question; Exploration = 3–5 oral crude-thinking questions with no correction or product; Micro-Illumination = brief minimal clarity plus at most three guiding questions for Trial 1; Trial 1 = a concrete collaborative first attempt with 2–4 clear outputs, expected struggle and explicit "teacher must not" guardrails. Keep the formal topic name hidden through Stage 4. Stage 5 is the reveal and must contain a proper teacher-ready lesson note with clear explanation, key ideas/vocabulary or process, application, correct summary and common mistakes corrected. Stage 6 should revisit the same first-attempt material and show obvious improvement. Stage 7 must include 3–5 reflection questions, an identity connection and a distinct real-life assignment/application.
+Return the full corrected seven-stage lesson in very simple plain English. Never move Full Illumination before Trial 1. Preserve this exact flow: Awakening = vivid curiosity/meaning scenario with one central question; Exploration = 3–5 oral crude-thinking questions with no correction or product; Micro-Illumination = brief minimal clarity plus at most three guiding questions for Trial 1; Trial 1 = a concrete collaborative first attempt with 2–4 clear outputs, expected struggle and explicit "teacher must not" guardrails. Keep the formal topic name hidden through Stage 4. Stage 5 is the reveal and must contain a proper teacher-ready lesson note with clear explanation, key ideas/vocabulary or process, application, correct summary and common mistakes corrected. Stage 6 should revisit the same first-attempt material and show obvious improvement. Stage 7 must include age-appropriate reflection questions (one or two brief oral questions for younger primary; normally 3–5 for older learners), an identity connection and a distinct real-life assignment/application.
 `;
 }
 
@@ -858,6 +861,9 @@ export function lessonContextSummary(args: {
   objective: string;
   ageRange?: string | null;
   durationMinutes?: number | null;
+  previousLearning?: string;
+  teacherInstructions?: string;
+  classContext?: string;
 }) {
   return [
     `Subject: ${args.subject}`,
@@ -865,6 +871,9 @@ export function lessonContextSummary(args: {
     `Topic: ${args.topic}`,
     `Objective: ${args.objective}`,
     `Age: ${args.ageRange || "Not provided"}`,
+    `Stated prior learning: ${args.previousLearning?.trim() || "Not supplied; do not assume advanced prerequisites"}`,
+    `Teacher instructions: ${args.teacherInstructions?.trim() || "Not supplied"}`,
+    `Class context: ${args.classContext?.trim() || "Not supplied"}`,
     `Duration: ${args.durationMinutes ? `${args.durationMinutes} minutes` : "Not provided"}`,
     `App suggested pacing: ${JSON.stringify(hqlsStageTimings(args.durationMinutes))}. Do not duplicate classroom minute allocations in stage prose.`,
     learningLevelGuidance(args.classLevel, args.ageRange ?? ""),
