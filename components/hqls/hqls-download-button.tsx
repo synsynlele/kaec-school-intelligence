@@ -12,7 +12,6 @@ export function HqlsDownloadButton({ lessonId }: { lessonId: string }) {
   useEffect(() => {
     let active = true;
     let teacherValidationConfirmed = false;
-    setValidated(null);
 
     function onLessonValidated(event: Event) {
       if (!(event instanceof CustomEvent) || event.detail?.lessonId !== lessonId) return;
