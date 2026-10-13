@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings, hqlsPacingNotes } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, hqlsQualityReviewSchema, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
+import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs, contentRepairStageNumbers } from "../lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
@@ -229,6 +230,15 @@ async function verifyQuality() {
   assert.equal(coverageReview.passed, false);
   assert.deepEqual(contentRepairStageNumbers(coverageReview.issues), [4, 5, 6, 7]);
   assert.throws(() => parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Correct it.", repairScope: "invented" }] }, quoteLesson));
+  const requiredContext = { subject: "English Language", objective: "Identify reflexive pronouns in sentences." };
+  assert.deepEqual(checkRequiredReflexiveForms(quoteLesson, requiredContext).map((issue) => issue.stageNumber), [4, 5]);
+  assert.equal(parseHqlsQualityReview({ issues: [] }, quoteLesson, requiredContext).passed, false, "An AI all-clear cannot bypass missing required reflexive forms.");
+  const withForms = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Sentence cards (1):\n1. Mary taught herself to play the piano." } : stage.stageNumber === 5 ? { ...stage, teachingContent: "She washed herself. Here herself refers back to She." } : stage) };
+  assert.equal(checkRequiredReflexiveForms(withForms, requiredContext).length, 0);
+  assert.equal(checkRequiredReflexiveForms(quoteLesson, { subject: "French", objective: "Identify reflexive pronouns." }).length, 0, "English forms must not be imposed on another language.");
+  assert.equal(checkRequiredReflexiveForms(quoteLesson, { subject: "English", objective: "Identify personal pronouns." }).length, 0);
+  const stage6Requires = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 6 ? { ...stage, experience: "Label the Reflexive group." } : stage) };
+  assert.equal(checkRequiredReflexiveForms(stage6Requires, { subject: "English" }).length, 2);
   const beforeReview = JSON.stringify(quoteLesson);
   const calls: boolean[] = [];
   const retried = await runHqlsQualityReview(quoteLesson, async (retry) => {

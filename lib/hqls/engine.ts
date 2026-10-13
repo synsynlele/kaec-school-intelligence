@@ -3,7 +3,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.30";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.31";
 
 export type HqlsStageAction =
   | "improve"
