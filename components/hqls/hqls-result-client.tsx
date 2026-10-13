@@ -51,6 +51,8 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
   const [state, setState] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,6 +163,80 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
     };
   }, [lessonId, router]);
 
+  async function validateLesson() {
+    if (!state || validating || state.lesson.status !== "draft") return;
+    if (!window.confirm(
+      "Have you personally reviewed all seven HQLS stages, the examples, activities, answers and AI suggestions? Select OK to validate this lesson as the teacher. AI feedback is advisory.",
+    )) return;
+
+    setValidating(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error("Your session has expired. Sign in again.");
+
+      const response = await fetch("/api/hqls", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "save_edits",
+          lessonId: state.lesson.id,
+          stages: state.stages,
+          markReviewed: true,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(
+        typeof payload.error === "string" ? payload.error : "Teacher validation could not be saved.",
+      );
+      if (!payload.lesson || payload.lesson.status !== "validated") {
+        throw new Error("The server did not confirm teacher validation. Please retry.");
+      }
+      setState((current) => current ? {
+        ...current,
+        lesson: payload.lesson as Lesson,
+      } : current);
+      setNotice("Lesson validated by you. Automated suggestions remain advisory.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Teacher validation failed.");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  function lessonActions(position: "top" | "bottom") {
+    return (
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap" role="group" aria-label={`Lesson result actions at the ${position}`}>
+        {state?.lesson.status === "draft" ? (
+          <button type="button" onClick={() => void validateLesson()} disabled={validating}
+            className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-center text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            {validating ? "Validating…" : "Validate Lesson"}
+          </button>
+        ) : null}
+        {state?.lesson.status === "validated" ? (
+          <Link href={`/assessment?lesson=${encodeURIComponent(state.lesson.id)}`}
+            className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-center text-sm font-semibold text-white">
+            Build Assessment
+          </Link>
+        ) : null}
+        {state?.lesson.status !== "archived" && state ? (
+          <Link href={`/hqls/edit?lesson=${encodeURIComponent(state.lesson.id)}`}
+            className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">
+            Edit / Improve
+          </Link>
+        ) : null}
+        <Link href="/hqls" className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">New Lesson</Link>
+      </div>
+    );
+  }
+
   if (loading) {
     return <div className="flex min-h-[55vh] items-center justify-center px-5 text-sm text-zinc-500">Opening HQLS lesson…</div>;
   }
@@ -194,18 +270,12 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
             <p className="mt-1 text-xs text-zinc-400">{state.workspaceName} · Updated {new Date(state.lesson.updated_at).toLocaleDateString()}</p>
             {sources.length ? <p className="mt-3 text-xs text-zinc-500">Sources: {sources.join(", ")}</p> : null}
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap md:justify-end">
-            {state.lesson.status === "validated" ? (
-              <Link href={`/assessment?lesson=${encodeURIComponent(state.lesson.id)}`} className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-center text-sm font-semibold text-white">Build Assessment</Link>
-            ) : null}
-            {state.lesson.status !== "archived" ? (
-              <Link href={`/hqls/edit?lesson=${encodeURIComponent(state.lesson.id)}`} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">Edit / Improve</Link>
-            ) : null}
-            <Link href="/hqls" className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-center text-sm font-semibold text-zinc-800">New Lesson</Link>
-          </div>
+          {lessonActions("top")}
         </div>
       </div>
 
+      {error ? <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
+      {notice ? <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</p> : null}
       <p className="mt-4 text-sm text-zinc-600">Suggested timings total the lesson duration. Adjust pacing to your class. Automated sequence checks do not certify subject accuracy; review examples, tasks and answers before teaching.</p>
       <ContentAdviceSummary advice={advice} />
       {pacingNotes.length ? (
@@ -231,7 +301,11 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
         })}
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+        <p className="mb-3 text-sm text-zinc-600">Teacher validation is manual. Check all seven stages and any suggestions before approving.</p>
+        {lessonActions("bottom")}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
         <Link href="/saved-work" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800">Manage Saved Work</Link>
         <Link href="/dashboard" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800">Dashboard</Link>
       </div>
