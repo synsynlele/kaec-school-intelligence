@@ -336,3 +336,8 @@ assert(teacherApprovalUi.includes('lessonActionButtons("top")') && teacherApprov
 assert(teacherApprovalUi.includes("Validate Lesson") && teacherApprovalUi.includes("Save Draft") && teacherApprovalUi.includes("window.confirm"), "Manual teacher validation and draft-save actions are required.");
 assert(teacherApprovalRoute.includes("updateTeacherReview(previousAdvice, userId, body.markReviewed === true)") && !teacherApprovalRoute.includes("Fix the HQLS sequence before marking this lesson reviewed"), "Automated fidelity must not veto teacher validation.");
 assert(advicePolicy.includes("readHqlsAdvice(sourceContext)?.teacherReview"), "Only teacher approval can set Ready status.");
+
+const lessonResultUi = await text("components/hqls/hqls-result-client.tsx");
+assert(lessonResultUi.includes('lessonActions("top")') && lessonResultUi.includes('lessonActions("bottom")'), "Generated HQLS result must expose manual teacher validation at top and bottom.");
+assert(lessonResultUi.includes('markReviewed: true') && lessonResultUi.includes('action: "save_edits"') && lessonResultUi.includes('window.confirm'), "Generated result must persist authenticated manual teacher validation through existing save action.");
+assert(lessonResultUi.includes('payload.lesson.status !== "validated"'), "Result must not claim approval unless server confirms it.");
