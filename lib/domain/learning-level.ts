@@ -1,6 +1,6 @@
 export type LearningLevel = "early_years" | "primary" | "secondary" | "tertiary" | "unspecified";
 
-export const LEARNING_LEVEL_GUIDANCE_VERSION = "LEARNING_LEVEL_v1.0";
+export const LEARNING_LEVEL_GUIDANCE_VERSION = "LEARNING_LEVEL_v1.1";
 
 export function resolveLearningLevel(className: string, ageRange = ""): LearningLevel {
   const name = className.toLowerCase().replace(/[_–—-]/g, " ").replace(/\s+/g, " ").trim();
@@ -18,6 +18,26 @@ export function resolveLearningLevel(className: string, ageRange = ""): Learning
   return "unspecified";
 }
 
+export function primaryTaskBand(className: string, ageRange = ""): "younger_primary" | "older_primary" | null {
+  if (resolveLearningLevel(className, ageRange) !== "primary") return null;
+  const ages = ageRange.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (ages.length) return Math.min(...ages) <= 8 ? "younger_primary" : "older_primary";
+  return /\b(?:primary|basic|grade|year)\s*[1-3]\b/i.test(className) ? "younger_primary" : "older_primary";
+}
+
+export function teacherUsabilityGuidance(className: string, ageRange = "") {
+  const band = primaryTaskBand(className, ageRange);
+  const primary = band === "younger_primary" ? `YOUNGER PRIMARY TASK DESIGN:
+Use familiar real-life situations such as sharing objects, classroom routines, toys, plants or simple shopping; do not assume all children have the same home experiences. Start with one manageable action or decision and a small concrete set. Give one short direction at a time; showing, pointing, moving objects, drawing or a short oral explanation may demonstrate understanding without a written report. A partner may move objects while the other checks, then swap; do not stack multiple roles and products. Use one or two brief oral reflection questions. A long booked session needs varied hands-on episodes and movement/rest transitions, not a prolonged lecture or extra task complexity.
+For introductory addition/subtraction with no stated advanced prerequisites: use known starting amounts, one change and a result to find, with small numbers (within ten as a starting design choice, unless the supplied curriculum specifies otherwise). Do not make two changes plus an unknown starting number the default first struggle. Use missing-start or multi-step problems only when the requested objective and stated prior learning support them; preserve an explicitly requested advanced objective with suitable scaffolds rather than silently replacing it. Do not require simultaneous number sentences, reverse reasoning, a new problem, a group presentation and lengthy reflection to demonstrate one basic concept. Teach one idea clearly and let the second attempt show improvement.`
+    : band === "older_primary" ? `OLDER PRIMARY TASK DESIGN:
+Use concrete or pictorial entry points before more abstract reasoning. Match number ranges, operations, text length, independence and response demands to the curriculum and stated prior learning. Increase the number of steps gradually; multi-step or missing-information tasks need relevant prerequisites and clear supports. Keep partner roles and shared outputs manageable. Use a brief explanation or practical evidence rather than a formal report when it meets the objective.` : "";
+  return `TEACHER USABILITY STANDARD:
+Write clear, everyday teacher directions while retaining accurate subject terms and disciplinary depth. Make the actual words/story/example/material available; do not write vague instructions such as 'facilitate an engaging scenario'. A teacher must see what to say/show, what learners do, what to notice and the brief support cue. Use one action per sentence and avoid repeating the same instruction across fields. Separate teacher preparation from learner directions. Quantify ordinary physical resources simply ('Give each pair ten counters and one plate'); do not enumerate ten identical stones as ten separate written material entries. Keep all genuinely needed texts, cards, data and examples complete.
+Match challenge to prerequisite knowledge and the requested objective, not age alone or the desire to create suspense. Do not manufacture struggle through confusing language, hidden prerequisites, missing materials or too many simultaneous demands. Assessment language, reading load, response mode and number of steps must test the intended concept rather than unrelated literacy or memory. Keep requested item counts/marks intact. For older and tertiary learners, clear language must preserve advanced reasoning and subject depth.
+${primary}`;
+}
+
 export function learningLevelGuidance(className: string, ageRange = "") {
   const level = resolveLearningLevel(className, ageRange);
   const guidance: Record<LearningLevel, string> = {
@@ -27,5 +47,5 @@ export function learningLevelGuidance(className: string, ageRange = "") {
     tertiary: "TERTIARY / UNIVERSITY: Use the stated discipline, programme level, prerequisites and learning objective, not generic secondary worksheets or merely longer prose. Build authentic cases, data interpretation, competing explanations, design choices, research critique or professional applications where the discipline needs them. Trial 1 remains a collaborative attempt; teaching can address advanced theory/methods; Trial 2 requires justified independent transfer. Supply usable cases/data and appropriate rubrics; assess reasoning, evidence, disciplinary methods and limitations. Do not invent research sources, statistics, quotations or citations: use authorised supplied sources, or label a constructed teaching case as fictional. Distinguish undergraduate from postgraduate demands when specified. Do not infantilise adult learners. Retain diagnosis evidence/uncertainty and human approval; do not assume adult reports or parent actions are shared with parents. Where parent action is not appropriate, state that explicitly in the required field and refer to learner-authorised support without inventing consent.",
     unspecified: "LEVEL NOT ESTABLISHED: Use the explicit class, age, prerequisites, learner needs and teacher-provided context. Do not assume JSS/SS, a Nigerian examination syllabus, or university enrolment from adulthood alone. Do not invent an age or programme. Keep language and response modes accessible to the information actually supplied; if the curriculum or level is unclear, state the limitation and ask the teacher to provide it before relying on specialised expectations.",
   };
-  return `LEARNING LEVEL GUIDANCE (${LEARNING_LEVEL_GUIDANCE_VERSION}; ${level})\n${guidance[level]}\nThese are task-design adaptations, not new HQLS stages or permission changes. Keep the requested objective, supplied curriculum and existing validation/human-review rules. Treat observed difficulty as evidence to investigate, not proof of a hidden condition. A level label is not a certification of suitability.`;
+  return `LEARNING LEVEL GUIDANCE (${LEARNING_LEVEL_GUIDANCE_VERSION}; ${level})\n${guidance[level]}\n${teacherUsabilityGuidance(className, ageRange)}\nThese are task-design adaptations, not new HQLS stages or permission changes. Keep the requested objective, supplied curriculum and existing validation/human-review rules. Treat observed difficulty as evidence to investigate, not proof of a hidden condition. A level label is not a certification of suitability.`;
 }

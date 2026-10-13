@@ -1,7 +1,7 @@
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const ASSESSMENT_ENGINE_VERSION = "ASSESSMENT_ENGINE_v1.0";
-export const ASSESSMENT_PROMPT_VERSION = "ASSESSMENT_PROMPT_v1.1";
+export const ASSESSMENT_PROMPT_VERSION = "ASSESSMENT_PROMPT_v1.2";
 
 export type AssessmentMode =
   | "objective"

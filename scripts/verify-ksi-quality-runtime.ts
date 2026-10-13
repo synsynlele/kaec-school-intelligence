@@ -10,7 +10,7 @@ import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs } from "../lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
 import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
-import { resolveLearningLevel, learningLevelGuidance } from "../lib/domain/learning-level";
+import { resolveLearningLevel, learningLevelGuidance, primaryTaskBand, teacherUsabilityGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
 import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
 import { resolvePdfBranding } from "../lib/pdf/pdf-branding";
@@ -42,6 +42,24 @@ async function verifyQuality() {
   }
   assert(learningLevelGuidance("Nursery 1").includes("Do not assume independent reading or writing"));
   assert(learningLevelGuidance("100 Level").includes("Do not invent research sources"));
+  assert.equal(primaryTaskBand("Primary 1", "6–7"), "younger_primary");
+  assert.equal(primaryTaskBand("Primary 3"), "younger_primary");
+  assert.equal(primaryTaskBand("Primary 6", "10–11"), "older_primary");
+  assert.equal(primaryTaskBand("University Year 1", "18–22"), null);
+  assert.equal(primaryTaskBand("SS2", "15–16"), null);
+  assert(teacherUsabilityGuidance("Primary 1", "6–7").includes("known starting amounts, one change"));
+  assert(teacherUsabilityGuidance("Primary 1", "6–7").includes("preserve an explicitly requested advanced objective"));
+  assert(!teacherUsabilityGuidance("University Year 1", "18–22").includes("within ten"));
+  assert(teacherUsabilityGuidance("University Year 1", "18–22").includes("preserve advanced reasoning"));
+  const primaryContext = { workspaceId: "test", subject: "Mathematics", topic: "Addition and subtraction", objective: "Show adding with counters", classLevel: "Primary 1", ageRange: "6–7", durationMinutes: 90 };
+  const primaryPrompt = buildHqlsGenerationPrompt(primaryContext, []);
+  assert(primaryPrompt.includes("one short direction at a time"));
+  assert(primaryPrompt.includes("unknown starting number"));
+  assert(primaryPrompt.includes("hands-on episodes"));
+  assert(lessonContextSummary(primaryContext).includes("YOUNGER PRIMARY TASK DESIGN"), "Stage repair and review must receive the same task guidance.");
+  assert(lessonContextSummary({ ...primaryContext, previousLearning: "Already solves one-change missing-start problems with objects." }).includes("Already solves one-change missing-start problems"));
+  const primaryAssessmentPrompt = buildAssessmentPrompt({ ...primaryContext, subjectId: null, classId: null, sourceLessonId: null, resourceIds: [], title: "Adding", assessmentMode: "subjective", totalItems: 1, totalMarks: 5, purpose: "Practice", teacherInstructions: "", itemCounts: { objective: 0, subjective: 1, critical_thinking: 0, project: 0 } }, "", []);
+  assert(primaryAssessmentPrompt.includes("known starting amounts, one change"));
   for (let duration = 10; duration <= 240; duration++) {
     const schedule = hqlsStageTimings(duration)!;
     assert.equal(schedule.reduce((sum, item) => sum + item.minutes, 0), duration);
