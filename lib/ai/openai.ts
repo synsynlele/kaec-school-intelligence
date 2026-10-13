@@ -41,6 +41,7 @@ export type GenerateOpenAIJsonInput = {
   schemaName?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  timeoutMs?: number;
   reasoningEffort?: OpenAIReasoningEffort;
   model?: string;
   promptCacheKey?: string;
@@ -200,7 +201,8 @@ export async function generateOpenAIJson<T>(
     process.env.KSI_AI_MODEL?.trim() ||
     "gpt-5-mini";
   const reasoningEffort = defaultReasoningEffort(input);
-  const timeoutMs = configuredTimeoutMs();
+  const timeoutMs = input.timeoutMs === undefined ? configuredTimeoutMs()
+    : Math.min(configuredTimeoutMs(), Math.max(5000, input.timeoutMs));
   const startedAt = Date.now();
 
   let response: Response;

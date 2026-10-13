@@ -1,6 +1,5 @@
-import { hqlsQualityReviewSchema, HQLS_QUALITY_INSTRUCTION, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "@/lib/hqls/quality";
-import { mergeStageRepairs, needsCoordinatedRepair, contentRepairStageNumbers } from "@/lib/hqls/coordinated-repair";
-import { repairContentFidelity } from "@/lib/hqls/repair-fidelity";
+import { hqlsQualityReviewSchema, HQLS_QUALITY_INSTRUCTION, hqlsReviewSources, requireObservableObjective } from "@/lib/hqls/quality";
+import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus } from "@/lib/hqls/advisory-review";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -76,6 +75,7 @@ type SaveEditsBody = {
   action: "save_edits";
   lessonId: string;
   stages: unknown[];
+  markReviewed?: boolean;
 };
 
 type RegenerateStageBody = {
@@ -592,11 +592,14 @@ async function saveLessonValidation(args: {
   supabase: KsiSupabaseClient;
   lesson: LessonRow;
   validation: ReturnType<typeof validateHqlsLesson>;
+  sourceContext?: unknown;
 }) {
+  const sourceContext = args.sourceContext ?? args.lesson.source_context;
   const { data, error } = await args.supabase
     .from("lessons")
     .update({
-      status: args.validation.passed ? "validated" : "draft",
+      status: hqlsAdviceStatus(args.validation.passed, sourceContext),
+      source_context: toJson(sourceContext),
       validation_summary: toJson(args.validation),
       engine_version: HQLS_ENGINE_VERSION,
       prompt_version: HQLS_PROMPT_VERSION,
@@ -831,84 +834,11 @@ ${(
       );
     }
 
-    let reviewDurationMs = 0;
-    let reviewCalls = 0;
-    const reviewContent = async () => {
-      const startedAt = Date.now();
-      const result = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
-      reviewDurationMs += Date.now() - startedAt;
-      reviewCalls += result.attempts;
-      return result;
-    };
-    let qualityReview = await reviewContent();
-    let contentRepairMode: "none" | "stages" | "coordinated_stages" | "full_lesson" = "none";
-    // A grounded defect may survive the first repair or emerge during fidelity repair.
-    // Retry once using the latest review; never save an unchecked result.
-    for (let contentRepairAttempt = 0; !qualityReview.passed && contentRepairAttempt < 2; contentRepairAttempt += 1) {
-      const repairStages = contentRepairStageNumbers(qualityReview.issues);
-      const affectedStages = lesson.stages.filter((stage) => repairStages.includes(stage.stageNumber));
-      const repairStartedAt = Date.now();
-      if (affectedStages.length > 1 && affectedStages.length <= 4 && (needsCoordinatedRepair(qualityReview.issues) || affectedStages.length > new Set(qualityReview.issues.map((issue) => issue.stageNumber)).size)) {
-        contentRepairMode = "coordinated_stages";
-        const expectedStages = affectedStages.map((stage) => stage.stageNumber);
-        const result = await generateOpenAIJson<{ stages: unknown[] }>({
-          systemInstruction: buildHqlsGenerationSystemInstruction(),
-          parts: [{ text: `${lessonContextSummary(input)}\nRepair ONLY stages ${expectedStages.join(", ")} together as one coherent plan. Choose one explicit grouping/materials allocation and apply it consistently to both stages and the unchanged surrounding lesson. State children per group/pair, pairs per container, sets per group/pair, and items per set when relevant. Do not invent a class size. Do not make Awakening into a learner task or remove suspense. Preserve the objective and include an actual example of every category learners must identify. Update the master material set, teaching answers, second-attempt labels and dependent mini-card/transfer pools together. Keep the declared set size by replacing an unsuitable entry when needed. Permit reasoned borderline grouping before formal teaching rather than forcing overlapping labels into mutually exclusive piles. Count the actual entries, reconcile every total and category split with the list, and supply the corrected material once with clear reuse references where needed. Correct dependent answers and references in these stages. Return exactly those stage objects; preserve all other stages.\nGrounded defects:\n${JSON.stringify(qualityReview.issues)}\nFull lesson for continuity:\n${JSON.stringify(lesson)}` }, ...resources.parts],
-          responseSchema: { type: "object", properties: { stages: { type: "array", minItems: expectedStages.length, maxItems: expectedStages.length, items: HQLS_STAGE_JSON_SCHEMA } }, required: ["stages"] },
-          schemaName: "ksi_hqls_coordinated_content_repair",
-          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
-          maxOutputTokens: Math.min(HQLS_MAX_OUTPUT_TOKENS, HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS * expectedStages.length),
-        });
-        if (!Array.isArray(result.data?.stages)) throw new Error("The coordinated stage repair was incomplete. No generated changes were saved.");
-        lesson = keepOneAwakeningQuestion(mergeStageRepairs(lesson, result.data.stages, expectedStages));
-      } else if (affectedStages.length > 0 && affectedStages.length <= 2) {
-        contentRepairMode = "stages";
-        const replacements = await Promise.all(affectedStages.map(async (targetStage) => {
-          const result = await generateOpenAIJson<unknown>({
-            systemInstruction: buildHqlsGenerationSystemInstruction(),
-            parts: [{ text: buildStageRegenerationPrompt({ lesson, targetStage, action: "improve", lessonContext: lessonContextSummary(input) }) +
-              "\nFix these grounded defects; supply all promised materials:\n" + JSON.stringify(qualityReview.issues.filter((issue) => issue.stageNumber === targetStage.stageNumber)) }, ...resources.parts],
-            responseSchema: HQLS_STAGE_JSON_SCHEMA,
-            schemaName: "ksi_hqls_content_stage_repair",
-            model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
-            maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
-          });
-          return parseHqlsStageContent(result.data, targetStage.stageNumber);
-        }));
-        lesson = keepOneAwakeningQuestion(mergeStageRepairs(lesson, replacements, affectedStages.map((stage) => stage.stageNumber)));
-      } else {
-        contentRepairMode = "full_lesson";
-        const contentRepair = await generateOpenAIJson<unknown>({
-          systemInstruction: buildHqlsGenerationSystemInstruction(),
-          parts: [{ text: `${lessonContextSummary(input)}\nRepair only these grounded subject/task defects, preserving all seven HQLS stages and useful content:\n${JSON.stringify(qualityReview.issues)}\nLesson:\n${JSON.stringify(lesson)}` }, ...resources.parts],
-          responseSchema: HQLS_LESSON_JSON_SCHEMA, schemaName: "ksi_hqls_content_repair",
-          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low", maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
-        });
-        lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(contentRepair.data));
-      }
-      repairDurationMs += Date.now() - repairStartedAt;
-      const fidelityRepairStartedAt = Date.now();
-      const checked = await repairContentFidelity(lesson, input.topic, async (targetStage, defects) => {
-        const result = await generateOpenAIJson<unknown>({
-          systemInstruction: buildHqlsGenerationSystemInstruction(),
-          parts: [{ text: buildStageRegenerationPrompt({ lesson, targetStage, action: "improve", lessonContext: lessonContextSummary(input) }) +
-            "\nThe subject/task repair introduced these fidelity defects. Fix them while retaining the corrected facts, all supplied materials and consistent grouping. Trial 1 must retain one shared attempt and a concrete contribution from every learner.\n" + defects.join("\n") }, ...resources.parts],
-          responseSchema: HQLS_STAGE_JSON_SCHEMA,
-          schemaName: "ksi_hqls_content_fidelity_repair",
-          model, reasoningEffort: configuredHqlsReasoningEffort(model), textVerbosity: "low",
-          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
-        });
-        return parseHqlsStageContent(result.data, targetStage.stageNumber);
-      });
-      if (checked.repairedStages) repairDurationMs += Date.now() - fidelityRepairStartedAt;
-      lesson = keepOneAwakeningQuestion(checked.lesson);
-      validation = validateHqlsLesson(lesson, input.topic);
-      qualityReview = await reviewContent();
-    }
-    if (!qualityReview.passed || !validation.passed) {
-      await completeAiRun(supabase, runId, "failed", "HQLS_CONTENT_REVIEW_FAILED");
-      return json({ error: "Subject or task errors were found. The generated lesson was not saved. " + [...qualityReview.issues.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`), ...validation.violations.map((issue) => issue.message)].join(" "), code: "HQLS_CONTENT_REVIEW_FAILED", qualityReview, validation }, 422);
-    }
+    const reviewStartedAt = Date.now();
+    const qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+    const reviewDurationMs = Date.now() - reviewStartedAt;
+    const reviewCalls = qualityReview.attempts;
+    const contentRepairMode = "none";
 
     const persisted = await createLesson(supabase, {
       workspaceId: input.workspaceId,
@@ -921,7 +851,7 @@ ${(
       subjectId: input.subjectId ?? null,
       engineVersion: HQLS_ENGINE_VERSION,
       promptVersion: HQLS_PROMPT_VERSION,
-      sourceContext: [...resources.sourceContext, ...(qualityReview.warnings.length ? [{ kind: "hqls_pacing_notes", notes: qualityReview.warnings.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`) }] : [])],
+      sourceContext: replaceHqlsAdvice(resources.sourceContext, qualityReview),
       stages: toLessonStageInputs(lesson, validation),
     });
 
@@ -1021,6 +951,14 @@ async function handleSaveEdits(
   };
   const validation = validateHqlsLesson(editedLesson, current.lesson.topic);
 
+  if (body.markReviewed === true && !validation.passed) {
+    throw new Error("Fix the HQLS sequence before marking this lesson reviewed. You can still save it as a draft.");
+  }
+  const previousAdvice = readHqlsAdvice(current.lesson.source_context);
+  const sourceContext = previousAdvice
+    ? replaceHqlsAdvice(current.lesson.source_context, updateTeacherReview(previousAdvice, userId, body.markReviewed === true))
+    : current.lesson.source_context;
+
   await Promise.all(
     editedLesson.stages.map(async (stage) => {
       const { error } = await supabase
@@ -1040,6 +978,7 @@ async function handleSaveEdits(
     supabase,
     lesson: current.lesson,
     validation,
+    sourceContext,
   });
   await persistFidelityCheck({
     supabase,
@@ -1111,13 +1050,13 @@ async function resolveSavedLessonNames(
 }
 
 async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: string, parts: OpenAIPart[] = []) {
-  return runHqlsQualityReview(lesson, async (retry, reason) => {
+  return reviewHqlsAdvisory(lesson, async () => {
     const result = await generateOpenAIJson<unknown>({
-      systemInstruction: HQLS_QUALITY_INSTRUCTION + (retry ? `\nThe previous review was invalid: ${reason ?? "Check evidence and correction accuracy."} Review the same unchanged lesson again. Choose an existing evidenceId from the source catalogue; do not invent an ID. Verify each proposed correction. Report genuine defects only. Do not return an empty list merely to pass validation.` : ""),
+      systemInstruction: HQLS_QUALITY_INSTRUCTION + "\nThis is advisory review. Give concise actionable suggestions. Do not rewrite the lesson or claim to certify correctness.",
       parts: [{ text: `${context}\nReview this complete lesson: ${lesson.title}\nLesson intent: ${lesson.lessonIntent}\nAll stage fields in source catalogue (select evidenceId; do not rewrite evidence):\n${JSON.stringify(hqlsReviewSources(lesson))}` }, ...parts],
       responseSchema: hqlsQualityReviewSchema(lesson),
       schemaName: "ksi_hqls_subject_task_review",
-      reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000,
+      reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000, timeoutMs: 20000,
     });
     return result.data;
   }, { subject: context.match(/^Subject: (.*)$/m)?.[1], objective: context.match(/^Objective: (.*)$/m)?.[1] });
@@ -1266,11 +1205,6 @@ async function handleRegenerateStage(
     }
 
     const qualityReview = await reviewGeneratedContent(candidate, context, resources.parts);
-    if (!qualityReview.passed) {
-      await completeAiRun(supabase, runId, "failed", "HQLS_CONTENT_REVIEW_FAILED");
-      return json({ error: "Subject or task errors were found. The saved lesson was not changed. " + [...qualityReview.issues.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`), ...validation.violations.map((issue) => issue.message)].join(" "), code: "HQLS_CONTENT_REVIEW_FAILED", qualityReview, validation }, 422);
-    }
-
     const { error: stageError } = await supabase
       .from("lesson_stages")
       .update({
@@ -1288,6 +1222,7 @@ async function handleRegenerateStage(
       supabase,
       lesson: current.lesson,
       validation,
+      sourceContext: replaceHqlsAdvice(current.lesson.source_context, qualityReview),
     });
     await persistFidelityCheck({
       supabase,

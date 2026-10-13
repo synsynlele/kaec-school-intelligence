@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
+import { readHqlsAdvice } from "@/lib/hqls/advisory-review";
+import { ContentAdviceSummary, StageContentAdvice } from "./content-advice";
 import { hqlsTimingLabel, hqlsPacingNotes } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import {
@@ -382,6 +384,9 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
     return visibleLessons.slice(start, start + lessonPageSize);
   }, [lessonCurrentPage, lessonPageSize, visibleLessons]);
 
+  const contentAdvice = readHqlsAdvice(selectedLesson?.source_context);
+  const displayedAdvice = contentAdvice && dirty ? { ...contentAdvice, teacherReview: null, stale: true } : contentAdvice;
+
   const needsFinalValidation = Boolean(
   selectedLesson?.status === "draft" &&
     validation === null &&
@@ -645,8 +650,8 @@ const refreshLessons = useCallback(async () => {
       await openLesson(lesson);
       setNotice(
         warnings.length > 0
-          ? `HQLS lesson generated and validated. Source note: ${warnings.join(" ")}`
-          : "HQLS lesson generated, independently validated and saved.",
+          ? `HQLS draft saved. Review suggestions before teaching. Source note: ${warnings.join(" ")}`
+          : "HQLS draft saved. Review the suggestions and mark it reviewed when ready.",
       );
     } catch (caught) {
       if (
@@ -701,7 +706,7 @@ const refreshLessons = useCallback(async () => {
     setDirty(true);
   }
 
-  async function saveEdits() {
+  async function saveEdits(markReviewed = false) {
     if (!selectedLesson || editorStages.length !== 7) return;
     setSaving(true);
     setError(null);
@@ -711,11 +716,12 @@ const refreshLessons = useCallback(async () => {
         action: "save_edits",
         lessonId: selectedLesson.id,
         stages: editorStages,
+        markReviewed,
       });
       if (!editorOnly) await refreshLessons();
       await openLesson(selectedLesson.id);
       setNotice(
-        "Your edits were saved as a new lesson version and checked for HQLS fidelity.",
+        markReviewed ? "Your lesson was saved and your teacher review was recorded. No AI tokens were used." : "Your edits were saved as a draft and checked for HQLS fidelity. No AI tokens were used.",
       );
     } catch (caught) {
       setError(
@@ -1125,6 +1131,11 @@ const refreshLessons = useCallback(async () => {
                 ) : null}
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
+                {contentAdvice && (!contentAdvice.teacherReview || dirty) ? <button
+                  type="button" onClick={() => void saveEdits(true)} disabled={saving}
+                  className="rounded-xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+                >Save and mark reviewed</button> : null}
+
                 {selectedLesson.status === "validated" ? (
                   <Link
                     href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}
@@ -1149,6 +1160,8 @@ const refreshLessons = useCallback(async () => {
                 </button>
               </div>
             </div>
+
+            <ContentAdviceSummary advice={displayedAdvice} />
 
             {hqlsPacingNotes(selectedLesson.source_context).length ? (
               <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
@@ -1189,6 +1202,7 @@ const refreshLessons = useCallback(async () => {
                     key={stage.stageKey}
                     className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8"
                   >
+                    <StageContentAdvice advice={displayedAdvice} stageNumber={stage.stageNumber} />
                     <div className="flex flex-col gap-4 border-b border-zinc-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
@@ -1396,7 +1410,7 @@ function Message({
 function StatusBadge({ status }: { status: LessonSummary["status"] }) {
   const label =
     status === "validated"
-      ? "Validated"
+      ? "Ready"
       : status === "archived"
         ? "Archived"
         : "Draft";
