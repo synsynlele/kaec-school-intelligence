@@ -46,7 +46,7 @@ assert(
 assert(
   !engine.includes("micro.teacherPrompts.length > 3") &&
     !engine.includes("micro.learnerActions.length > 1") &&
-    engine.includes("Micro-Illumination is checked by function, not field counts"),
+    engine.includes("Micro-Illumination remains non-blocking on question count"),
   "Micro-Illumination fidelity must not reject valid minimal-clarity stages because of prompt/action counts; only genuine premature task behaviour may fail.",
 );
 

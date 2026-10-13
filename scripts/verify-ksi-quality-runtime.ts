@@ -76,9 +76,9 @@ async function verifyQuality() {
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
   const microDefault = "default to no additional questions";
-  assert(primaryPrompt.includes(microDefault), "Generation must prefer one clue without extra Stage 3 questions.");
-  assert(buildHqlsRepairPrompt(primaryContext, lesson, validateHqlsLesson(lesson)).includes(microDefault), "Fidelity repair must preserve Micro-Illumination's no-extra-question default.");
-  assert(buildStageRegenerationPrompt({ lesson, targetStage: stages[2], action: "improve", lessonContext: "Primary 1" }).includes(microDefault), "Stage regeneration must not reintroduce redundant questions.");
+  assert(primaryPrompt.toLowerCase().includes(microDefault), "Generation must prefer one clue without extra Stage 3 questions.");
+  assert(buildHqlsRepairPrompt(primaryContext, lesson, validateHqlsLesson(lesson)).toLowerCase().includes(microDefault), "Fidelity repair must preserve Micro-Illumination's no-extra-question default.");
+  assert(buildStageRegenerationPrompt({ lesson, targetStage: stages[2], action: "improve", lessonContext: "Primary 1" }).toLowerCase().includes(microDefault), "Stage regeneration must not reintroduce redundant questions.");
   assert(!primaryPrompt.includes("up to three brief guiding questions"), "The default generator must not encourage question padding.");
   const collaborationCodes = (experience: string) => validateHqlsLesson({ ...lesson, stages: stages.map((stage) =>
     stage.stageNumber === 4 ? { ...stage, experience, teacherPrompts: [], learnerActions: [] } : stage),
