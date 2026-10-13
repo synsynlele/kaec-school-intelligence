@@ -1,3 +1,4 @@
+import { readHqlsAdvice } from "@/lib/hqls/advisory-review";
 import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "@/lib/env";
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
         objective: lesson.objective,
         fidelityScore: Number(fidelityResult.data.score ?? 0),
         sources: sourceLabels(lesson.source_context),
+        contentAdvice: readHqlsAdvice(lesson.source_context),
         stages,
       });
     const pdf = createHqlsLessonPdf({

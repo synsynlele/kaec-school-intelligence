@@ -1,3 +1,4 @@
+import type { HqlsAdvice } from "@/lib/hqls/advisory-review";
 import { hqlsTimingLabel } from "@/lib/hqls/timing";
 import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
@@ -18,6 +19,7 @@ export type HqlsLessonPdfInput = {
   fidelityScore: number | null;
   sources: string[];
   stages: HqlsStageContent[];
+  contentAdvice?: HqlsAdvice | null;
 };
 
 type TextOptions = {
@@ -354,7 +356,9 @@ class PdfComposer {
       gapAfter: 8,
     });
 
-    this.line("Automated checks do not certify subject accuracy. Teacher review is required.", { size: 8.5, color: MUTED });
+    this.line(this.input.contentAdvice?.teacherReview
+      ? "Teacher review recorded. Automated checks do not certify subject accuracy."
+      : "Automated checks do not certify subject accuracy. Teacher review is required.", { size: 8.5, color: MUTED });
     this.rule();
     this.line(`Workspace: ${this.input.workspaceName}`, {
       bold: true,
@@ -400,6 +404,12 @@ class PdfComposer {
         gapAfter: 3,
       });
       this.line(hqlsTimingLabel(this.input.durationMinutes, stage.stageNumber), { size: 8.5, color: MUTED, gapAfter: 5 });
+      const advice = this.input.contentAdvice;
+      const suggestions = advice?.suggestions.filter((item) => item.stageNumber === stage.stageNumber) ?? [];
+      if (suggestions.length) this.teacherFollowUpPanel(suggestions.map((item) => ({
+        label: advice?.stale ? "Earlier version review note" : item.priority === "correct_before_teaching" ? "Correct before teaching" : "Suggestion",
+        value: item.correction,
+      })));
       if (stage.stageNumber === 1) {
         this.detailSection("Teacher says / shows", stage.experience);
         this.detailSection("Central question", stage.teacherPrompts, { bullets: true });

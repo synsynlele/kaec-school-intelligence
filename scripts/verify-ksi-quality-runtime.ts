@@ -6,12 +6,13 @@ import { join } from "node:path";
 import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings, hqlsPacingNotes } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, hqlsQualityReviewSchema, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
+import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus } from "../lib/hqls/advisory-review";
 import { checkKnownEnglishContradictions } from "../lib/hqls/english-contradictions";
 import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs, contentRepairStageNumbers } from "../lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
-import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
+import { validateHqlsLesson, buildHqlsGenerationPrompt, buildHqlsRepairPrompt, buildStageRegenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
 import { resolveLearningLevel, learningLevelGuidance, primaryTaskBand, teacherUsabilityGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
 import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
@@ -74,6 +75,11 @@ async function verifyQuality() {
   const notation = "ɪ æ ɑː ɒ ɔː ʊ ʌ ɜː ə aɪ ₦ × ÷ √ ≤ ≥ α β é";
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
+  const microDefault = "default to no additional questions";
+  assert(primaryPrompt.toLowerCase().includes(microDefault), "Generation must prefer one clue without extra Stage 3 questions.");
+  assert(buildHqlsRepairPrompt(primaryContext, lesson, validateHqlsLesson(lesson)).toLowerCase().includes(microDefault), "Fidelity repair must preserve Micro-Illumination's no-extra-question default.");
+  assert(buildStageRegenerationPrompt({ lesson, targetStage: stages[2], action: "improve", lessonContext: "Primary 1" }).toLowerCase().includes(microDefault), "Stage regeneration must not reintroduce redundant questions.");
+  assert(!primaryPrompt.includes("up to three brief guiding questions"), "The default generator must not encourage question padding.");
   const collaborationCodes = (experience: string) => validateHqlsLesson({ ...lesson, stages: stages.map((stage) =>
     stage.stageNumber === 4 ? { ...stage, experience, teacherPrompts: [], learnerActions: [] } : stage),
   }).violations.filter((issue) => issue.code === "trial_first_lacks_teamwork");
@@ -294,6 +300,28 @@ async function verifyQuality() {
   const firstExplicitlyRequires = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 4 ? { ...stage, experience: "Find the reflexive example in the supplied set." } : stage) };
   assert.deepEqual(checkRequiredReflexiveForms(firstExplicitlyRequires, requiredContext).map((issue) => issue.stageNumber), [4, 5]);
 
+
+  let advisoryCalls = 0;
+  const advisoryResult = await reviewHqlsAdvisory(quoteLesson, async () => { advisoryCalls++; return { issues: [{ evidenceId: "stage5.teachingContent", category: "subject_accuracy", correction: "Correct the factual example." }] }; });
+  assert.equal(advisoryCalls, 1);
+  assert.equal(advisoryResult.reviewStatus, "available");
+  assert.equal(advisoryResult.suggestions[0].priority, "correct_before_teaching");
+  const sourceWithAdvice = replaceHqlsAdvice([{ title: "Curriculum source" }], advisoryResult);
+  assert.equal(hqlsAdviceStatus(true, sourceWithAdvice), "draft", "A complete generated lesson is a draft until human review.");
+  assert.equal(readHqlsAdvice(JSON.parse(JSON.stringify(sourceWithAdvice)))?.suggestions[0].stageNumber, 5, "Advice must survive saved JSON and reload.");
+  const acknowledged = updateTeacherReview(advisoryResult, "authenticated-teacher", true);
+  assert.equal(hqlsAdviceStatus(true, replaceHqlsAdvice(sourceWithAdvice, acknowledged)), "validated");
+  assert.equal(hqlsAdviceStatus(false, replaceHqlsAdvice(sourceWithAdvice, acknowledged)), "draft", "Teacher review cannot bypass failed HQLS fidelity.");
+  assert.equal(hqlsAdviceStatus(true, replaceHqlsAdvice(sourceWithAdvice, updateTeacherReview(acknowledged, "authenticated-teacher", false))), "draft", "Later edits reset human review.");
+  assert.equal(replaceHqlsAdvice(sourceWithAdvice, advisoryResult).length, 2, "Replacing advisoryResult must preserve resources without duplicating review records.");
+  for (const response of [() => { throw new Error("Provider unavailable"); }, () => ({ issues: [{ evidenceId: "invented", category: "task_integrity", correction: "Change it." }] })]) {
+    let calls = 0;
+    const unavailable = await reviewHqlsAdvisory(quoteLesson, async () => { calls++; return response(); });
+    assert.equal(calls, 1, "Advisory review never retries a provider or grounding failure.");
+    assert.equal(unavailable.reviewStatus, "unavailable");
+  }
+  const missingAdvice = await reviewHqlsAdvisory(materialLesson(brokenTask), async () => { throw new Error("Unavailable"); });
+  assert(missingAdvice.suggestions.some((item) => item.stageNumber === 4 && item.priority === "correct_before_teaching"), "Local known defects remain visible when model review is unavailable.");
   const beforeReview = JSON.stringify(quoteLesson);
   const calls: boolean[] = [];
   const retried = await runHqlsQualityReview(quoteLesson, async (retry) => {
@@ -320,7 +348,7 @@ async function verifyQuality() {
   const diagnosis: GeneratedDiagnosis = { observedEvidence: [], detectedPatterns: [], possibleInterpretations: [], academicSkillStrengths: [{ domain: "academic", statement: notation, evidenceIds: [] }], academicSkillChallenges: [], characterStrengths: [], characterChallenges: [], conciseDiagnosis: notation, schoolAcademicActions: [], parentAcademicActions: [], schoolCharacterActions: [], parentCharacterActions: [], builderGrowthDirection: `${notation} ${"Continue with supported practice. ".repeat(300)} END_OF_GROWTH_DIRECTION`, encouragementNote: "Continue practising.", evidenceLimitations: ["Snapshot only."] };
   const dir = mkdtempSync(join(tmpdir(), "ksi-export-"));
   const outputs = {
-    lesson: createHqlsLessonPdf({ ...branding, title: lesson.title, subject: "English", classLevel: "JSS1", ageRange: "10–12", durationMinutes: 90, topic: "Vowels", objective: lesson.lessonIntent, fidelityScore: 100, sources: [], stages }),
+    lesson: createHqlsLessonPdf({ ...branding, title: lesson.title, subject: "English", classLevel: "JSS1", ageRange: "10–12", durationMinutes: 90, topic: "Vowels", objective: lesson.lessonIntent, fidelityScore: 100, sources: [], stages, contentAdvice: advisoryResult }),
     exam: createAssessmentPdf({ ...branding, subject: "English", classLevel: "JSS1", topic: "Vowels", objective: "Read", durationMinutes: 90, assessment }, "exam"),
     marking: createAssessmentPdf({ ...branding, subject: "English", classLevel: "JSS1", topic: "Vowels", objective: "Read", durationMinutes: 90, assessment }, "marking"),
     diagnosis: createDiagnosisPdf({ ...branding, studentName: "Learner é", className: "JSS1", academicSession: "2026/2027", term: "First", diagnosisMode: "teacher", assessmentTitle: "Evidence", diagnosis, reviewedAt: "2026-10-07", finalisedAt: "2026-10-07" }),

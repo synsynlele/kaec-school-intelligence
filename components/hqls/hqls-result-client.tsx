@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { readHqlsAdvice } from "@/lib/hqls/advisory-review";
+import { ContentAdviceSummary, StageContentAdvice } from "./content-advice";
 import { hqlsTimingLabel, hqlsPacingNotes } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import { parseHqlsStageContent, type HqlsStageContent } from "@/lib/hqls/engine";
@@ -166,6 +168,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
     return <div className="mx-auto max-w-3xl px-5 py-10"><div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{error ?? "HQLS lesson unavailable."}</div></div>;
   }
 
+  const advice = readHqlsAdvice(state.lesson.source_context);
   const sources = sourceLabels(state.lesson.source_context);
   const pacingNotes = hqlsPacingNotes(state.lesson.source_context);
 
@@ -175,7 +178,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-900">{state.lesson.status}</span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-900">{state.lesson.status === "validated" ? "Ready" : state.lesson.status}</span>
               {state.fidelity ? (
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${state.fidelity.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
                   {state.fidelity.passed ? "HQLS sequence checks passed" : "HQLS sequence needs review"}
@@ -204,6 +207,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
       </div>
 
       <p className="mt-4 text-sm text-zinc-600">Suggested timings total the lesson duration. Adjust pacing to your class. Automated sequence checks do not certify subject accuracy; review examples, tasks and answers before teaching.</p>
+      <ContentAdviceSummary advice={advice} />
       {pacingNotes.length ? (
         <aside className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
           <h2 className="font-semibold">Teacher pacing notes</h2>
@@ -220,6 +224,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
               <h2 className="mt-1 text-xl font-semibold text-zinc-950 sm:text-2xl">{definition.title}</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-500">{definition.purpose}</p>
               <p className="mt-2 text-sm font-medium text-emerald-800">{hqlsTimingLabel(state.lesson.duration_minutes, stage.stageNumber)}</p>
+              <StageContentAdvice advice={advice} stageNumber={stage.stageNumber} />
               <ClassroomStage stage={stage} />
             </article>
           );

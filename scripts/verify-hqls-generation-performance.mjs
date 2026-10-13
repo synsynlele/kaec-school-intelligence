@@ -46,13 +46,13 @@ assert(
 assert(
   !engine.includes("micro.teacherPrompts.length > 3") &&
     !engine.includes("micro.learnerActions.length > 1") &&
-    engine.includes("Micro-Illumination is checked by function, not field counts"),
+    engine.includes("Micro-Illumination remains non-blocking on question count"),
   "Micro-Illumination fidelity must not reject valid minimal-clarity stages because of prompt/action counts; only genuine premature task behaviour may fail.",
 );
 
 
 assert(
-  engine.includes('HQLS_PROMPT_v1.34') &&
+  engine.includes('HQLS_PROMPT_v1.36') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
@@ -66,7 +66,9 @@ assert(
     engine.includes("micro_illumination_becomes_task") &&
     engine.includes("topicRevealCandidates") &&
     engine.includes("3–5 short oral questions") &&
-    engine.includes("up to three brief guiding questions") &&
+    engine.includes("Default to no additional questions") &&
+    engine.includes("teacherPrompts = []") &&
+    engine.includes("one short clue") &&
     engine.includes("2–4 clear outputs") &&
     engine.includes("identity connection") &&
     !engine.includes("Do not artificially shorten Full Illumination"),
@@ -87,7 +89,5 @@ console.log(
   "HQLS generation performance verification passed: HQLS-specific Terra selection, platform cost fallback, concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
 );
 
-for (const schemaName of ["ksi_hqls_coordinated_content_repair", "ksi_hqls_content_stage_repair", "ksi_hqls_content_repair"]) {
-  const at = route.indexOf(`schemaName: "${schemaName}"`);
-  assert(at >= 0 && /\bmodel, reasoningEffort: configuredHqlsReasoningEffort\(model\)/.test(route.slice(at, at + 300)), `${schemaName} must pin the configured HQLS model.`);
-}
+assert(!route.includes("contentRepairAttempt") && !route.includes("HQLS_CONTENT_REVIEW_FAILED"), "Content suggestions must never trigger automatic repairs or reject saving.");
+assert(route.includes("reviewHqlsAdvisory") && !route.includes("runHqlsQualityReview"), "Content review must use the single-call advisory path.");
