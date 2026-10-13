@@ -21,3 +21,13 @@ export function hqlsTimingLabel(durationMinutes: number | null | undefined, stag
   const timing = hqlsStageTimings(durationMinutes)?.[stageNumber - 1];
   return timing ? `Suggested: ${timing.minutes} min · ${timing.startMinute}–${timing.endMinute} min` : "Timing not specified";
 }
+
+export function hqlsPacingNotes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    return record.kind === "hqls_pacing_notes" && Array.isArray(record.notes)
+      ? record.notes.filter((note): note is string => typeof note === "string") : [];
+  });
+}

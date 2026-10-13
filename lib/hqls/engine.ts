@@ -1,8 +1,9 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
+import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.25";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.27";
 
 export type HqlsStageAction =
   | "improve"
@@ -164,6 +165,9 @@ STAGES 6–7:
 const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
+PACING:
+The app calculates and displays one suggested timetable for all seven stages from the requested duration. Do not invent another stage timetable or minute-by-minute breakdown in experience, teachingContent, teacherPrompts, learnerActions or guardrails. Describe the ordered teaching actions clearly without assigning competing minute estimates. Actual elapsed time in a subject example, experiment observation or source data is allowed when academically necessary; distinguish it from classroom pacing. During repairs remove redundant classroom minute allocations while preserving every substantive teaching step, example and learner task.
+
 SUBJECT ACCURACY AND TASK INTEGRITY:
 - Use one consistent grouping and materials plan across the entire lesson. Put practical teacher preparation in Stage 4 experience: children per pair/group, pairs per box/container, sets per pair/group, and items per set. Earlier setup must agree with it, without assigning learners a task before Trial 1. A box can serve four children as two pairs if the allocation is explicit; do not switch between a shared group set and one set per pair without explanation. Keep the same plan during repair and Trial 2 unless a change is explicitly explained. Compute total quantities only from a supplied class size; otherwise give quantities per pair/group. Identify spare containers as spare instead of forcing their use. Do not leave X/Y placeholders or tell the teacher to invent missing allocations.
 - In sentence-stress lessons, distinguish word class from spoken prominence. Pronouns are normally function words, but they can carry contrastive stress without becoming content words. Content words usually carry neutral stress; function words can be emphasised to contrast or correct. Show the stressed word explicitly in each example and supply a matching context/interpretation. For example, 'HE gave Anna the book' contrasts the giver with someone else, while 'He gave ANNA the book' contrasts the recipient. Do not suggest stress alone changes 'gave' into 'borrowed' or 'lent'. Avoid absolute claims that function words never carry stress. Teacher-only interpretation keys belong after Trial 1; keep earlier learner cases unresolved.
@@ -171,6 +175,8 @@ SUBJECT ACCURACY AND TASK INTEGRITY:
 - For every explicitly counted list promised as below/provided/listed/shown/above, put the actual learner material in experience as a block: 'Word cards (16):' followed by 1. actual word, 2. actual word, through 16., one entry per line. Use the exact plural material name from the promise (Words, Sentences, Examples, Scenarios, Cards, Passages, Sentence cards or Scenario cards). Keep material headings separate from task-output lists. References to an earlier list must name its stage number. Do not put the materials only in teacher answers, support cues or teachingContent.
 - Count the actual supplied entries before describing the set. Every total, parenthetical category split, example list and teacher answer must agree. For example, 'at, in, it, on, up, cat, dog, bus' contains eight cards: five two-letter words and three non-two-letter words; never describe that list as four and four. If the task needs four and four, replace one two-letter entry with a non-two-letter word and update every dependent reference and answer.
 - Integration materials must be complete too. If Stage 7 asks learners to use two cards, put 'Cards (2):' in its experience followed by '1. actual card content' and '2. actual card content', replacing those illustrative labels with the real content. A transfer task or reflection question is not a card. If reusing materials, name the earlier stage and the exact entries to use; do not imply that two cards are supplied merely by giving instructions to create them.
+- When a shared answer must cover every source card exactly once, allocate disjoint cards before individual selection. For twelve cards in a pair, Partner A handles cards 1–6 and Partner B cards 7–12; each selects one key word per assigned card, then they agree on one shared sorting of all twelve selected words. State whether repeated words on different cards remain separate card-linked entries. Do not tell both partners to choose any six words and then imply complete, duplicate-free coverage of twelve cards. If free choice is intended, require sorting their actual selected set instead of claiming coverage of all source cards.
+- Distinguish card numbers from quantities. Write 'Reuse sentence card 1 from Stage 4' for a worked example drawn from an existing set, not 'supply 1 sentence cards'. Reusing one or several identified entries from a complete earlier list does not require inventing a new list of the same size. New examples must still be supplied completely.
 - Check distribution arithmetic: all promised items must be allocated. For sixteen words and three team members, use 5/5/6 or an explicit shared final word, not five each. Fit the number of outputs and materials to the available stage time; do not reduce useful teaching or omit promised material to be brief.
 - Check factual statements, calculations, pronunciation symbols, examples and expected answers against the supplied curriculum/resources when available. Do not invent verification or claim certainty where sources are missing.
 - Apply learning-level guidance to language, task load, evidence and teaching-note length. The substantial Stage 5 prose target suits older learners, not a minimum for nursery: early-years teachingContent should be a complete brief spoken explanation/demonstration script, with adult setup, concrete examples and no assumed independent literacy. A long requested nursery session needs short episodes and movement/rest, not prolonged seated work. Tertiary teaching should retain the actual discipline's conceptual depth rather than generic school-level notes. Never remove a stage to adapt the level.
@@ -288,6 +294,7 @@ TOPIC: ${input.topic.trim()}
 CLASS LEVEL: ${input.classLevel.trim()}
 AGE / AGE RANGE: ${input.ageRange.trim()}
 DURATION: ${input.durationMinutes} minutes
+APP SUGGESTED PACING: ${JSON.stringify(hqlsStageTimings(input.durationMinutes))} (displayed by the app; do not duplicate in stage prose)
 LESSON OBJECTIVE: ${input.objective.trim()}
 PREVIOUS LEARNING: ${clean(input.previousLearning)}
 AVAILABLE RESOURCES / CONSTRAINTS: ${clean(input.availableResources)}
@@ -859,6 +866,7 @@ export function lessonContextSummary(args: {
     `Objective: ${args.objective}`,
     `Age: ${args.ageRange || "Not provided"}`,
     `Duration: ${args.durationMinutes ? `${args.durationMinutes} minutes` : "Not provided"}`,
+    `App suggested pacing: ${JSON.stringify(hqlsStageTimings(args.durationMinutes))}. Do not duplicate classroom minute allocations in stage prose.`,
     learningLevelGuidance(args.classLevel, args.ageRange ?? ""),
   ].join("\n");
 }
