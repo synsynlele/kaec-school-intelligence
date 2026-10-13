@@ -293,7 +293,9 @@ for (const action of [
 const pdfRoute = await text("app/api/hqls/pdf/route.ts");
 assert(
   pdfRoute.includes("createHqlsLessonPdf") &&
-    pdfRoute.includes("Only a saved HQLS-validated lesson") &&
+    pdfRoute.includes("Only a manually validated lesson") &&
+    pdfRoute.includes('lesson.status !== "validated"') &&
+    !pdfRoute.includes("|| !fidelityResult.data?.passed") &&
     pdfRoute.includes('"Content-Type": "application/pdf"'),
   "Stage 2 secure validated-lesson PDF export route is missing or incomplete.",
 );
