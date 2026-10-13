@@ -247,6 +247,16 @@ async function verifyQuality() {
   assert.equal(coverageReview.passed, false);
   assert.deepEqual(contentRepairStageNumbers(coverageReview.issues), [4, 5, 6, 7]);
   assert.throws(() => parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Correct it.", repairScope: "invented" }] }, quoteLesson));
+  const prematureFinding = { evidenceId: "stage4.experience", category: "task_integrity", repairScope: "materials_chain", correction: 'Change the required label list in Stage 4 to the exact labels used in Stage 6: subject, object, possessive adjective, possessive pronoun, reflexive, special.' };
+  const provisionalReview = parseHqlsQualityReview({ issues: [prematureFinding] }, quoteLesson);
+  assert.equal(provisionalReview.passed, true, "Different crude and taught labels alone must not reject Trial 1.");
+  assert.equal(provisionalReview.warnings.length, 1);
+  assert(!provisionalReview.warnings[0].correction.includes("Change the required"));
+  const provisionalWithError = parseHqlsQualityReview({ issues: [prematureFinding, { evidenceId: "stage5.teachingContent", category: "subject_accuracy", correction: "Correct the factual definition." }] }, quoteLesson);
+  assert.equal(provisionalWithError.passed, false, "Permitting provisional labels must not hide a separate factual defect.");
+  assert.equal(provisionalWithError.issues.length, 1);
+  const missingCategory = parseHqlsQualityReview({ issues: [{ ...prematureFinding, correction: "Use the same labels as Stage 6, but a required example is missing; supply the missing example." }] }, quoteLesson);
+  assert.equal(missingCategory.passed, false, "An actual missing category remains blocking.");
   const requiredContext = { subject: "English Language", objective: "Identify reflexive pronouns in sentences." };
   const reportedLesson = { ...quoteLesson, stages: quoteLesson.stages.map((stage) => stage.stageNumber === 5
     ? { ...stage, teachingContent: "Mistake: Calling a proper noun (Mary, teacher) a pronoun. Fix: Proper nouns are names." }
