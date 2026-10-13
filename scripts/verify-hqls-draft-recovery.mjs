@@ -35,8 +35,9 @@ assert(
 );
 
 assert(
-  client.includes("needsFinalValidation") &&
-    client.includes("Finish validation") &&
+  client.includes("needsSequenceCheck") &&
+    client.includes("Save Draft") &&
+    client.includes("Validate Lesson") &&
     client.includes("fully generated"),
   "Recovered HQLS drafts must have a clear no-AI final-validation path.",
 );
