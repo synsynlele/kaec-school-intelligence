@@ -12,7 +12,7 @@ import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs, contentRepairStageNumbers } from "../lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
-import { validateHqlsLesson, buildHqlsGenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
+import { validateHqlsLesson, buildHqlsGenerationPrompt, buildHqlsRepairPrompt, buildStageRegenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
 import { resolveLearningLevel, learningLevelGuidance, primaryTaskBand, teacherUsabilityGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
 import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
@@ -75,6 +75,11 @@ async function verifyQuality() {
   const notation = "ɪ æ ɑː ɒ ɔː ʊ ʌ ɜː ə aɪ ₦ × ÷ √ ≤ ≥ α β é";
   const stages = HQLS_STAGES.map((s) => ({ stageNumber: s.index, stageKey: s.key, title: s.title, purpose: s.purpose, experience: `Listen to ${notation}.`, teacherPrompts: ["Explain your idea."], learnerActions: ["Compare your answers."], guideGuardrails: ["Do not give the answer."], evidenceToNotice: ["Everyone explains."], productiveStruggle: "Compare the evidence.", teachingContent: s.index === 5 ? `Meaning: ${notation}\n${"Complete explanation with evidence. ".repeat(300)}\nEND_OF_TEACHING_NOTE` : "", respondsToFirstAttempt: "Check the earlier attempt.", reflectionPrompt: "What changed?", transferTask: "Practise offline." }));
   const lesson = { title: "Unicode lesson", lessonIntent: "Distinguish vowel sounds", stages };
+  const microDefault = "default to no additional questions";
+  assert(primaryPrompt.includes(microDefault), "Generation must prefer one clue without extra Stage 3 questions.");
+  assert(buildHqlsRepairPrompt(primaryContext, lesson, validateHqlsLesson(lesson)).includes(microDefault), "Fidelity repair must preserve Micro-Illumination's no-extra-question default.");
+  assert(buildStageRegenerationPrompt({ lesson, targetStage: stages[2], action: "improve", lessonContext: "Primary 1" }).includes(microDefault), "Stage regeneration must not reintroduce redundant questions.");
+  assert(!primaryPrompt.includes("up to three brief guiding questions"), "The default generator must not encourage question padding.");
   const collaborationCodes = (experience: string) => validateHqlsLesson({ ...lesson, stages: stages.map((stage) =>
     stage.stageNumber === 4 ? { ...stage, experience, teacherPrompts: [], learnerActions: [] } : stage),
   }).violations.filter((issue) => issue.code === "trial_first_lacks_teamwork");

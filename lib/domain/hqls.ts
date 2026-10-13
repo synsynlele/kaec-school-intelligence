@@ -41,7 +41,7 @@ export const HQLS_STAGES: readonly HqlsStageDefinition[] = [
     title: "Micro-Illumination",
     purpose: "Give only the minimal clarity learners need to enter Trial — First Attempt.",
     nonNegotiable:
-      "Give a brief orientation and, when useful, up to three guiding questions learners should keep in mind during Trial 1. Do not define the concept, correct the class, teach the lesson, reveal the formal topic, give the solution or create a separate learner activity.",
+      "Give one short clue, then move straight into Trial 1. No extra question is needed by default; at most one genuinely necessary, non-repetitive guiding question may be used. Do not define the concept, list the target categories, teach the method, correct the class, reveal the formal topic, give the solution or create a separate learner activity.",
   },
   {
     index: 4,

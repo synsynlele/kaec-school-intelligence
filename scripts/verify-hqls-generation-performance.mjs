@@ -52,7 +52,7 @@ assert(
 
 
 assert(
-  engine.includes('HQLS_PROMPT_v1.35') &&
+  engine.includes('HQLS_PROMPT_v1.36') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
@@ -66,7 +66,9 @@ assert(
     engine.includes("micro_illumination_becomes_task") &&
     engine.includes("topicRevealCandidates") &&
     engine.includes("3–5 short oral questions") &&
-    engine.includes("up to three brief guiding questions") &&
+    engine.includes("Default to no additional questions") &&
+    engine.includes("teacherPrompts = []") &&
+    engine.includes("one short clue") &&
     engine.includes("2–4 clear outputs") &&
     engine.includes("identity connection") &&
     !engine.includes("Do not artificially shorten Full Illumination"),

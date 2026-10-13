@@ -11,3 +11,7 @@ New generated lessons remain Draft until a teacher checks examples, tasks and an
 The teacher owns correction and acknowledgement. Existing authorised school roles retain their existing access. Readiness does not mean academic certification. Existing PDF/assessment readiness gates remain; exports carry review notes. Older lessons without the advisory record retain compatibility.
 
 Verification covers one request, outage/invalid-response survival, stage advice persistence through JSON, human acknowledgement, acknowledgement reset and failed-fidelity protection. Signed-in persistence and actual model behaviour require separate live verification. No schema or permission change is required.
+
+## Micro-Illumination generation refinement
+
+Stage 3 gives one short clue and flows directly to Trial 1. Teacher questions default to none; a single non-repetitive question is allowed only when a necessary ambiguity remains. The clue cannot supply target labels, a worked method or the answer. Apply consistently to initial generation, fidelity repair and manual stage regeneration. Do not make question count a new blocking reviewer rule; assess actual lesson quality through advisory suggestions and teacher review.
