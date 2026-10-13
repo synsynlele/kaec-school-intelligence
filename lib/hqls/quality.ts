@@ -7,7 +7,7 @@ export const HQLS_QUALITY_SCHEMA = {
     issues: { type: "array", items: {
       type: "object", properties: {
         evidenceId: { type: "string" },
-        category: { type: "string", enum: ["subject_accuracy", "task_integrity"] },
+        category: { type: "string", enum: ["subject_accuracy", "task_integrity", "pacing_guidance"] },
         correction: { type: "string" },
       }, required: ["evidenceId", "category", "correction"],
     } },
@@ -19,7 +19,8 @@ Check every reference to words, sentences, examples, scenarios, cards, passages,
 For scenario-dependent reasoning, check that the actual case states the situation, relevant facts/constraints and the problem or tension needed to support the requested response. Report a concrete missing prerequisite, not a stylistic preference for longer stories. "Discuss a scenario" without the scenario is insufficient. Awakening may be a short imagination hook; Exploration may reuse it orally; Micro-Illumination must stay a tiny clue, not a new task. Do not demand scenarios where the stage or objective does not need one.
 Check examples, answers, scientific claims, calculations, spelling, pronunciation and required materials. If categories require examples, verify the supplied set actually contains them. Throat vibration does not distinguish pure vowels from diphthongs.
 Verify the factual accuracy of your own proposed correction, not only the lesson. In sentence-stress lessons, pronouns are normally function words; contrastive stress can emphasise them without changing their grammatical category. Do not reclassify stressed pronouns as content words. Content/function classification and prominence are distinct. Distinguish neutral tendencies from absolute rules: a function word can carry contrastive emphasis. Stress marks must identify the intended focus, and the interpretation must follow that focus in context; changing emphasis does not replace a verb with a different lexical meaning.
-Check assignment arithmetic: the number of learners times their assigned items must cover the promised set, or the instructions must explicitly allocate the remainder. Three learners assigned five words each cover fifteen words, not sixteen. Check task time against stage pacing and flag concrete impossible requirements.
+Check assignment arithmetic: the number of learners times their assigned items must cover the promised set, or the instructions must explicitly allocate the remainder. Three learners assigned five words each cover fifteen words, not sixteen. Timing policy: suggested stage pacing is calculated by the app and is guidance, not a compulsory stopwatch schedule. Use pacing_guidance for duplicate time estimates, overview-versus-detail minute discrepancies, inconsistent subtotal arithmetic, or optional pacing refinements. These are teacher notes and must not reject otherwise usable content. Do not add repeated/subset timings as though they were separate activities. Reserve task_integrity for a concretely impossible task workload or a contradiction that prevents executing the task; identify the actual required workload, not merely two different estimates. Never classify wrong subject facts, missing materials, impossible outputs or invalid answers as pacing_guidance.
+Accept equivalent ways of expressing workable instructions. Do not report stylistic preferences, a different heading, or an alternative phrasing as a material error.
 Check grouping/materials continuity across stages. Distinguish containers from learner groups: two pairs may deliberately share one box. Surplus materials or spare boxes are not a defect. Report a contradiction or missing allocation that prevents running the stated task, not a preference for a different grouping. Base totals only on a stated class size. Your correction must give a concrete workable allocation, not X/Y placeholders or an invented enrolment count. Teacher preparation before Trial 1 is not itself a learner activity.
 Do not enforce an alternative pedagogy or criticise HQLS sequence rules, suspense or permitted Stage 5 teaching. Respect the stated pronunciation model and legitimate regional variation.
 Report only material errors with a specific correction and an evidenceId copied from the supplied source catalogue. Select the field containing the concrete defect; the app retrieves its original text and stage. Do not invent IDs or cite lesson context or reference resources as stage evidence. Uncertainty alone is not proof of error. Return an empty issues list when no concrete defect is found. This is an automated review, not a certification of correctness.`;
@@ -90,7 +91,7 @@ export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLess
       : original; // Retain strict quotation validation for historical callers.
 
     const stage = lesson.stages.find((s) => s.stageNumber === item.stageNumber);
-    if (!stage || !["subject_accuracy", "task_integrity"].includes(String(item.category)) ||
+    if (!stage || !["subject_accuracy", "task_integrity", "pacing_guidance"].includes(String(item.category)) ||
       typeof item.evidence !== "string" || !item.evidence.trim() ||
       typeof item.correction !== "string" || !item.correction.trim()) throw new Error("Invalid content-review issue.");
     const texts = stageTextValues(stage);
@@ -106,8 +107,9 @@ export function parseHqlsQualityReview(value: unknown, lesson: GeneratedHqlsLess
       ...(source ? { evidenceId: source.evidenceId } : {}),
       evidenceMatch: source ? "source_reference" : exact ? "exact" : "format_normalised" };
   });
-  const checkedIssues = [...issues, ...checkPromisedMaterials(lesson)];
-  return { passed: checkedIssues.length === 0, issues: checkedIssues, reviewer: "automated_subject_and_task_review_v1.4" };
+  const warnings = issues.filter((issue) => issue.category === "pacing_guidance");
+  const checkedIssues = [...issues.filter((issue) => issue.category !== "pacing_guidance"), ...checkPromisedMaterials(lesson)];
+  return { passed: checkedIssues.length === 0, issues: checkedIssues, warnings, reviewer: "automated_subject_and_task_review_v1.5" };
 }
 
 export async function runHqlsQualityReview(

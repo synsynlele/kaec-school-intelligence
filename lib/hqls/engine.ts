@@ -1,8 +1,9 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
+import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.8";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.25";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.26";
 
 export type HqlsStageAction =
   | "improve"
@@ -164,6 +165,9 @@ STAGES 6–7:
 const HQLS_MODULE_RULES = `
 Return a practical teacher-ready HQLS lesson as structured data.
 
+PACING:
+The app calculates and displays one suggested timetable for all seven stages from the requested duration. Do not invent another stage timetable or minute-by-minute breakdown in experience, teachingContent, teacherPrompts, learnerActions or guardrails. Describe the ordered teaching actions clearly without assigning competing minute estimates. Actual elapsed time in a subject example, experiment observation or source data is allowed when academically necessary; distinguish it from classroom pacing. During repairs remove redundant classroom minute allocations while preserving every substantive teaching step, example and learner task.
+
 SUBJECT ACCURACY AND TASK INTEGRITY:
 - Use one consistent grouping and materials plan across the entire lesson. Put practical teacher preparation in Stage 4 experience: children per pair/group, pairs per box/container, sets per pair/group, and items per set. Earlier setup must agree with it, without assigning learners a task before Trial 1. A box can serve four children as two pairs if the allocation is explicit; do not switch between a shared group set and one set per pair without explanation. Keep the same plan during repair and Trial 2 unless a change is explicitly explained. Compute total quantities only from a supplied class size; otherwise give quantities per pair/group. Identify spare containers as spare instead of forcing their use. Do not leave X/Y placeholders or tell the teacher to invent missing allocations.
 - In sentence-stress lessons, distinguish word class from spoken prominence. Pronouns are normally function words, but they can carry contrastive stress without becoming content words. Content words usually carry neutral stress; function words can be emphasised to contrast or correct. Show the stressed word explicitly in each example and supply a matching context/interpretation. For example, 'HE gave Anna the book' contrasts the giver with someone else, while 'He gave ANNA the book' contrasts the recipient. Do not suggest stress alone changes 'gave' into 'borrowed' or 'lent'. Avoid absolute claims that function words never carry stress. Teacher-only interpretation keys belong after Trial 1; keep earlier learner cases unresolved.
@@ -288,6 +292,7 @@ TOPIC: ${input.topic.trim()}
 CLASS LEVEL: ${input.classLevel.trim()}
 AGE / AGE RANGE: ${input.ageRange.trim()}
 DURATION: ${input.durationMinutes} minutes
+APP SUGGESTED PACING: ${JSON.stringify(hqlsStageTimings(input.durationMinutes))} (displayed by the app; do not duplicate in stage prose)
 LESSON OBJECTIVE: ${input.objective.trim()}
 PREVIOUS LEARNING: ${clean(input.previousLearning)}
 AVAILABLE RESOURCES / CONSTRAINTS: ${clean(input.availableResources)}
@@ -859,6 +864,7 @@ export function lessonContextSummary(args: {
     `Objective: ${args.objective}`,
     `Age: ${args.ageRange || "Not provided"}`,
     `Duration: ${args.durationMinutes ? `${args.durationMinutes} minutes` : "Not provided"}`,
+    `App suggested pacing: ${JSON.stringify(hqlsStageTimings(args.durationMinutes))}. Do not duplicate classroom minute allocations in stage prose.`,
     learningLevelGuidance(args.classLevel, args.ageRange ?? ""),
   ].join("\n");
 }

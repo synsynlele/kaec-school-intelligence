@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
-import { hqlsTimingLabel } from "@/lib/hqls/timing";
+import { hqlsTimingLabel, hqlsPacingNotes } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import {
   parseHqlsStageContent,
@@ -1149,6 +1149,14 @@ const refreshLessons = useCallback(async () => {
                 </button>
               </div>
             </div>
+
+            {hqlsPacingNotes(selectedLesson.source_context).length ? (
+              <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+                <p className="font-semibold">Teacher pacing notes</p>
+                <p className="mt-1">Use the suggested stage timings shown below. Adjust the pace to your learners.</p>
+                <ul className="mt-2 list-disc pl-5">{hqlsPacingNotes(selectedLesson.source_context).map((note, index) => <li key={index}>{note}</li>)}</ul>
+              </div>
+            ) : null}
 
             {needsFinalValidation ? (
     <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { hqlsTimingLabel } from "@/lib/hqls/timing";
+import { hqlsTimingLabel, hqlsPacingNotes } from "@/lib/hqls/timing";
 import { HQLS_STAGES } from "@/lib/domain/hqls";
 import { parseHqlsStageContent, type HqlsStageContent } from "@/lib/hqls/engine";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -167,6 +167,7 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
   }
 
   const sources = sourceLabels(state.lesson.source_context);
+  const pacingNotes = hqlsPacingNotes(state.lesson.source_context);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
@@ -203,6 +204,13 @@ export function HqlsResultClient({ lessonId }: { lessonId: string }) {
       </div>
 
       <p className="mt-4 text-sm text-zinc-600">Suggested timings total the lesson duration. Adjust pacing to your class. Automated sequence checks do not certify subject accuracy; review examples, tasks and answers before teaching.</p>
+      {pacingNotes.length ? (
+        <aside className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+          <h2 className="font-semibold">Teacher pacing notes</h2>
+          <p className="mt-1">Use the suggested stage timings below. Adjust the pace to your learners.</p>
+          <ul className="mt-2 list-disc pl-5">{pacingNotes.map((note, index) => <li key={index}>{note}</li>)}</ul>
+        </aside>
+      ) : null}
       <div className="mt-5 grid gap-4">
         {state.stages.map((stage) => {
           const definition = HQLS_STAGES[stage.stageNumber - 1];

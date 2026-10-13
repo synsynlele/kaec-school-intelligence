@@ -920,7 +920,7 @@ ${(
       subjectId: input.subjectId ?? null,
       engineVersion: HQLS_ENGINE_VERSION,
       promptVersion: HQLS_PROMPT_VERSION,
-      sourceContext: resources.sourceContext,
+      sourceContext: [...resources.sourceContext, ...(qualityReview.warnings.length ? [{ kind: "hqls_pacing_notes", notes: qualityReview.warnings.map((issue) => `Stage ${issue.stageNumber}: ${issue.correction}`) }] : [])],
       stages: toLessonStageInputs(lesson, validation),
     });
 
