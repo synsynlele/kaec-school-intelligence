@@ -165,6 +165,8 @@ async function verifyQuality() {
   assert(checkPromisedMaterials(ambiguousReuse).length > 0, "Unlabelled reuse cannot select between two complete earlier sets.");
   assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 4, category: "task_integrity", correction: "Supply extra take-home copies per child." }]), [4, 7]);
   assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 5, category: "subject_accuracy", correction: "Correct the meaning." }]), [5]);
+  assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 4, category: "task_integrity", correction: "Add a missing reflexive and update the mini-card pool.", repairScope: "materials_chain" }]), [4, 5, 6, 7]);
+  assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 5, category: "pacing_guidance", correction: "Use suggested pacing.", repairScope: "materials_chain" }]), [5]);
   const answerOnly = materialLesson(brokenTask);
   answerOnly.stages[4].teachingContent = materialBlock(words);
   assert.equal(checkPromisedMaterials(answerOnly).length, 1, "Later teacher answers do not supply Trial 1 materials.");
@@ -223,6 +225,10 @@ async function verifyQuality() {
   assert.equal(missingWithTiming.passed, false, "Missing promised materials still block saving.");
   const impossibleTask = parseHqlsQualityReview({ issues: [{ evidenceId: "stage5.teachingContent", category: "task_integrity", correction: "The mandatory workload cannot fit; reduce the required outputs." }] }, timingLesson);
   assert.equal(impossibleTask.passed, false);
+  const coverageReview = parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Supply an actual reflexive example and align subsequent card pools.", repairScope: "materials_chain" }] }, quoteLesson);
+  assert.equal(coverageReview.passed, false);
+  assert.deepEqual(contentRepairStageNumbers(coverageReview.issues), [4, 5, 6, 7]);
+  assert.throws(() => parseHqlsQualityReview({ issues: [{ evidenceId: "stage4.experience", category: "task_integrity", correction: "Correct it.", repairScope: "invented" }] }, quoteLesson));
   const beforeReview = JSON.stringify(quoteLesson);
   const calls: boolean[] = [];
   const retried = await runHqlsQualityReview(quoteLesson, async (retry) => {

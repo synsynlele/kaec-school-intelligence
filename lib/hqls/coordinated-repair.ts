@@ -15,11 +15,14 @@ export function mergeStageRepairs(lesson: GeneratedHqlsLesson, rawStages: unknow
   return { ...lesson, stages: lesson.stages.map((stage) => byNumber.get(stage.stageNumber) ?? stage) };
 }
 
-export function contentRepairStageNumbers(issues: { stageNumber: number; category: string; correction: string }[]) {
+export function contentRepairStageNumbers(issues: { stageNumber: number; category: string; correction: string; repairScope?: string }[]) {
   const stages = new Set(issues.map((issue) => issue.stageNumber));
   if (issues.some((issue) => issue.category === "task_integrity" && /\b(?:take[- ]home|homework|at home|home materials)\b/i.test(issue.correction))) {
     stages.add(4);
     stages.add(7);
+  }
+  if (issues.some((issue) => issue.repairScope === "materials_chain" && issue.category !== "pacing_guidance")) {
+    for (const stage of [4, 5, 6, 7]) stages.add(stage);
   }
   return [...stages].sort((a, b) => a - b);
 }

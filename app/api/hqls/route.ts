@@ -848,16 +848,16 @@ ${(
       const repairStages = contentRepairStageNumbers(qualityReview.issues);
       const affectedStages = lesson.stages.filter((stage) => repairStages.includes(stage.stageNumber));
       const repairStartedAt = Date.now();
-      if (affectedStages.length > 1 && affectedStages.length <= 2 && (needsCoordinatedRepair(qualityReview.issues) || affectedStages.length > new Set(qualityReview.issues.map((issue) => issue.stageNumber)).size)) {
+      if (affectedStages.length > 1 && affectedStages.length <= 4 && (needsCoordinatedRepair(qualityReview.issues) || affectedStages.length > new Set(qualityReview.issues.map((issue) => issue.stageNumber)).size)) {
         contentRepairMode = "coordinated_stages";
         const expectedStages = affectedStages.map((stage) => stage.stageNumber);
         const result = await generateOpenAIJson<{ stages: unknown[] }>({
           systemInstruction: buildHqlsGenerationSystemInstruction(),
-          parts: [{ text: `${lessonContextSummary(input)}\nRepair ONLY stages ${expectedStages.join(", ")} together as one coherent plan. Choose one explicit grouping/materials allocation and apply it consistently to both stages and the unchanged surrounding lesson. State children per group/pair, pairs per container, sets per group/pair, and items per set when relevant. Do not invent a class size. Do not make Awakening into a learner task or remove suspense. Count the actual entries, reconcile every total and category split with the list, and supply complete numbered material blocks in each affected stage, including Integration. Correct dependent answers and references in these stages. Return exactly those stage objects; preserve all other stages.\nGrounded defects:\n${JSON.stringify(qualityReview.issues)}\nFull lesson for continuity:\n${JSON.stringify(lesson)}` }, ...resources.parts],
+          parts: [{ text: `${lessonContextSummary(input)}\nRepair ONLY stages ${expectedStages.join(", ")} together as one coherent plan. Choose one explicit grouping/materials allocation and apply it consistently to both stages and the unchanged surrounding lesson. State children per group/pair, pairs per container, sets per group/pair, and items per set when relevant. Do not invent a class size. Do not make Awakening into a learner task or remove suspense. Preserve the objective and include an actual example of every category learners must identify. Update the master material set, teaching answers, second-attempt labels and dependent mini-card/transfer pools together. Keep the declared set size by replacing an unsuitable entry when needed. Permit reasoned borderline grouping before formal teaching rather than forcing overlapping labels into mutually exclusive piles. Count the actual entries, reconcile every total and category split with the list, and supply complete numbered material blocks in each affected stage, including Integration. Correct dependent answers and references in these stages. Return exactly those stage objects; preserve all other stages.\nGrounded defects:\n${JSON.stringify(qualityReview.issues)}\nFull lesson for continuity:\n${JSON.stringify(lesson)}` }, ...resources.parts],
           responseSchema: { type: "object", properties: { stages: { type: "array", minItems: expectedStages.length, maxItems: expectedStages.length, items: HQLS_STAGE_JSON_SCHEMA } }, required: ["stages"] },
           schemaName: "ksi_hqls_coordinated_content_repair",
           reasoningEffort: "low", textVerbosity: "low",
-          maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS * expectedStages.length,
+          maxOutputTokens: Math.min(HQLS_MAX_OUTPUT_TOKENS, HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS * expectedStages.length),
         });
         if (!Array.isArray(result.data?.stages)) throw new Error("The coordinated stage repair was incomplete. No generated changes were saved.");
         lesson = keepOneAwakeningQuestion(mergeStageRepairs(lesson, result.data.stages, expectedStages));
