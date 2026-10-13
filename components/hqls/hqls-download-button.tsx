@@ -11,6 +11,20 @@ export function HqlsDownloadButton({ lessonId }: { lessonId: string }) {
 
   useEffect(() => {
     let active = true;
+    let teacherValidationConfirmed = false;
+
+    function onLessonValidated(event: Event) {
+      if (!(event instanceof CustomEvent) || event.detail?.lessonId !== lessonId) return;
+      // This event is emitted only after the server confirms validation.
+      // The PDF endpoint still verifies saved lesson readiness independently.
+      teacherValidationConfirmed = true;
+      if (active) {
+        setValidated(true);
+        setError(null);
+      }
+    }
+
+    window.addEventListener("ksi:hqls-lesson-validated", onLessonValidated);
     const supabase = getBrowserSupabaseClient();
     void supabase
       .from("lessons")
@@ -18,7 +32,7 @@ export function HqlsDownloadButton({ lessonId }: { lessonId: string }) {
       .eq("id", lessonId)
       .maybeSingle()
       .then(({ data, error: loadError }) => {
-        if (!active) return;
+        if (!active || teacherValidationConfirmed) return;
         if (loadError) {
           setError(loadError.message);
           setValidated(false);
@@ -28,6 +42,7 @@ export function HqlsDownloadButton({ lessonId }: { lessonId: string }) {
       });
     return () => {
       active = false;
+      window.removeEventListener("ksi:hqls-lesson-validated", onLessonValidated);
     };
   }, [lessonId]);
 

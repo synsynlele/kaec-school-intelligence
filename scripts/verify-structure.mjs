@@ -341,3 +341,20 @@ const lessonResultUi = await text("components/hqls/hqls-result-client.tsx");
 assert(lessonResultUi.includes('lessonActions("top")') && lessonResultUi.includes('lessonActions("bottom")'), "Generated HQLS result must expose manual teacher validation at top and bottom.");
 assert(lessonResultUi.includes('markReviewed: true') && lessonResultUi.includes('action: "save_edits"') && lessonResultUi.includes('window.confirm'), "Generated result must persist authenticated manual teacher validation through existing save action.");
 assert(lessonResultUi.includes('payload.lesson.status !== "validated"'), "Result must not claim approval unless server confirms it.");
+
+const resultAfterTeacherApproval = await text("components/hqls/hqls-result-client.tsx");
+const pdfButtonAfterTeacherApproval = await text("components/hqls/hqls-download-button.tsx");
+assert(
+  resultAfterTeacherApproval.includes('payload.lesson.status !== "validated"') &&
+  resultAfterTeacherApproval.includes('window.dispatchEvent(new CustomEvent("ksi:hqls-lesson-validated"') &&
+  resultAfterTeacherApproval.indexOf('window.dispatchEvent(new CustomEvent("ksi:hqls-lesson-validated"') > resultAfterTeacherApproval.indexOf('payload.lesson.status !== "validated"'),
+  "The result page must activate PDF controls only after the server confirms manual validation.",
+);
+assert(
+  pdfButtonAfterTeacherApproval.includes('window.addEventListener("ksi:hqls-lesson-validated", onLessonValidated)') &&
+  pdfButtonAfterTeacherApproval.includes('window.removeEventListener("ksi:hqls-lesson-validated", onLessonValidated)') &&
+  pdfButtonAfterTeacherApproval.includes("teacherValidationConfirmed") &&
+  pdfButtonAfterTeacherApproval.includes("setValidated(true)") &&
+  pdfButtonAfterTeacherApproval.includes('disabled={validated !== true || downloading}'),
+  "The PDF button must become enabled without a refresh and retain its guarded manual click-to-download action.",
+);
