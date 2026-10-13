@@ -387,12 +387,12 @@ export function HqlsClient({ editorOnly = false }: { editorOnly?: boolean }) {
   const contentAdvice = readHqlsAdvice(selectedLesson?.source_context);
   const displayedAdvice = contentAdvice && dirty ? { ...contentAdvice, teacherReview: null, stale: true } : contentAdvice;
 
-  const needsFinalValidation = Boolean(
-  selectedLesson?.status === "draft" &&
+  const needsSequenceCheck = Boolean(
+    selectedLesson?.status === "draft" &&
     validation === null &&
     selectedLesson.class_id &&
     selectedLesson.subject_id,
-);
+  );
 
 const refreshLessons = useCallback(async () => {
     if (!state) return;
@@ -721,7 +721,7 @@ const refreshLessons = useCallback(async () => {
       if (!editorOnly) await refreshLessons();
       await openLesson(selectedLesson.id);
       setNotice(
-        markReviewed ? "Your lesson was saved and your teacher review was recorded. No AI tokens were used." : "Your edits were saved as a draft and checked for HQLS fidelity. No AI tokens were used.",
+        markReviewed ? "You manually validated this lesson. Your decision was recorded; automated suggestions remain advisory. No AI tokens were used." : "Your lesson was saved as a draft. Automated HQLS sequence feedback is advisory, not teacher validation. No AI tokens were used.",
       );
     } catch (caught) {
       setError(
@@ -732,6 +732,46 @@ const refreshLessons = useCallback(async () => {
     } finally {
       setSaving(false);
     }
+  }
+
+  function manuallyValidateLesson() {
+    if (!selectedLesson || saving) return;
+    const confirmed = window.confirm(
+      "Teacher validation is your decision. Have you personally checked all seven stages, the examples, activities, answers and any feedback? Select OK to save and validate this lesson. Automated suggestions are advisory and will not validate it for you.",
+    );
+    if (confirmed) void saveEdits(true);
+  }
+
+  function lessonActionButtons(position: "top" | "bottom") {
+    const teacherValidated = Boolean(contentAdvice?.teacherReview) && !dirty;
+    return (
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap" role="group" aria-label={`Lesson actions at the ${position}`}>
+        <button
+          type="button"
+          onClick={() => void saveEdits(false)}
+          disabled={saving || (!dirty && !needsSequenceCheck)}
+          className="min-h-11 rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? "Saving…" : dirty || needsSequenceCheck ? "Save Draft" : "Draft Saved"}
+        </button>
+        <button
+          type="button"
+          onClick={manuallyValidateLesson}
+          disabled={saving || teacherValidated}
+          className="min-h-11 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? "Saving…" : teacherValidated ? "Teacher Validated" : "Validate Lesson"}
+        </button>
+        {selectedLesson?.status === "validated" && !dirty ? (
+          <Link
+            href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}
+            className="min-h-11 rounded-xl border border-emerald-800 px-5 py-3 text-center text-sm font-semibold text-emerald-900"
+          >
+            Build Assessment
+          </Link>
+        ) : null}
+      </div>
+    );
   }
 
   async function regenerateStage(stage: HqlsStageContent) {
@@ -1130,35 +1170,7 @@ const refreshLessons = useCallback(async () => {
                   </p>
                 ) : null}
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                {contentAdvice && (!contentAdvice.teacherReview || dirty) ? <button
-                  type="button" onClick={() => void saveEdits(true)} disabled={saving}
-                  className="rounded-xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
-                >Save and mark reviewed</button> : null}
-
-                {selectedLesson.status === "validated" ? (
-                  <Link
-                    href={`/assessment?lesson=${encodeURIComponent(selectedLesson.id)}`}
-                    className="rounded-xl bg-emerald-950 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-900"
-                  >
-                    Build Assessment
-                  </Link>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => void saveEdits()}
-                  disabled={saving || (!dirty && !needsFinalValidation)}
-                  className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {saving
-            ? "Saving + checking…"
-            : needsFinalValidation
-              ? "Finish validation"
-              : dirty
-                ? "Save edits"
-                : "Saved"}
-                </button>
-              </div>
+              {lessonActionButtons("top")}
             </div>
 
             <ContentAdviceSummary advice={displayedAdvice} />
@@ -1171,11 +1183,11 @@ const refreshLessons = useCallback(async () => {
               </div>
             ) : null}
 
-            {needsFinalValidation ? (
+            {needsSequenceCheck ? (
     <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950">
       <p className="font-semibold">This HQLS lesson is fully generated.</p>
       <p className="mt-1 leading-6">
-        Its school class and subject are now linked. Finish validation to restore the fidelity record without regenerating the lesson or using more AI tokens.
+        Its school class and subject are linked. Save the draft to refresh automated sequence notes, then make the final validation decision yourself. No new AI generation is required.
       </p>
     </div>
   ) : null}
@@ -1383,6 +1395,10 @@ const refreshLessons = useCallback(async () => {
                   </article>
                 );
               })}
+            </div>
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+              <p className="mb-3 text-sm text-zinc-600">Teacher validation is manual. Review all seven stages and any suggestions before approving.</p>
+              {lessonActionButtons("bottom")}
             </div>
           </section>
         ) : null}

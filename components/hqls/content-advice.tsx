@@ -3,12 +3,14 @@ import type { HqlsAdvice } from "@/lib/hqls/advisory-review";
 export function ContentAdviceSummary({ advice }: { advice: HqlsAdvice | null }) {
   if (!advice) return null;
   return <aside className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-    <h2 className="font-semibold">{advice.teacherReview ? "Teacher review recorded" : "Saved draft — teacher review needed"}</h2>
+    <h2 className="font-semibold">{advice.teacherReview ? "Teacher validation recorded" : "Saved draft — teacher validation required"}</h2>
     <p className="mt-1">{advice.reviewStatus === "unavailable"
       ? "Automated content review was unavailable. Your lesson was saved. Check the examples, tasks and answers yourself before teaching."
-      : "Review suggestions appear beside their stages. They do not stop saving and do not certify accuracy."}</p>
-    {advice.stale ? <p className="mt-1">These suggestions are from the original automated review. They were not rechecked after saving.</p> : null}
-    {!advice.teacherReview ? <p className="mt-1">Edit any issues, then use Save and mark reviewed. This confirmation uses no AI tokens.</p> : null}
+      : advice.reviewStatus === "not_run"
+        ? "This older lesson has no automated content review. The teacher must check and validate it manually."
+        : "Automated feedback and suggestions appear beside their stages. They do not approve, reject or certify a lesson."}</p>
+    {advice.stale && advice.attempts > 0 ? <p className="mt-1">These suggestions are from the original automated review. They were not rechecked after saving.</p> : null}
+    {!advice.teacherReview ? <p className="mt-1">Review the lesson yourself, edit as needed, then select Validate Lesson. This records your decision without AI tokens.</p> : null}
   </aside>;
 }
 

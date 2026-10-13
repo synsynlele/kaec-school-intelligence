@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { HQLS_STAGES } from "../lib/domain/hqls";
 import { hqlsStageTimings, hqlsPacingNotes } from "../lib/hqls/timing";
 import { HqlsQualityGroundingError, HqlsQualityCorrectionError, parseHqlsQualityReview, hqlsQualityReviewSchema, hqlsReviewSources, runHqlsQualityReview, requireObservableObjective } from "../lib/hqls/quality";
-import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus } from "../lib/hqls/advisory-review";
+import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherReview, hqlsAdviceStatus, legacyHqlsAdvice } from "../lib/hqls/advisory-review";
 import { checkKnownEnglishContradictions } from "../lib/hqls/english-contradictions";
 import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
@@ -307,12 +307,15 @@ async function verifyQuality() {
   assert.equal(advisoryResult.reviewStatus, "available");
   assert.equal(advisoryResult.suggestions[0].priority, "correct_before_teaching");
   const sourceWithAdvice = replaceHqlsAdvice([{ title: "Curriculum source" }], advisoryResult);
-  assert.equal(hqlsAdviceStatus(true, sourceWithAdvice), "draft", "A complete generated lesson is a draft until human review.");
+  assert.equal(hqlsAdviceStatus(sourceWithAdvice), "draft", "A complete generated lesson is a draft until manual teacher validation.");
   assert.equal(readHqlsAdvice(JSON.parse(JSON.stringify(sourceWithAdvice)))?.suggestions[0].stageNumber, 5, "Advice must survive saved JSON and reload.");
   const acknowledged = updateTeacherReview(advisoryResult, "authenticated-teacher", true);
-  assert.equal(hqlsAdviceStatus(true, replaceHqlsAdvice(sourceWithAdvice, acknowledged)), "validated");
-  assert.equal(hqlsAdviceStatus(false, replaceHqlsAdvice(sourceWithAdvice, acknowledged)), "draft", "Teacher review cannot bypass failed HQLS fidelity.");
-  assert.equal(hqlsAdviceStatus(true, replaceHqlsAdvice(sourceWithAdvice, updateTeacherReview(acknowledged, "authenticated-teacher", false))), "draft", "Later edits reset human review.");
+  assert.equal(hqlsAdviceStatus(replaceHqlsAdvice(sourceWithAdvice, acknowledged)), "validated", "Only the teacher's explicit action validates the lesson.");
+  assert.equal(hqlsAdviceStatus(replaceHqlsAdvice(sourceWithAdvice, updateTeacherReview(acknowledged, "authenticated-teacher", false))), "draft", "Later edits reset teacher validation.");
+  const oldLessonReview = legacyHqlsAdvice();
+  assert.equal(oldLessonReview.reviewStatus, "not_run", "Older lessons must not claim an AI review.");
+  assert.equal(hqlsAdviceStatus(replaceHqlsAdvice([], oldLessonReview)), "draft");
+  assert.equal(hqlsAdviceStatus(replaceHqlsAdvice([], updateTeacherReview(oldLessonReview, "teacher", true))), "validated");
   assert.equal(replaceHqlsAdvice(sourceWithAdvice, advisoryResult).length, 2, "Replacing advisoryResult must preserve resources without duplicating review records.");
   for (const response of [() => { throw new Error("Provider unavailable"); }, () => ({ issues: [{ evidenceId: "invented", category: "task_integrity", correction: "Change it." }] })]) {
     let calls = 0;

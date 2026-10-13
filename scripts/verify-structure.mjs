@@ -326,3 +326,11 @@ assert(
 console.log(
   `Stage 2 structural verification passed: ${expectedStages.length} HQLS stages, ${migrationFiles.length} unique migrations, governed OpenAI HQLS engine with unrestricted normal-lesson Full Illumination, secure fidelity RPC, KSI product branding with KAEC-NG endorsement and validated lesson PDF export present.`,
 );
+
+const teacherApprovalRoute = await text("app/api/hqls/route.ts");
+const teacherApprovalUi = await text("components/hqls/hqls-client.tsx");
+const advicePolicy = await text("lib/hqls/advisory-review.ts");
+assert(teacherApprovalUi.includes('lessonActionButtons("top")') && teacherApprovalUi.includes('lessonActionButtons("bottom")'), "HQLS teacher actions must appear above and below the editor.");
+assert(teacherApprovalUi.includes("Validate Lesson") && teacherApprovalUi.includes("Save Draft") && teacherApprovalUi.includes("window.confirm"), "Manual teacher validation and draft-save actions are required.");
+assert(teacherApprovalRoute.includes("updateTeacherReview(previousAdvice, userId, body.markReviewed === true)") && !teacherApprovalRoute.includes("Fix the HQLS sequence before marking this lesson reviewed"), "Automated fidelity must not veto teacher validation.");
+assert(advicePolicy.includes("readHqlsAdvice(sourceContext)?.teacherReview"), "Only teacher approval can set Ready status.");

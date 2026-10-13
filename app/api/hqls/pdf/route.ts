@@ -82,9 +82,9 @@ export async function POST(request: Request) {
     if (fidelityResult.error) throw fidelityResult.error;
 
     const lesson = lessonResult.data;
-    if (lesson.status !== "validated" || !fidelityResult.data?.passed) {
+    if (lesson.status !== "validated") {
       return responseError(
-        "Only a saved HQLS-validated lesson can be downloaded as a teacher-ready PDF.",
+        "Only a manually validated lesson can be downloaded as a teacher-ready PDF.",
         409,
       );
     }
@@ -118,7 +118,8 @@ export async function POST(request: Request) {
         durationMinutes: lesson.duration_minutes,
         topic: lesson.topic,
         objective: lesson.objective,
-        fidelityScore: Number(fidelityResult.data.score ?? 0),
+        fidelityScore: Number(fidelityResult.data?.score ?? 0),
+        fidelityPassed: fidelityResult.data?.passed ?? null,
         sources: sourceLabels(lesson.source_context),
         contentAdvice: readHqlsAdvice(lesson.source_context),
         stages,
