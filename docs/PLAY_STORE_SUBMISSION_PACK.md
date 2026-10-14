@@ -75,7 +75,7 @@ This is a **submission preparation document**, not a declaration that Play Conso
 
 ## First Google Play entry confirmed (2026-10-14)
 
-The owner confirmed this is **KSI's first Google Play listing**. In Play Console create a new App (not Game), English (United States), name **KAEC School Intelligence**, free to install, category Education. The final AAB will register package `ng.name.ksi.lite`; do not create a second package name. The operator must confirm `kaecng@gmail.com` as the official privacy and deletion contact **before publishing the drafted app pages**.
+The owner confirmed this is **KSI's first Google Play listing**. In Play Console create a new App (not Game), English (United States), name **KAEC School Intelligence**, free to install, category Education. The final AAB will register package `ng.name.ksi.lite`; do not create a second package name. The owner confirmed `kaecng@gmail.com` as KSI's official support, privacy and account-deletion contact on 2026-10-14. The published policy and deletion request pages use this address. The operating team must still implement the request-handling procedure and meet deletion obligations before Play submission.
 
 **Current Google Play target-API policy:** Since August 31, 2026, a new mobile app needs API 36 unless an extension is granted. The launch candidate sets versionCode 6 and checks targetSdk 36 in the generated Android project; verify the final AAB and any other Play policy requirements.
 
@@ -86,3 +86,10 @@ The owner confirmed this is **KSI's first Google Play listing**. In Play Console
 **Play App Signing:** Google may use a different certificate to sign the distributed app. Add that certificate to `/.well-known/assetlinks.json` and verify Google Digital Asset Links before production publication. The existing SHA-256 is the sideload/update keystore, not automatically the Google Play distribution certificate.
 
 **Review and publication:** PR preparation is not approval to disclose policy statements publicly. Approve the contact email and retention/deletion process, then merge the PR; verify runtime and Android build; finally submit the AAB via the trusted Play Console session.
+
+## Support contact (confirmed)
+
+- **Public developer support / privacy / account deletion:** kaecng@gmail.com (owner confirmed 2026-10-14).
+- **In-app and external deletion URL:** https://www.ksi.name.ng/delete-account (becomes available only after deployment).
+- **Public privacy URL:** https://www.ksi.name.ng/privacy (becomes available only after deployment).
+- **Data-deletion fulfilment SOP:** docs/ACCOUNT_DELETION_OPERATIONS.md. Operator must verify this process before publishing a Play listing.
