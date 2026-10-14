@@ -33,6 +33,9 @@ const [
   assetlinks,
   launcherPatch,
   androidWorkflow,
+  playTargetPatch,
+  privacyPage,
+  deleteAccountPage,
 ] = await Promise.all([
   text("app/layout.tsx"),
   text("app/page.tsx"),
@@ -48,6 +51,9 @@ const [
   text("public/.well-known/assetlinks.json"),
   text("scripts/patch-android-lite-launcher.mjs"),
   text(".github/workflows/android-lite-release.yml"),
+  text("scripts/patch-android-play-target.mjs"),
+  text("app/privacy/page.tsx"),
+  text("app/delete-account/page.tsx"),
 ]);
 
 const twa = JSON.parse(twaText);
@@ -184,3 +190,35 @@ assert(
 );
 
 console.log("KSI Lite distribution verification passed with restart and renderer recovery.");
+
+assert(
+  twa.appVersionCode >= 6 && twa.appVersion === "1.0.5",
+  "The initial KSI Play submission candidate must use Android version code 6.",
+);
+assert(
+  androidWorkflow.includes('node scripts/patch-android-play-target.mjs') &&
+  playTargetPatch.includes("targetSdk") && playTargetPatch.includes("36"),
+  "Android release must enforce Android 16 API 36 before creating the signed Play AAB.",
+);
+assert(
+  layout.includes("KsiSchoolShell") &&
+  privacyPage.includes('href="/delete-account"') &&
+  deleteAccountPage.includes("mailto:") &&
+  deleteAccountPage.includes("Request deletion by email"),
+  "KSI must provide public privacy and account deletion request pages.",
+);
+const playShell = await text("components/navigation/ksi-school-shell.tsx");
+const playNav = await text("components/navigation/ksi-app-nav.tsx");
+const signIn = await text("app/sign-in/page.tsx");
+const publicLanding = await text("app/page.tsx");
+assert(
+  playShell.includes('"/privacy"') && playShell.includes('"/delete-account"'),
+  "Privacy and account deletion must be available without an active school session.",
+);
+assert(
+  playNav.includes('href: "/delete-account"') &&
+  playNav.includes('href: "/privacy"') &&
+  signIn.includes('href="/delete-account"') &&
+  publicLanding.includes('href="/privacy"'),
+  "Account deletion and privacy must be discoverable both within KSI and before sign-in.",
+);

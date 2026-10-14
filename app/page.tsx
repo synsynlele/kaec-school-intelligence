@@ -71,6 +71,12 @@ export default function HomePage() {
             </article>
           ))}
         </section>
+
+        <footer className="mt-10 flex flex-wrap gap-6 border-t border-zinc-200 pt-6 text-xs font-semibold text-zinc-600">
+          <Link href="/privacy" className="underline">Privacy Policy</Link>
+          <Link href="/delete-account" className="underline">Account deletion</Link>
+          <span>KAEC School Intelligence · by KAEC-NG Ltd</span>
+        </footer>
       </div>
     </main>
   );
