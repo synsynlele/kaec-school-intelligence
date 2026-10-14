@@ -159,9 +159,9 @@ for (const [name, pdf, route] of [
 const twaConfig = JSON.parse(twa);
 assert(
   twaConfig.themeColor === "#0B3268" &&
-    twaConfig.iconUrl === "https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-1.0.4" &&
-    twaConfig.maskableIconUrl === "https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-1.0.4" &&
-    twaConfig.appVersionCode >= 5,
+    twaConfig.iconUrl === `https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-${twaConfig.appVersion}` &&
+    twaConfig.maskableIconUrl === `https://www.ksi.name.ng/pwa/icon-512?launcher=ksi-lite-${twaConfig.appVersion}` &&
+    twaConfig.appVersionCode >= 6,
   "KSI Lite native wrapper must use the new product identity.",
 );
 
