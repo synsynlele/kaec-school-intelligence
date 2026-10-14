@@ -10,6 +10,8 @@ import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 
 const UNGATED_PREFIXES = [
   "/sign-in",
+  "/privacy",
+  "/delete-account",
   "/auth",
   "/owner/access",
   "/teacher/join",

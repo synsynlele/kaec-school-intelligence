@@ -6,15 +6,15 @@ KSI Lite is a Trusted Web Activity (TWA) wrapper around the production KSI web a
 
 - Display name: `KSI`
 - Package ID: `ng.name.ksi.lite`
-- Current version: `1.0.4`
-- Version code: `5`
+- Current version: `1.0.5`
+- Version code: `6`
 - Production origin: `https://www.ksi.name.ng`
 - Start route: `/auth/resolve`
 - Minimum Android API: 21
 - Bubblewrap toolchain: `1.25.0`
 - Stable public APK URL: `https://github.com/synsynlele/kaec-school-intelligence/releases/latest/download/KSI-Lite.apk`
 
-The 1.0.4 Android release packages the current KSI product mark as its launcher icon. Existing 1.0.3 installations need the new signed APK to update their launcher icon.
+The 1.0.5 Android release packages the current KSI product mark as its launcher icon. Existing 1.0.3 installations need the new signed APK to update their launcher icon.
 
 Normal KSI product, backend and AI changes remain web-first. The TWA loads the live KSI origin, so routine product releases do not require a new Android binary.
 
@@ -42,3 +42,9 @@ After Stage 17 is merged, normal wrapper releases are manual via `workflow_dispa
 ## Release model
 
 `.github/workflows/android-lite-release.yml` builds a signed APK and AAB with Bubblewrap and publishes a GitHub Release. The APK asset is always named `KSI-Lite.apk`, allowing the public landing page to use GitHub's stable `releases/latest/download` URL without a KSI web deployment for every wrapper version.
+
+## Google Play launch candidate
+
+This 1.0.5 / versionCode 6 build is the proposed first Play upload. The release workflow enforces API 36 (Android 16) in the generated Gradle app before signing. Google Play App Signing may issue a different *app-signing* certificate; once shown in Play Console, add that SHA-256 to `public/.well-known/assetlinks.json` without deleting the existing APK fingerprint, and verify it on the live HTTPS origin.
+
+A signed AAB alone does not establish Google Play compliance. Approve privacy policy, deletion response workflow, app access instructions, data safety and manual Android QA before submitting.

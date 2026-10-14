@@ -88,6 +88,12 @@ jobs:
           node scripts/patch-android-lite-launcher.mjs \
             android-lite/generated-production/app/src/main/java/ng/name/ksi/lite/LauncherActivity.java
 
+      - name: Enforce Android 16 Play target API
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/patch-android-play-target.mjs android-lite/generated-production/app/build.gradle
+
       - name: Build signed APK and Android App Bundle
         shell: bash
         env:

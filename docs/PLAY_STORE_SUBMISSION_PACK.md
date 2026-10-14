@@ -3,7 +3,7 @@
 ## Verified Android identity
 - Public-facing name: KAEC School Intelligence (KSI); installed launcher label currently **KSI**
 - Application ID: `ng.name.ksi.lite` — **do not change if retaining the existing signing/update identity**
-- Current signed release: `ksi-lite-v1.0.4`, version code **5**, dated 2026-09-27
+- Existing signed public release: `ksi-lite-v1.0.4`, version code **5**, dated 2026-09-27; proposed new Play candidate: `ksi-lite-v1.0.5`, version code **6** (not yet signed/published)
 - Production origin: https://www.ksi.name.ng
 - Android shell: Trusted Web Activity (TWA) with WebView fallback, not a standalone offline app
 - Android release workflow: `.github/workflows/android-lite-release.yml`
@@ -53,7 +53,7 @@ Introducing KAEC School Intelligence for Android. Prepare and review HQLS lesson
 2. **Account deletion:** Since KSI supports account creation, confirm an in-app deletion request path and public deletion URL, including school record retention and legitimate obligations. Implement and test; never promise immediate erasure of all school records.
 3. **Data safety:** Complete Google Play Data Safety declarations from the real data flow and service providers, including Supabase authentication, school/learner records, uploaded resources, AI prompts/responses and diagnostic records where applicable. Verify encryption in transit, retention, sharing and deletion procedures.
 4. **App access:** Provide Google reviewers a functional demo account or detailed instructions if school access codes/onboarding block entry. Avoid real learner information.
-5. **Android target API:** Verify the generated AAB's actual targetSdkVersion and 64-bit/Play requirements. Do not infer target SDK from the Bubblewrap build-tool version.
+5. **Android target API:** The Android release workflow now enforces targetSdkVersion 36 (Android 16) in the generated Gradle app. Still inspect the signed AAB's manifest on the final build and verify Play Console accepts it.
 6. **Google Play App Signing:** Enrol as required, preserve the existing upload key and check Play app-signing certificate fingerprint. If Google re-signs the Play build, update `/.well-known/assetlinks.json` with the **Play app-signing certificate** fingerprint in addition to the existing key; deploy and verify Digital Asset Links before production.
 7. **Package registration:** Check whether `ng.name.ksi.lite` already exists in the intended Play Console developer account. Once an app is registered, its package name cannot be changed for updates.
 8. **TWA quality:** Test verified full-screen mode, Android back navigation, external links, idle/resume recovery, sign-in and sign-out, file/PDF download in Chrome TWA and WebView fallback, Android permissions and network-loss behavior.
@@ -72,3 +72,17 @@ Introducing KAEC School Intelligence for Android. Prepare and review HQLS lesson
 - [ ] Increment version code, produce final signed AAB, upload and submit for review
 
 This is a **submission preparation document**, not a declaration that Play Console requirements have been satisfied.
+
+## First Google Play entry confirmed (2026-10-14)
+
+The owner confirmed this is **KSI's first Google Play listing**. In Play Console create a new App (not Game), English (United States), name **KAEC School Intelligence**, free to install, category Education. The final AAB will register package `ng.name.ksi.lite`; do not create a second package name. The operator must confirm `kaecng@gmail.com` as the official privacy and deletion contact **before publishing the drafted app pages**.
+
+**Current Google Play target-API policy:** Since August 31, 2026, a new mobile app needs API 36 unless an extension is granted. The launch candidate sets versionCode 6 and checks targetSdk 36 in the generated Android project; verify the final AAB and any other Play policy requirements.
+
+**Privacy and deletion implementation:** A public policy route `/privacy` and web deletion request route `/delete-account` are prepared, plus in-app links. They initiate a **human-reviewed email deletion request**. There is no automated deletion engine; operational processing, service-provider deletion and any lawful record retention must be established by KAEC before declaring full compliance.
+
+**Age and store listing:** KSI has adult school owner / teacher / leadership sign-in. Student-facing routes are retired; schools nevertheless upload learner records, potentially children's data. Mark only the actual age audience, and complete all Data Safety items truthfully.
+
+**Play App Signing:** Google may use a different certificate to sign the distributed app. Add that certificate to `/.well-known/assetlinks.json` and verify Google Digital Asset Links before production publication. The existing SHA-256 is the sideload/update keystore, not automatically the Google Play distribution certificate.
+
+**Review and publication:** PR preparation is not approval to disclose policy statements publicly. Approve the contact email and retention/deletion process, then merge the PR; verify runtime and Android build; finally submit the AAB via the trusted Play Console session.

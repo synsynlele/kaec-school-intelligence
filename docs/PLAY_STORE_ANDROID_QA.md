@@ -24,3 +24,7 @@ Run these on a real Android device using the final signed release candidate and 
 | Review | Use Play reviewer demo credentials | Reviewers can access core functions without real school data |
 
 **Release gate:** Any failure affecting login, teacher approval, PDF export, data privacy, Play signing or app access blocks Play submission. Record device model, Android version, app version code, date and result for each test.
+
+## Android API 36 release gate
+
+Inspect the generated project under `android-lite/generated-production/app/build.gradle` and read the final signed AAB manifest to confirm target API >= 36. Record the Play App Signing certificate SHA-256 and verify `/.well-known/assetlinks.json` on a real device. Make sure API 36 Android back handling, PDF downloading and resume recovery work.

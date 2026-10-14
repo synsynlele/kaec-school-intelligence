@@ -19,6 +19,8 @@ type LiveWorkspaceAccess = {
 
 const HIDDEN_PREFIXES = [
   "/sign-in",
+  "/privacy",
+  "/delete-account",
   "/auth",
   "/owner/access",
   "/teacher/join",
@@ -194,6 +196,16 @@ export function KsiAppNav() {
       schoolGroups.push({
         label: "KAEC platform",
         items: [{ href: "/admin/schools", label: "Super Admin" }],
+      });
+    }
+
+    if (schoolGroups.length > 0) {
+      schoolGroups.push({
+        label: "Account & privacy",
+        items: [
+          { href: "/privacy", label: "Privacy policy" },
+          { href: "/delete-account", label: "Delete account" },
+        ],
       });
     }
 

@@ -41,6 +41,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <AuthForm />
           </div>
         </div>
+        <footer className="flex flex-wrap gap-5 border-t border-zinc-200 pt-5 text-xs font-medium text-zinc-600">
+          <Link href="/privacy" className="underline">Privacy Policy</Link>
+          <Link href="/delete-account" className="underline">Request account deletion</Link>
+        </footer>
       </div>
     </main>
   );
