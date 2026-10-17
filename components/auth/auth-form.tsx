@@ -9,6 +9,27 @@ type EntryRole = "owner" | "teacher";
 
 const AUTH_RETURN_KEY = "ksi:auth:returnTo";
 const AUTH_ENTRY_KEY = "ksi:auth:entryRole";
+const SUPPORT_EMAIL = "kaecng@gmail.com";
+
+type PendingConfirmation = {
+  email: string;
+  role: EntryRole;
+};
+
+function authErrorMessage(caught: unknown, fallback: string) {
+  const message = caught instanceof Error ? caught.message : fallback;
+  const lower = message.toLowerCase();
+  if (lower.includes("email address not authorized")) {
+    return "KSI's email provider cannot deliver confirmation messages to this address. Please contact " + SUPPORT_EMAIL + ".";
+  }
+  if (lower.includes("rate limit") || lower.includes("too many requests")) {
+    return "Too many email attempts were made. Please wait before retrying. If the issue continues, contact KSI support.";
+  }
+  if (lower.includes("error sending") || lower.includes("smtp") || lower.includes("mail provider")) {
+    return "KSI could not request a confirmation email. Please contact " + SUPPORT_EMAIL + " so the email delivery settings can be checked.";
+  }
+  return message || fallback;
+}
 
 const ROLE_CONFIG: Record<
   EntryRole,
@@ -60,6 +81,8 @@ export function AuthForm() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
 
   const roleConfig = role ? ROLE_CONFIG[role] : null;
   const destination = useMemo(
@@ -113,6 +136,7 @@ export function AuthForm() {
     setBusy(true);
     setError(null);
     setMessage(null);
+    setPendingConfirmation(null);
 
     try {
       const supabase = getBrowserSupabaseClient();
@@ -146,18 +170,43 @@ export function AuthForm() {
       if (data.session) {
         window.location.replace(destination);
       } else {
+        // Supabase can return an obscured signup response for an existing account.
+        // A successful signup response does not prove an email was delivered.
+        setPendingConfirmation({ email: email.trim(), role });
         setMessage(
-          `Account created. Check your email to confirm it. After confirmation, KSI will verify existing school access before continuing with the ${roleConfig.label} flow.`,
+          "KSI has received your sign-up request, but cannot confirm email delivery. Check your inbox and spam folder. If you already have a KSI account, sign in instead. If no email arrives, use the resend option below.",
         );
       }
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Authentication could not be completed.",
-      );
+      setError(authErrorMessage(caught, "Authentication could not be completed."));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    if (!pendingConfirmation || resendingConfirmation || busy) return;
+    setResendingConfirmation(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const { email: confirmationEmail, role: confirmationRole } = pendingConfirmation;
+      const returnPath = ROLE_CONFIG[confirmationRole].destination;
+      const redirectUrl = window.location.origin + "/auth/callback?next=" + encodeURIComponent(returnPath);
+      const { error: resendError } = await getBrowserSupabaseClient().auth.resend({
+        type: "signup",
+        email: confirmationEmail,
+        options: { emailRedirectTo: redirectUrl },
+      });
+      if (resendError) throw resendError;
+      setMessage(
+        "Another confirmation email has been requested. Check your inbox and spam folder. Delivery is not guaranteed; if nothing arrives, contact KSI support. If you already have an account, sign in instead.",
+      );
+    } catch (caught) {
+      setError(authErrorMessage(caught, "KSI could not request another confirmation email."));
+    } finally {
+      setResendingConfirmation(false);
     }
   }
 
@@ -165,12 +214,14 @@ export function AuthForm() {
     setRole(nextRole);
     setError(null);
     setMessage(null);
+    setPendingConfirmation(null);
   }
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode);
     setError(null);
     setMessage(null);
+    setPendingConfirmation(null);
   }
 
   return (
@@ -304,7 +355,28 @@ export function AuthForm() {
               <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">{error}</p>
             ) : null}
             {message ? (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800">{message}</p>
+              <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800">{message}</p>
+            ) : null}
+            {pendingConfirmation && mode === "sign_up" ? (
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                <p className="text-sm font-semibold text-zinc-900">
+                  Waiting for email confirmation: {pendingConfirmation.email}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-zinc-600">
+                  No email? KSI can request another message. If it still does not arrive, the email service needs checking.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void resendConfirmation()}
+                  disabled={resendingConfirmation || busy || googleBusy}
+                  className="mt-3 rounded-lg border border-emerald-800 px-3.5 py-2.5 text-sm font-semibold text-emerald-950 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {resendingConfirmation ? "Requesting email…" : "Resend confirmation email"}
+                </button>
+                <p className="mt-3 text-xs text-zinc-600">
+                  Still stuck? <a href={"mailto:" + SUPPORT_EMAIL + "?subject=KSI%20sign-up%20email%20not%20received"} className="font-semibold text-emerald-900 underline">Contact KSI support</a>.
+                </p>
+              </div>
             ) : null}
 
             <button
