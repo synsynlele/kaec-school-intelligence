@@ -174,7 +174,7 @@ export function AuthForm() {
         // A successful signup response does not prove an email was delivered.
         setPendingConfirmation({ email: email.trim(), role });
         setMessage(
-          "KSI has received your sign-up request, but cannot confirm email delivery. Check your inbox and spam folder. If you already have a KSI account, sign in instead. If no email arrives, use the resend option below.",
+          "KSI received the request, but that does not establish a new account or email delivery. If you previously used Google, choose Continue with Google in Sign in. Otherwise check your inbox and spam folder, or request another confirmation email below.",
         );
       }
     } catch (caught) {
@@ -201,7 +201,7 @@ export function AuthForm() {
       });
       if (resendError) throw resendError;
       setMessage(
-        "Another confirmation email has been requested. Check your inbox and spam folder. Delivery is not guaranteed; if nothing arrives, contact KSI support. If you already have an account, sign in instead.",
+        "Another confirmation was requested, but delivery is not guaranteed. Check your inbox and spam folder. If you already registered with Google, sign in using Google; if no message arrives for a new account, contact KSI support.",
       );
     } catch (caught) {
       setError(authErrorMessage(caught, "KSI could not request another confirmation email."));
@@ -363,8 +363,15 @@ export function AuthForm() {
                   Waiting for email confirmation: {pendingConfirmation.email}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-zinc-600">
-                  No email? KSI can request another message. If it still does not arrive, the email service needs checking.
+                  Already registered? Switch to Sign in and use your original method (Google or password). If this is a new email account, try requesting the confirmation again.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => changeMode("sign_in")}
+                  className="mt-3 mr-2 rounded-lg bg-emerald-950 px-3.5 py-2.5 text-sm font-semibold text-white"
+                >
+                  I already have an account — Sign in
+                </button>
                 <button
                   type="button"
                   onClick={() => void resendConfirmation()}

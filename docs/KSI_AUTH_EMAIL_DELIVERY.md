@@ -2,11 +2,23 @@
 
 Status: **app-side transparency and resend prepared; live email delivery remains unverified until production Supabase is inspected**
 
+## Confirmed production observation — 2026-10-17
+
+Following a successful reconnection, the KSI production project `zaoxfjbiizargeclnzmo` was inspected using read-only Supabase SQL and Auth Logs.
+
+- At 07:02 UTC, `/signup` returned HTTP 200 but recorded the `user_repeated_signup` action.
+- The attempted account already existed, was confirmed, and its original authentication provider is **Google**.
+- Consequently **no new registration was created in that attempt**; the message “Account created, check your email” was false for that case. The correct path for the previously used account is **Sign in → Continue with Google**.
+- This specific repeated-signup event is **not evidence of SMTP failure**. We found no SMTP/rate-limit failure in the available 24-hour Auth Logs. Delivery for a genuinely new external email/password account still requires a separate controlled test.
+- Do not create a duplicate account or alter/delete the existing user's identity to force email verification.
+
 ## Critical finding
 
 The KSI `components/auth/auth-form.tsx` used to announce “Account created. Check your email” when `supabase.auth.signUp()` returned no session. This response does not prove email delivery. Supabase intentionally obscures some already-registered accounts to prevent email enumeration.
 
-The correct fix has **two parts**:
+For the *observed repeated signup*, the immediate fix is correct UI guidance and sign-in using the original Google provider. New-user delivery reliability is a separate question and must be verified.
+
+The longer-term fix has **two parts**:
 1. App-side: do not claim delivery, provide a resend confirmation action, show a useful error on server rejection, and preserve school membership security.
 2. Infrastructure: establish **custom SMTP** on **KSI's production Supabase project** and verify live authentication emails to addresses that are not members of the Supabase organization.
 
@@ -16,7 +28,7 @@ Supabase documentation: https://supabase.com/docs/guides/auth/auth-smtp. Default
 
 - KSI's dedicated Supabase project is historically identified as `zaoxfjbiizargeclnzmo`, from `docs/STAGE_1_RUNTIME_VERIFICATION.md`.
 - **First compare** that project with the current production `NEXT_PUBLIC_SUPABASE_URL` configuration. Do not change settings on any other KAEC Supabase project.
-- At the time this runbook was written the connected Supabase account **did not list or allow access to KSI's production Supabase project**. Auth logs, SMTP settings and live test verification therefore remain unproven; reconnect the owner/team organisation for this project before making claims.
+- The Supabase connector was reconnected on 2026-10-17 and now lists the correct production project. Read-only Auth Logs and user records were inspected. **SMTP configuration remains unverified** because the available connector actions do not expose the project's Authentication → SMTP Settings. Continue the provider-configuration checks in the correct Supabase dashboard.
 
 ## Diagnose first, do not guess
 
