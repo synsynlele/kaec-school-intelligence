@@ -6,7 +6,7 @@ import {
   reconcileHqlsTopics,
 } from "../lib/assessment/source-lessons";
 import { ZERO_TOPIC_QUESTION_COUNTS } from "../lib/assessment/topic-allocation";
-import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 const lesson = (id: string, topic: string, extra: Record<string, string> = {}) => ({
   id,
@@ -67,8 +67,8 @@ assert.deepEqual(reconcileHqlsTopics(imported, []).map((topic) => topic.topic), 
 const original = reconcileHqlsTopics(initial, [one]);
 assert.deepEqual(original.map((topic) => topic.topic), ["Fractions"]);
 
-const api = await readFile("app/api/assessment-v11/route.ts","utf8");
-const ui = await readFile("components/assessment/world-class-assessment-client.tsx","utf8");
+const api = readFileSync("app/api/assessment-v11/route.ts","utf8");
+const ui = readFileSync("components/assessment/world-class-assessment-client.tsx","utf8");
 for (const required of [
   "parseAssessmentSourceLessonIds",
   "loadSourceLessons(",
