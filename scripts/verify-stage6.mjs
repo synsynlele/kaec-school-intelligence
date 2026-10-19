@@ -132,8 +132,8 @@ for (const required of [
 
 for (const required of [
   "source_lesson_id",
-  "applySourceLessonFromState",
-  'requestedWorkflowId("lesson")',
+  "applySourceLessonsFromState",
+  'requestedWorkflowLessonIds()',
   'requestedWorkflowId("assessment")',
   "Open Source HQLS Lesson",
   "Use in Diagnosis",
