@@ -84,3 +84,48 @@ export function topicAllocationIssues(
   }
   return issues;
 }
+
+/**
+ * Marks are allocated only for formats that the teacher actually selected.
+ * A format with zero questions must never require a mark value.
+ */
+export function activeQuestionTypes(
+  counts: AssessmentItemCounts,
+): Array<keyof AssessmentItemCounts> {
+  return QUESTION_FORMAT_KEYS.filter((key) => counts[key] > 0);
+}
+
+export function marksTotalForActiveTypes(
+  counts: AssessmentItemCounts,
+  marksByType: AssessmentItemCounts,
+): number {
+  return activeQuestionTypes(counts).reduce(
+    (sum, key) => sum + counts[key] * marksByType[key],
+    0,
+  );
+}
+
+/**
+ * Parse only selected formats from an incoming teacher allocation.
+ * Obsolete/hidden values from unselected formats are deliberately ignored.
+ */
+export function parseActiveTypeMarks(
+  value: unknown,
+  selectedQuestionCounts: AssessmentItemCounts,
+): AssessmentItemCounts {
+  const provided = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+  const marks = { ...ZERO_TOPIC_QUESTION_COUNTS };
+  for (const key of activeQuestionTypes(selectedQuestionCounts)) {
+    const raw = provided[key];
+    const next = (typeof raw === "number" || (typeof raw === "string" && raw.trim()))
+      ? Number(raw)
+      : Number.NaN;
+    if (!Number.isInteger(next) || next < 1 || next > 100) {
+      throw new Error(`Enter between 1 and 100 marks for each selected ${key.replace("_", " ")} question.`);
+    }
+    marks[key] = next;
+  }
+  return marks;
+}

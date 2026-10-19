@@ -20,7 +20,9 @@ import {
 } from "@/lib/assessment/world-class";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import {
+  activeQuestionTypes,
   expectedQuestionCounts,
+  marksTotalForActiveTypes,
   topicAllocationIssues,
   topicAllocationTotals,
   ZERO_TOPIC_QUESTION_COUNTS,
@@ -414,6 +416,10 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     () => expectedQuestionCounts(assessmentMode, Number(totalItems), counts),
     [assessmentMode, totalItems, counts],
   );
+  const activeMarkTypes = useMemo(
+    () => activeQuestionTypes(effectiveCounts),
+    [effectiveCounts],
+  );
   const topicCountTotals = useMemo(
     () => topicAllocationTotals(topics),
     [topics],
@@ -426,10 +432,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   );
   const computedManualMarks = useMemo(
     () => markMode === "by_type"
-      ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce(
-          (sum, key) => sum + effectiveCounts[key] * typeMarks[key],
-          0,
-        )
+      ? marksTotalForActiveTypes(effectiveCounts, typeMarks)
       : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + (mark || 0), 0),
     [markMode, effectiveCounts, typeMarks, questionMarks, totalItems],
   );
@@ -749,8 +752,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
       if (markMode === "per_question" && (questionMarks.length < Number(totalItems) || questionMarks.slice(0, Number(totalItems)).some((mark) => !Number.isInteger(mark) || mark < 1))) {
         throw new Error("Enter a positive whole-number mark for every question.");
       }
-      if (markMode === "by_type" && Object.values(typeMarks).some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100)) {
-        throw new Error("Each question type must have between 1 and 100 marks.");
+      if (markMode === "by_type" && activeMarkTypes.some((key) => !Number.isInteger(typeMarks[key]) || typeMarks[key] < 1 || typeMarks[key] > 100)) {
+        throw new Error("Each selected question type must have between 1 and 100 marks.");
       }
       if (markMode !== "automatic" && assigned <= 0) throw new Error("Allocated marks must be greater than zero.");
       const payload = await authenticatedPost({
@@ -780,8 +783,12 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
             ? (totalMarks ? Number(totalMarks) : null)
             : assigned,
           markMode,
-          typeMarks,
-          questionMarks: questionMarks.slice(0, Number(totalItems)),
+          typeMarks: markMode === "by_type"
+            ? Object.fromEntries(activeMarkTypes.map((key) => [key, typeMarks[key]]))
+            : undefined,
+          questionMarks: markMode === "per_question"
+            ? questionMarks.slice(0, Number(totalItems))
+            : undefined,
           durationMinutes: durationMinutes ? Number(durationMinutes) : null,
           sourceLessonId: sourceLessonId || null,
           resourceIds: selectedResourceIds,
@@ -1350,8 +1357,31 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 { value: "per_question", label: "Teacher sets marks for every question" },
               ]} />
               {markMode === "by_type" ? (
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {ITEM_TYPES.map((item) => <NumberInput key={item.value} label={item.label + " marks each"} value={String(typeMarks[item.value])} min={1} onChange={(value) => setTypeMarks((current) => ({ ...current, [item.value]: Number(value) }))} />)}
+                <div className="mt-4">
+                  <p className="text-xs leading-5 text-zinc-600">
+                    Set marks only for question formats included in this assessment. Formats with zero questions are excluded automatically.
+                  </p>
+                  {activeMarkTypes.length ? (
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {ITEM_TYPES.filter((item) => effectiveCounts[item.value] > 0).map((item) => (
+                        <NumberInput
+                          key={item.value}
+                          label={`${item.label} (${effectiveCounts[item.value]} questions) — marks each`}
+                          value={String(typeMarks[item.value])}
+                          min={1}
+                          max={100}
+                          onChange={(value) => setTypeMarks((current) => ({
+                            ...current,
+                            [item.value]: Number(value),
+                          }))}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm font-medium text-amber-800">
+                      Select at least one question format above to allocate marks.
+                    </p>
+                  )}
                 </div>
               ) : null}
               {markMode === "per_question" ? (
