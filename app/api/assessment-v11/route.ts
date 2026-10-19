@@ -1085,7 +1085,9 @@ async function handleSaveEdits(
         assessmentKind: request.assessmentKind,
         overallDifficulty: request.overallDifficulty,
         requestedTopics: request.topics,
-        sourceLessonIds: blueprint.sourceLessonIds ?? (current.assessment.source_lesson_id ? [current.assessment.source_lesson_id] : []),
+        sourceLessonIds: Array.isArray(blueprint.sourceLessonIds)
+          ? blueprint.sourceLessonIds.filter((value): value is string => typeof value === "string")
+          : (current.assessment.source_lesson_id ? [current.assessment.source_lesson_id] : []),
         topicAllocationMode: request.topicAllocationMode,
         markMode: request.markMode,
         typeMarks: request.typeMarks,

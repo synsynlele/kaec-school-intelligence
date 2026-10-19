@@ -1,7 +1,5 @@
-import {
-  type AssessmentItemCounts,
-  ZERO_TOPIC_QUESTION_COUNTS,
-} from "@/lib/assessment/topic-allocation";
+import type { AssessmentItemCounts } from "@/lib/assessment/engine";
+import { ZERO_TOPIC_QUESTION_COUNTS } from "@/lib/assessment/topic-allocation";
 
 export const MAX_ASSESSMENT_SOURCE_LESSONS = 12;
 

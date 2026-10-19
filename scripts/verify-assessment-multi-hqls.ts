@@ -8,7 +8,7 @@ import {
 import { ZERO_TOPIC_QUESTION_COUNTS } from "../lib/assessment/topic-allocation";
 import { readFile } from "node:fs/promises";
 
-const lesson = (id, topic, extra = {}) => ({
+const lesson = (id: string, topic: string, extra: Record<string, string> = {}) => ({
   id,
   title: topic + " lesson",
   topic,
