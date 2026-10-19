@@ -9,6 +9,10 @@ import {
   type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
 import {
+  expectedQuestionCounts,
+  topicAllocationIssues,
+} from "@/lib/assessment/topic-allocation";
+import {
   ASSESSMENT_ENGINE_VERSION_V11,
   ASSESSMENT_KINDS,
   ASSESSMENT_OVERALL_DIFFICULTIES,
@@ -203,7 +207,12 @@ function parseTopics(
       if (!Number.isFinite(weight) || weight <= 0 || weight > 100) {
         throw new Error(`Topic ${index + 1} weight must be between 1 and 100.`);
       }
-      return { topic, objectives, weight };
+      return {
+        topic,
+        objectives,
+        weight,
+        ...(row.itemCounts !== undefined ? { itemCounts: parseCounts(row.itemCounts) } : {}),
+      };
     });
   }
 
@@ -303,6 +312,17 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
   const academicSession = optionalString(input.academicSession) ?? "";
 
   const topics = parseTopics(input.topics, input.topic, input.objective);
+  if (input.topicAllocationMode !== undefined &&
+      input.topicAllocationMode !== "automatic" &&
+      input.topicAllocationMode !== "custom") {
+    throw new Error("Select a valid topic question distribution.");
+  }
+  const topicAllocationMode = input.topicAllocationMode === "custom" ? "custom" : "automatic";
+  if (topicAllocationMode === "custom") {
+    const required = expectedQuestionCounts(assessmentMode, totalItems, itemCounts);
+    const problems = topicAllocationIssues(topics, required, totalItems);
+    if (problems.length) throw new Error(problems.join(" "));
+  }
   const combinedTopic = topics.map((entry) => entry.topic).join("; ");
   const combinedObjective = topics
     .flatMap((entry) => entry.objectives)
@@ -323,6 +343,7 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     assessmentKind,
     overallDifficulty,
     topics,
+    topicAllocationMode,
     term,
     academicSession,
     totalItems,
@@ -850,6 +871,11 @@ async function handleGenerate(
         assessmentKind: input.assessmentKind,
         overallDifficulty: input.overallDifficulty,
         requestedTopics: input.topics,
+        topicAllocationMode: input.topicAllocationMode,
+        markMode: input.markMode,
+        typeMarks: input.typeMarks,
+        questionMarks: input.questionMarks,
+        questionStyleInstructions: input.questionStyleInstructions,
         term: input.term,
         academicSession: input.academicSession,
         qualitySummary,
@@ -950,6 +976,11 @@ async function handleSaveEdits(
         : "",
     title: edited.title,
     topics,
+    topicAllocationMode: blueprint.topicAllocationMode ?? "automatic",
+    markMode: blueprint.markMode ?? "automatic",
+    typeMarks: blueprint.typeMarks,
+    questionMarks: blueprint.questionMarks,
+    questionStyleInstructions: blueprint.questionStyleInstructions,
     assessmentKind:
       typeof blueprint.assessmentKind === "string"
         ? blueprint.assessmentKind
@@ -1008,6 +1039,11 @@ async function handleSaveEdits(
         assessmentKind: request.assessmentKind,
         overallDifficulty: request.overallDifficulty,
         requestedTopics: request.topics,
+        topicAllocationMode: request.topicAllocationMode,
+        markMode: request.markMode,
+        typeMarks: request.typeMarks,
+        questionMarks: request.questionMarks,
+        questionStyleInstructions: request.questionStyleInstructions,
         qualitySummary,
       } as Json,
       engine_version: ASSESSMENT_ENGINE_VERSION_V11,

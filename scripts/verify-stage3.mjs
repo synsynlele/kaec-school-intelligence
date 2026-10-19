@@ -53,7 +53,7 @@ for (const required of [
 const worldClass = await text("lib/assessment/world-class.ts");
 for (const required of [
   "ASSESSMENT_ENGINE_v1.1",
-  "ASSESSMENT_PROMPT_v1.3",
+  "ASSESSMENT_PROMPT_v1.5",
   "KAEC_ASSESSMENT_QUALITY_v1.0",
   "assignment",
   "quiz",
@@ -126,7 +126,7 @@ for (const required of [
   "Overall difficulty",
   "Topics, objectives and weighting",
   "+ Add topic",
-  "Question-format distribution",
+  "Choose how many questions of each type",
   "Critical Thinking",
   "Project",
   "Save edits",

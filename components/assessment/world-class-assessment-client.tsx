@@ -19,6 +19,12 @@ import {
   type AssessmentOverallDifficulty,
 } from "@/lib/assessment/world-class";
 import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
+import {
+  expectedQuestionCounts,
+  topicAllocationIssues,
+  topicAllocationTotals,
+  ZERO_TOPIC_QUESTION_COUNTS,
+} from "@/lib/assessment/topic-allocation";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const ITEM_TYPES = [
@@ -117,6 +123,7 @@ type TopicDraft = {
   topic: string;
   objective: string;
   weight: number;
+  itemCounts: AssessmentItemCounts;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -356,10 +363,11 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [purpose, setPurpose] = useState("");
   const [teacherInstructions, setTeacherInstructions] = useState("");
   const [questionStyleInstructions, setQuestionStyleInstructions] = useState("");
+  const [topicAllocationMode, setTopicAllocationMode] = useState<"automatic" | "custom">("automatic");
   const [sourceLessonId, setSourceLessonId] = useState("");
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [topics, setTopics] = useState<TopicDraft[]>([
-    { topic: "", objective: "", weight: 100 },
+    { topic: "", objective: "", weight: 100, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } },
   ]);
   const [counts, setCounts] = useState<AssessmentItemCounts>({
     objective: 4,
@@ -401,6 +409,29 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const topicWeightTotal = useMemo(
     () => topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0),
     [topics],
+  );
+  const effectiveCounts = useMemo(
+    () => expectedQuestionCounts(assessmentMode, Number(totalItems), counts),
+    [assessmentMode, totalItems, counts],
+  );
+  const topicCountTotals = useMemo(
+    () => topicAllocationTotals(topics),
+    [topics],
+  );
+  const allocationProblems = useMemo(
+    () => topicAllocationMode === "custom"
+      ? topicAllocationIssues(topics, effectiveCounts, Number(totalItems))
+      : [],
+    [topicAllocationMode, topics, effectiveCounts, totalItems],
+  );
+  const computedManualMarks = useMemo(
+    () => markMode === "by_type"
+      ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce(
+          (sum, key) => sum + effectiveCounts[key] * typeMarks[key],
+          0,
+        )
+      : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + (mark || 0), 0),
+    [markMode, effectiveCounts, typeMarks, questionMarks, totalItems],
   );
 
   const visibleAssessments = useMemo(() => {
@@ -591,7 +622,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     setSourceLessonId(lessonId);
     const lesson = currentState.lessons.find((item) => item.id === lessonId);
     if (!lesson) return false;
-    setTopics([{ topic: lesson.topic, objective: lesson.objective, weight: 100 }]);
+    setTopics([{ topic: lesson.topic, objective: lesson.objective, weight: 100, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } }]);
     setTitle(`${lesson.title} — Assessment`);
     if (lesson.subject_id) {
       const match = currentState.subjects.find(
@@ -641,7 +672,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     setTopics((current) =>
       rebalanceTopics([
         ...current,
-        { topic: "", objective: "", weight: 0 },
+        { topic: "", objective: "", weight: 0, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } },
       ]),
     );
   }
@@ -663,6 +694,15 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
         itemIndex === index ? { ...topic, [field]: value } : topic,
       ),
     );
+  }
+
+  function updateTopicItemCount(index: number, key: keyof AssessmentItemCounts, value: string) {
+    const next = Math.max(0, Number.parseInt(value || "0", 10) || 0);
+    setTopics((current) => current.map(
+      (topic, topicIndex) => topicIndex === index
+        ? { ...topic, itemCounts: { ...topic.itemCounts, [key]: next } }
+        : topic,
+    ));
   }
 
   function toggleResource(resourceId: string) {
@@ -701,20 +741,18 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
       if (assessmentMode === "mixed" && Object.values(counts).reduce((sum, count) => sum + count, 0) !== Number(totalItems)) {
         throw new Error("Question counts must add up to the total number of questions.");
       }
+      if (allocationProblems.length) {
+        throw new Error(allocationProblems.join(" "));
+      }
 
-      const effectiveCounts = assessmentMode === "mixed" ? counts : {
-        objective: assessmentMode === "objective" ? Number(totalItems) : 0,
-        subjective: assessmentMode === "subjective" ? Number(totalItems) : 0,
-        critical_thinking: assessmentMode === "critical_thinking" ? Number(totalItems) : 0,
-        project: assessmentMode === "project" ? Number(totalItems) : 0,
-      };
-      const assigned = markMode === "by_type"
-        ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce((sum, key) => sum + effectiveCounts[key] * typeMarks[key], 0)
-        : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + mark, 0);
+      const assigned = computedManualMarks;
       if (markMode === "per_question" && (questionMarks.length < Number(totalItems) || questionMarks.slice(0, Number(totalItems)).some((mark) => !Number.isInteger(mark) || mark < 1))) {
         throw new Error("Enter a positive whole-number mark for every question.");
       }
-      if (markMode !== "automatic" && assigned !== Number(totalMarks)) throw new Error(`Allocated marks total ${assigned}; update Total marks to match.`);
+      if (markMode === "by_type" && Object.values(typeMarks).some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100)) {
+        throw new Error("Each question type must have between 1 and 100 marks.");
+      }
+      if (markMode !== "automatic" && assigned <= 0) throw new Error("Allocated marks must be greater than zero.");
       const payload = await authenticatedPost({
         action: "generate",
         input: {
@@ -733,10 +771,14 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
             topic: topic.topic,
             objectives: splitLines(topic.objective.replace(/;/g, "\n")),
             weight: Number(topic.weight),
+            ...(topicAllocationMode === "custom" ? { itemCounts: topic.itemCounts } : {}),
           })),
+          topicAllocationMode,
           assessmentMode,
           totalItems: Number(totalItems),
-          totalMarks: totalMarks ? Number(totalMarks) : null,
+          totalMarks: markMode === "automatic"
+            ? (totalMarks ? Number(totalMarks) : null)
+            : assigned,
           markMode,
           typeMarks,
           questionMarks: questionMarks.slice(0, Number(totalItems)),
@@ -1101,7 +1143,13 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               <SelectInput
                 label="Question format"
                 value={assessmentMode}
-                onChange={(value) => setAssessmentMode(value as AssessmentMode)}
+                onChange={(value) => {
+                  setAssessmentMode(value as AssessmentMode);
+                  setTopics((current) => current.map((topic) => ({
+                    ...topic,
+                    itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS },
+                  })));
+                }}
                 options={[
                   { value: "mixed", label: "Mixed question formats" },
                   ...ITEM_TYPES,
@@ -1114,12 +1162,19 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 min={1}
                 max={60}
               />
-              <NumberInput
-                label="Total marks"
-                value={totalMarks}
-                onChange={setTotalMarks}
-                min={1}
-              />
+              {markMode === "automatic" ? (
+                <NumberInput
+                  label="Total marks"
+                  value={totalMarks}
+                  onChange={setTotalMarks}
+                  min={1}
+                />
+              ) : (
+                <div className="rounded-xl border border-emerald-900/15 bg-emerald-50 p-3">
+                  <p className="text-xs font-semibold text-emerald-900">Calculated total marks</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-950">{computedManualMarks}</p>
+                </div>
+              )}
               <NumberInput
                 label="Duration (minutes)"
                 value={durationMinutes}
@@ -1148,6 +1203,21 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 </button>
               </div>
 
+              <div className="mt-4 rounded-xl border border-emerald-900/15 bg-white p-4">
+                <SelectInput
+                  label="Who decides which topic gets each question type?"
+                  value={topicAllocationMode}
+                  onChange={(value) => setTopicAllocationMode(value as "automatic" | "custom")}
+                  options={[
+                    { value: "automatic", label: "Let KSI distribute questions by topic emphasis" },
+                    { value: "custom", label: "I will set question counts and formats for every topic" },
+                  ]}
+                />
+                <p className="mt-2 text-xs leading-5 text-zinc-600">
+                  Teacher-controlled allocation is exact: select how many objective, subjective, critical-thinking and project questions each topic receives.
+                  Topic percentage weights are advisory when you set exact question counts.
+                </p>
+              </div>
               <div className="mt-4 grid gap-4">
                 {topics.map((topic, index) => (
                   <div
@@ -1175,36 +1245,71 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                         onChange={(value) => updateTopic(index, "topic", value)}
                         required
                       />
-                      <NumberInput
-                        label="Weight %"
-                        value={String(topic.weight)}
-                        onChange={(value) =>
-                          updateTopic(index, "weight", Number(value || 0))
-                        }
-                        min={1}
-                        max={100}
-                      />
+                      {topicAllocationMode === "automatic" ? (
+                        <NumberInput
+                          label="Weight %"
+                          value={String(topic.weight)}
+                          onChange={(value) => updateTopic(index, "weight", Number(value || 0))}
+                          min={1}
+                          max={100}
+                        />
+                      ) : (
+                        <p className="rounded-xl bg-stone-50 p-3 text-xs text-zinc-600">
+                          Question distribution is controlled below
+                        </p>
+                      )}
                     </div>
                     <div className="mt-3">
                       <TextArea
                         label="Objective(s) — one per line"
                         value={topic.objective}
-                        onChange={(value) =>
-                          updateTopic(index, "objective", value)
-                        }
+                        onChange={(value) => updateTopic(index, "objective", value)}
                         rows={2}
                       />
                     </div>
+                    {topicAllocationMode === "custom" ? (
+                      <div className="mt-4 border-t border-zinc-200 pt-4">
+                        <p className="text-xs font-semibold text-emerald-950">Questions from this topic</p>
+                        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          {ITEM_TYPES.filter((item) => assessmentMode === "mixed" || item.value === assessmentMode).map((item) => (
+                            <NumberInput
+                              key={item.value}
+                              label={item.label}
+                              value={String(topic.itemCounts[item.value])}
+                              onChange={(value) => updateTopicItemCount(index, item.value, value)}
+                              min={0}
+                              max={60}
+                            />
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-zinc-600">
+                          Topic total: {Object.values(topic.itemCounts).reduce((sum, count) => sum + count, 0)} questions
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
-              <p
-                className={`mt-3 text-xs font-semibold ${
-                  topicWeightTotal === 100 ? "text-emerald-800" : "text-red-700"
-                }`}
-              >
-                Total topic weight: {topicWeightTotal}% {topicWeightTotal === 100 ? "✓" : "— must equal 100%"}
-              </p>
+              {topicAllocationMode === "automatic" ? (
+                <p className={`mt-3 text-xs font-semibold ${topicWeightTotal === 100 ? "text-emerald-800" : "text-red-700"}`}>
+                  Total topic weight: {topicWeightTotal}% {topicWeightTotal === 100 ? "✓" : "— must equal 100%"}
+                </p>
+              ) : (
+                <div className="mt-4 rounded-xl border border-emerald-900/15 bg-white p-4" role="status">
+                  <p className="text-sm font-semibold">Topic allocation totals</p>
+                  <p className="mt-1 text-xs text-zinc-600">Allocated: {Object.values(topicCountTotals).reduce((sum, count) => sum + count, 0)} of {totalItems || "0"} questions</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    {ITEM_TYPES.map((item) => (
+                      <span key={item.value}>{item.label}: {topicCountTotals[item.value]} / {effectiveCounts[item.value]}</span>
+                    ))}
+                  </div>
+                  {allocationProblems.length ? (
+                    <p className="mt-3 text-xs font-semibold text-red-700">{allocationProblems.join(" ")}</p>
+                  ) : (
+                    <p className="mt-3 text-xs font-semibold text-emerald-800">Each topic and question type matches the assessment blueprint. ✓</p>
+                  )}
+                </div>
+              )
             </div>
 
             {assessmentMode === "mixed" ? (
@@ -1255,14 +1360,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               ) : null}
               {markMode !== "automatic" ? (
                 <p className="mt-3 text-sm font-semibold" role="status">
-                  Allocated: {markMode === "by_type"
-                    ? Object.entries(assessmentMode === "mixed" ? counts : {
-                      objective: assessmentMode === "objective" ? Number(totalItems) : 0,
-                      subjective: assessmentMode === "subjective" ? Number(totalItems) : 0,
-                      critical_thinking: assessmentMode === "critical_thinking" ? Number(totalItems) : 0,
-                      project: assessmentMode === "project" ? Number(totalItems) : 0,
-                    }).reduce((sum, [key, count]) => sum + count * typeMarks[key as keyof AssessmentItemCounts], 0)
-                    : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + (mark || 0), 0)} of {totalMarks} marks
+                  Calculated total: {computedManualMarks} marks (automatically applied to the assessment)
                 </p>
               ) : null}
             </div>
