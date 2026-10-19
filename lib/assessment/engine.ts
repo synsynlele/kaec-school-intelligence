@@ -40,6 +40,9 @@ export type AssessmentRequest = {
   assessmentMode: AssessmentMode;
   totalItems: number;
   totalMarks: number | null;
+  markMode?: "automatic" | "by_type" | "per_question";
+  typeMarks?: AssessmentItemCounts;
+  questionMarks?: number[];
   durationMinutes: number | null;
   sourceLessonId: string | null;
   resourceIds: string[];
@@ -424,6 +427,10 @@ export function validateAssessment(
     evidence.push("Requested assessment item-type distribution is preserved.");
   }
 
+  for (const item of assessment.items) {
+    const requested = request.markMode === "by_type" ? request.typeMarks?.[item.itemType] : request.markMode === "per_question" ? request.questionMarks?.[item.position - 1] : undefined;
+    if (requested !== undefined && item.marks !== requested) add("teacher_mark_mismatch", `Question ${item.position} must have ${requested} marks as requested.`, item.position);
+  }
   const marks = assessment.items.reduce((sum, item) => sum + item.marks, 0);
   if (request.totalMarks !== null && Math.abs(marks - request.totalMarks) > 0.001) {
     add(
@@ -571,7 +578,7 @@ export function buildAssessmentPrompt(
   sourceLabels: string[],
 ) {
   const counts = expectedCounts(request);
-  return `${learningLevelGuidance(request.classLevel, request.ageRange)}\n\nCreate a teacher-ready assessment for ${request.subject}, ${request.classLevel} (${request.ageRange}).\n\nTitle: ${request.title}\nTopic: ${request.topic}\nObjective: ${request.objective}\nAssessment mode: ${request.assessmentMode}\nRequired total items: ${request.totalItems}\nRequired distribution: ${distributionText(counts)}\n${request.totalMarks === null ? "Choose a sensible total mark and ensure blueprint/item marks match." : `Required total marks: ${request.totalMarks}`}\n${request.durationMinutes === null ? "" : `Duration: ${request.durationMinutes} minutes`}\nPurpose/instructions from teacher: ${request.purpose || "Not supplied"}\nTeacher constraints: ${request.teacherInstructions || "None"}\nTeacher question-writing preferences: ${request.questionStyleInstructions || "Use short, direct, unambiguous age-appropriate language."}\nRespect these preferences when consistent with clarity, curriculum accuracy, the requested question counts and appropriate reasoning demand.\n\n${sourceLessonContext ? `SOURCE HQLS LESSON CONTEXT:\n${sourceLessonContext}\n\n` : ""}${sourceLabels.length ? `AUTHORISED SCHOOL SOURCES: ${sourceLabels.join(", ")}\nUse them materially and keep the assessment aligned to them.\n\n` : ""}Rules:\n1. Return exactly ${request.totalItems} ordered items positions 1..${request.totalItems}.\n2. Blueprint counts and marks must exactly match the actual items.\n3. Every item needs topic, objective, competency, difficulty, marks and expected evidence.\n4. Objective: >=4 options, correctAnswer must exactly equal one option, include teacher rationale.\n5. Subjective: require constructed response/application and a marking guide.\n6. Critical Thinking: use one KAEC experience type and require actual reasoning/choice/creation; no recall question disguised as critical thinking.\n7. Project: include observable deliverable and marking criteria.\n8. Student instructions must not expose answers or marking guidance.\n9. Keep language appropriate to the class and Nigerian/African realities where a realistic context is useful.`;
+  return `${learningLevelGuidance(request.classLevel, request.ageRange)}\n\nCreate a teacher-ready assessment for ${request.subject}, ${request.classLevel} (${request.ageRange}).\n\nTitle: ${request.title}\nTopic: ${request.topic}\nObjective: ${request.objective}\nAssessment mode: ${request.assessmentMode}\nRequired total items: ${request.totalItems}\nRequired distribution: ${distributionText(counts)}\nTeacher mark allocation: ${request.markMode === "by_type" && request.typeMarks ? `Give every item of each type exactly these marks: ${distributionText(request.typeMarks)}.` : request.markMode === "per_question" && request.questionMarks ? `Give questions 1 through ${request.totalItems} exactly these marks in order: ${request.questionMarks.join(", ")}.` : "Allocate marks based on difficulty and response requirements."}\n${request.totalMarks === null ? "Choose a sensible total mark and ensure blueprint/item marks match." : `Required total marks: ${request.totalMarks}`}\n${request.durationMinutes === null ? "" : `Duration: ${request.durationMinutes} minutes`}\nPurpose/instructions from teacher: ${request.purpose || "Not supplied"}\nTeacher constraints: ${request.teacherInstructions || "None"}\nTeacher question-writing preferences: ${request.questionStyleInstructions || "Use short, direct, unambiguous age-appropriate language."}\nRespect these preferences when consistent with clarity, curriculum accuracy, the requested question counts and appropriate reasoning demand.\n\n${sourceLessonContext ? `SOURCE HQLS LESSON CONTEXT:\n${sourceLessonContext}\n\n` : ""}${sourceLabels.length ? `AUTHORISED SCHOOL SOURCES: ${sourceLabels.join(", ")}\nUse them materially and keep the assessment aligned to them.\n\n` : ""}Rules:\n1. Return exactly ${request.totalItems} ordered items positions 1..${request.totalItems}.\n2. Blueprint counts and marks must exactly match the actual items.\n3. Every item needs topic, objective, competency, difficulty, marks and expected evidence.\n4. Objective: >=4 options, correctAnswer must exactly equal one option, include teacher rationale.\n5. Subjective: require constructed response/application and a marking guide.\n6. Critical Thinking: use one KAEC experience type and require actual reasoning/choice/creation; no recall question disguised as critical thinking.\n7. Project: include observable deliverable and marking criteria.\n8. Student instructions must not expose answers or marking guidance.\n9. Keep language appropriate to the class and Nigerian/African realities where a realistic context is useful.`;
 }
 
 export function buildAssessmentRepairPrompt(

@@ -349,6 +349,9 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("mixed");
   const [totalItems, setTotalItems] = useState("10");
   const [totalMarks, setTotalMarks] = useState("20");
+  const [markMode, setMarkMode] = useState<"automatic" | "by_type" | "per_question">("automatic");
+  const [typeMarks, setTypeMarks] = useState<AssessmentItemCounts>({ objective: 1, subjective: 5, critical_thinking: 10, project: 10 });
+  const [questionMarks, setQuestionMarks] = useState<number[]>([]);
   const [durationMinutes, setDurationMinutes] = useState("45");
   const [purpose, setPurpose] = useState("");
   const [teacherInstructions, setTeacherInstructions] = useState("");
@@ -699,6 +702,19 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
         throw new Error("Question counts must add up to the total number of questions.");
       }
 
+      const effectiveCounts = assessmentMode === "mixed" ? counts : {
+        objective: assessmentMode === "objective" ? Number(totalItems) : 0,
+        subjective: assessmentMode === "subjective" ? Number(totalItems) : 0,
+        critical_thinking: assessmentMode === "critical_thinking" ? Number(totalItems) : 0,
+        project: assessmentMode === "project" ? Number(totalItems) : 0,
+      };
+      const assigned = markMode === "by_type"
+        ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce((sum, key) => sum + effectiveCounts[key] * typeMarks[key], 0)
+        : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + mark, 0);
+      if (markMode === "per_question" && (questionMarks.length < Number(totalItems) || questionMarks.slice(0, Number(totalItems)).some((mark) => !Number.isInteger(mark) || mark < 1))) {
+        throw new Error("Enter a positive whole-number mark for every question.");
+      }
+      if (markMode !== "automatic" && assigned !== Number(totalMarks)) throw new Error(`Allocated marks total ${assigned}; update Total marks to match.`);
       const payload = await authenticatedPost({
         action: "generate",
         input: {
@@ -721,6 +737,9 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
           assessmentMode,
           totalItems: Number(totalItems),
           totalMarks: totalMarks ? Number(totalMarks) : null,
+          markMode,
+          typeMarks,
+          questionMarks: questionMarks.slice(0, Number(totalItems)),
           durationMinutes: durationMinutes ? Number(durationMinutes) : null,
           sourceLessonId: sourceLessonId || null,
           resourceIds: selectedResourceIds,
@@ -1216,6 +1235,37 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
               </p>
             )}
 
+            <div className="mt-5 rounded-2xl border border-zinc-200 bg-stone-50 p-4">
+              <SelectInput label="Who allocates marks?" value={markMode} onChange={(value) => setMarkMode(value as "automatic" | "by_type" | "per_question")} options={[
+                { value: "automatic", label: "KSI allocates marks automatically" },
+                { value: "by_type", label: "Teacher sets marks for each question type" },
+                { value: "per_question", label: "Teacher sets marks for every question" },
+              ]} />
+              {markMode === "by_type" ? (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {ITEM_TYPES.map((item) => <NumberInput key={item.value} label={item.label + " marks each"} value={String(typeMarks[item.value])} min={1} onChange={(value) => setTypeMarks((current) => ({ ...current, [item.value]: Number(value) }))} />)}
+                </div>
+              ) : null}
+              {markMode === "per_question" ? (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {Array.from({ length: Math.min(60, Math.max(0, Number(totalItems) || 0)) }, (_, index) => (
+                    <NumberInput key={index} label={`Question ${index + 1} marks`} value={String(questionMarks[index] ?? "")} min={1} onChange={(value) => setQuestionMarks((current) => { const next = [...current]; next[index] = Number(value); return next; })} />
+                  ))}
+                </div>
+              ) : null}
+              {markMode !== "automatic" ? (
+                <p className="mt-3 text-sm font-semibold" role="status">
+                  Allocated: {markMode === "by_type"
+                    ? Object.entries(assessmentMode === "mixed" ? counts : {
+                      objective: assessmentMode === "objective" ? Number(totalItems) : 0,
+                      subjective: assessmentMode === "subjective" ? Number(totalItems) : 0,
+                      critical_thinking: assessmentMode === "critical_thinking" ? Number(totalItems) : 0,
+                      project: assessmentMode === "project" ? Number(totalItems) : 0,
+                    }).reduce((sum, [key, count]) => sum + count * typeMarks[key as keyof AssessmentItemCounts], 0)
+                    : questionMarks.slice(0, Number(totalItems)).reduce((sum, mark) => sum + (mark || 0), 0)} of {totalMarks} marks
+                </p>
+              ) : null}
+            </div>
             <div className="mt-5 rounded-2xl border border-emerald-900/20 bg-emerald-50/40 p-4">
               <TextArea
                 label="How exactly should KSI write your questions? (optional)"
