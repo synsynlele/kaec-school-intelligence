@@ -10,12 +10,9 @@ import {
 } from "@/lib/assessment/engine";
 import {
   expectedQuestionCounts,
-  topicAllocationIssues,
-} from "@/lib/assessment/topic-allocation";
-import {
-  expectedQuestionCounts,
   marksTotalForActiveTypes,
   parseActiveTypeMarks,
+  topicAllocationIssues,
 } from "@/lib/assessment/topic-allocation";
 import {
   ASSESSMENT_ENGINE_VERSION_V11,
