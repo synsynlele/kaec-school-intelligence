@@ -9,6 +9,10 @@ import {
   type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
 import {
+  expectedQuestionCounts,
+  topicAllocationIssues,
+} from "@/lib/assessment/topic-allocation";
+import {
   ASSESSMENT_ENGINE_VERSION_V11,
   ASSESSMENT_KINDS,
   ASSESSMENT_OVERALL_DIFFICULTIES,
@@ -203,7 +207,12 @@ function parseTopics(
       if (!Number.isFinite(weight) || weight <= 0 || weight > 100) {
         throw new Error(`Topic ${index + 1} weight must be between 1 and 100.`);
       }
-      return { topic, objectives, weight };
+      return {
+        topic,
+        objectives,
+        weight,
+        ...(row.itemCounts !== undefined ? { itemCounts: parseCounts(row.itemCounts) } : {}),
+      };
     });
   }
 
@@ -275,6 +284,22 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     }
   }
 
+  const markMode = input.markMode === "by_type" || input.markMode === "per_question" ? input.markMode : "automatic";
+  const typeMarks = markMode === "by_type" ? parseCounts(input.typeMarks) : undefined;
+  const questionMarks = markMode === "per_question" && Array.isArray(input.questionMarks) ? input.questionMarks : undefined;
+  const effectiveCounts = assessmentMode === "mixed" ? itemCounts : {
+    objective: assessmentMode === "objective" ? totalItems : 0,
+    subjective: assessmentMode === "subjective" ? totalItems : 0,
+    critical_thinking: assessmentMode === "critical_thinking" ? totalItems : 0,
+    project: assessmentMode === "project" ? totalItems : 0,
+  };
+  if (typeMarks && Object.values(typeMarks).some((mark) => mark < 1 || mark > 100)) throw new Error("Marks per type must be between 1 and 100.");
+  if (markMode === "per_question" && (!questionMarks || questionMarks.length !== totalItems || questionMarks.some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100))) throw new Error("Enter 1 to 100 marks for each question.");
+  const assigned = typeMarks
+    ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce((sum, key) => sum + effectiveCounts[key] * typeMarks[key], 0)
+    : questionMarks?.reduce((sum, mark) => sum + mark, 0);
+  if (assigned !== undefined && assigned !== optionalPositiveNumber(input.totalMarks, "Total marks")) throw new Error("Allocated marks must match Total marks.");
+
   const resourceIds = uniqueStrings(input.resourceIds);
   if (resourceIds.length > MAX_SELECTED_RESOURCES) {
     throw new Error(`Select no more than ${MAX_SELECTED_RESOURCES} resources.`);
@@ -287,6 +312,17 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
   const academicSession = optionalString(input.academicSession) ?? "";
 
   const topics = parseTopics(input.topics, input.topic, input.objective);
+  if (input.topicAllocationMode !== undefined &&
+      input.topicAllocationMode !== "automatic" &&
+      input.topicAllocationMode !== "custom") {
+    throw new Error("Select a valid topic question distribution.");
+  }
+  const topicAllocationMode = input.topicAllocationMode === "custom" ? "custom" : "automatic";
+  if (topicAllocationMode === "custom") {
+    const required = expectedQuestionCounts(assessmentMode, totalItems, itemCounts);
+    const problems = topicAllocationIssues(topics, required, totalItems);
+    if (problems.length) throw new Error(problems.join(" "));
+  }
   const combinedTopic = topics.map((entry) => entry.topic).join("; ");
   const combinedObjective = topics
     .flatMap((entry) => entry.objectives)
@@ -307,10 +343,14 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     assessmentKind,
     overallDifficulty,
     topics,
+    topicAllocationMode,
     term,
     academicSession,
     totalItems,
     totalMarks: optionalPositiveNumber(input.totalMarks, "Total marks"),
+    markMode,
+    typeMarks,
+    questionMarks,
     durationMinutes: optionalPositiveNumber(input.durationMinutes, "Duration"),
     sourceLessonId: optionalString(input.sourceLessonId),
     resourceIds,
@@ -320,6 +360,10 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
         ? input.teacherInstructions.trim()
         : "",
     itemCounts,
+    questionStyleInstructions:
+      typeof input.questionStyleInstructions === "string"
+        ? input.questionStyleInstructions.trim().slice(0, 3000)
+        : "",
   };
 }
 
@@ -827,6 +871,11 @@ async function handleGenerate(
         assessmentKind: input.assessmentKind,
         overallDifficulty: input.overallDifficulty,
         requestedTopics: input.topics,
+        topicAllocationMode: input.topicAllocationMode,
+        markMode: input.markMode,
+        typeMarks: input.typeMarks,
+        questionMarks: input.questionMarks,
+        questionStyleInstructions: input.questionStyleInstructions,
         term: input.term,
         academicSession: input.academicSession,
         qualitySummary,
@@ -927,6 +976,11 @@ async function handleSaveEdits(
         : "",
     title: edited.title,
     topics,
+    topicAllocationMode: blueprint.topicAllocationMode ?? "automatic",
+    markMode: blueprint.markMode ?? "automatic",
+    typeMarks: blueprint.typeMarks,
+    questionMarks: blueprint.questionMarks,
+    questionStyleInstructions: blueprint.questionStyleInstructions,
     assessmentKind:
       typeof blueprint.assessmentKind === "string"
         ? blueprint.assessmentKind
@@ -985,6 +1039,11 @@ async function handleSaveEdits(
         assessmentKind: request.assessmentKind,
         overallDifficulty: request.overallDifficulty,
         requestedTopics: request.topics,
+        topicAllocationMode: request.topicAllocationMode,
+        markMode: request.markMode,
+        typeMarks: request.typeMarks,
+        questionMarks: request.questionMarks,
+        questionStyleInstructions: request.questionStyleInstructions,
         qualitySummary,
       } as Json,
       engine_version: ASSESSMENT_ENGINE_VERSION_V11,

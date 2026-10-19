@@ -4,13 +4,15 @@ import {
   buildAssessmentSystemInstruction,
   validateAssessment,
   type AssessmentRequest,
+  type AssessmentItemCounts,
   type AssessmentValidation,
   type GeneratedAssessment,
   type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
+import { QUESTION_FORMAT_KEYS } from "@/lib/assessment/topic-allocation";
 
 export const ASSESSMENT_ENGINE_VERSION_V11 = "ASSESSMENT_ENGINE_v1.1";
-export const ASSESSMENT_PROMPT_VERSION_V11 = "ASSESSMENT_PROMPT_v1.3";
+export const ASSESSMENT_PROMPT_VERSION_V11 = "ASSESSMENT_PROMPT_v1.5";
 export const ASSESSMENT_QUALITY_STANDARD_VERSION = "KAEC_ASSESSMENT_QUALITY_v1.0";
 
 export const ASSESSMENT_KINDS = [
@@ -36,12 +38,14 @@ export type AssessmentTopicSpec = {
   topic: string;
   objectives: string[];
   weight: number;
+  itemCounts?: AssessmentItemCounts;
 };
 
 export type WorldClassAssessmentRequest = AssessmentRequest & {
   assessmentKind: AssessmentKind;
   overallDifficulty: AssessmentOverallDifficulty;
   topics: AssessmentTopicSpec[];
+  topicAllocationMode?: "automatic" | "custom";
   term: string;
   academicSession: string;
 };
@@ -263,6 +267,15 @@ function topicsText(topics: AssessmentTopicSpec[]) {
     .join("\n");
 }
 
+function topicAllocationText(request: WorldClassAssessmentRequest) {
+  if (request.topicAllocationMode !== "custom") return "Question allocation: distribute across topics according to topic emphasis."; 
+  const lines = request.topics.map((topic) => {
+    const counts = topic.itemCounts;
+    if (!counts) return "";
+    return `${topic.topic}: objective ${counts.objective}; subjective ${counts.subjective}; critical thinking ${counts.critical_thinking}; project ${counts.project}.`;
+  });
+  return ["TEACHER-LOCKED TOPIC/FORMAT COUNTS (EXACT)", ...lines, "Generate exactly these counts for each topic, using the exact topic label on each item. Do not move question formats between topics. Topic percentage weights are advisory where they conflict with exact counts or required marks. The question mix and marks allocated by the teacher take precedence."].join("\n");
+}
 export function buildWorldClassAssessmentSystemInstruction() {
   return `${buildAssessmentSystemInstruction()}\n\nYou are also operating under KAEC Assessment Quality Standard v1.0. Design for validity, reliability, fairness, accessibility and manageability. Measure the intended learning rather than irrelevant literacy, cultural familiarity or trick-taking skill. Avoid ambiguous wording, duplicate questions, implausible distractors, stereotypes, unnecessary emotional barriers and hidden requirements. Match marks to the evidence demanded. Across the assessment, use an appropriate progression from knowledge/understanding into application, analysis/reasoning and, where suitable, evaluation/creation. Do not allow recall to dominate merely because objective items are requested. The assessment type, topic weights and overall difficulty are binding design constraints. Every Critical Thinking prompt must make the learner-facing reasoning demand explicit in the prompt itself and the expected evidence/marking guide must show what reasoning a teacher should look for.`;
 }
@@ -274,7 +287,7 @@ export function buildWorldClassAssessmentPrompt(
 ) {
   const base = buildAssessmentPrompt(request, sourceLessonContext, sourceLabels);
   const target = worldClassDifficultyTarget(request.overallDifficulty);
-  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must be EXACTLY one of the requested topic labels, preserving that label verbatim. Do not merge topic labels and do not use broader or narrower aliases. Every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.\n20. For every Critical Thinking item, the STUDENT PROMPT itself must explicitly require an observable reasoning act such as explaining/justifying, comparing/evaluating, choosing/deciding, proposing/recommending, solving, identifying an underlying problem, or creating/designing. Do not hide the reasoning demand only in expectedEvidence or markingGuide. The expectedEvidence and markingGuide must also identify the reasoning evidence the teacher should credit.`;
+  return `${base}\n\nWORLD-CLASS ASSESSMENT BLUEPRINT REQUIREMENTS\nAssessment type: ${request.assessmentKind.toUpperCase()}\nAssessment-type intent: ${assessmentKindGuidance(request.assessmentKind)}\nOverall difficulty: ${request.overallDifficulty.toUpperCase()}\nTarget difficulty profile (approximate item share): easy ${target.easy}%, moderate ${target.moderate}%, challenging ${target.challenging}%.\n\nMULTI-TOPIC COVERAGE\n${topicsText(request.topics)}\n${topicAllocationText(request)}\n\nAdditional rules:\n10. Every requested topic must be represented by at least one meaningful item. Topic emphasis should follow the requested weights primarily by marks, not by superficial mentions.\n11. Every item.topic must be EXACTLY one of the requested topic labels, preserving that label verbatim. Do not merge topic labels and do not use broader or narrower aliases. Every item.objective must be assessable and connected to that topic's supplied objectives.\n12. Use a deliberate cognitive-demand progression. Even objective questions can assess application or reasoning; do not make the paper a memory dump.\n13. Avoid duplicate or near-duplicate prompts and avoid testing the same evidence repeatedly unless deliberate spiral evidence is necessary.\n14. Objective options must be mutually distinct, grammatically compatible with the stem and free from clueing or trick wording.\n15. Marking guides must describe observable evidence sufficiently clearly that another competent teacher could mark consistently.\n16. Use plain, age-appropriate language. Every question must be easy to understand with only one reasonable interpretation. Avoid confusing pronouns, unnecessary jargon, double negatives and hidden requirements. Preserve genuine intellectual challenge. Respect teacher wording preferences when compatible with these standards. Do not introduce irrelevant cultural, financial, disability, gender or emotional barriers unrelated to the learning being assessed.\n17. Keep workload realistic for the stated duration and assessment type.\n18. If assessment type is PROJECT, include at least one project item with an observable deliverable and explicit criteria.\n19. In blueprint.topicsAndObjectives, include every requested topic and its objectives; in blueprint.difficultyDistribution, make the final counts consistent with the actual items.\n20. For every Critical Thinking item, the STUDENT PROMPT itself must explicitly require an observable reasoning act such as explaining/justifying, comparing/evaluating, choosing/deciding, proposing/recommending, solving, identifying an underlying problem, or creating/designing. Do not hide the reasoning demand only in expectedEvidence or markingGuide. The expectedEvidence and markingGuide must also identify the reasoning evidence the teacher should credit.`;
 }
 
 export function buildWorldClassAssessmentRepairPrompt(
@@ -389,7 +402,9 @@ export function validateWorldClassAssessment(
       continue;
     }
     const tolerance = Math.max(15, entry.requestedWeight * 0.35);
-    if (Math.abs(entry.markShare - entry.requestedWeight) > tolerance) {
+    // Exact teacher-selected topic-by-format counts override approximate weight distribution.
+    if (request.topicAllocationMode !== "custom" &&
+        Math.abs(entry.markShare - entry.requestedWeight) > tolerance) {
       add(
         "topic_weight_misaligned",
         `Topic \"${entry.topic}\" was weighted at ${entry.requestedWeight}% but receives about ${Math.round(entry.markShare)}% of marks.`,
@@ -398,6 +413,23 @@ export function validateWorldClassAssessment(
   }
   if (coverage.every((entry) => entry.itemCount > 0)) {
     evidence.push("All requested topics are represented in the assessment.");
+  }
+  if (request.topicAllocationMode === "custom") {
+    for (const topic of request.topics) {
+      if (!topic.itemCounts) continue;
+      const items = assessment.items.filter((item) => topicMatches(item.topic, topic.topic));
+      for (const key of QUESTION_FORMAT_KEYS) {
+        const actual = items.filter((item) => item.itemType === key).length;
+        const expected = topic.itemCounts[key];
+        if (actual !== expected) {
+          add("topic_question_distribution_mismatch",
+            `Topic "${topic.topic}" needs exactly ${expected} ${key.replace("_", " ")} questions, but received ${actual}.`);
+        }
+      }
+    }
+    if (!violations.some((entry) => entry.code === "topic_question_distribution_mismatch")) {
+      evidence.push("Teacher-selected topic and question-format counts are preserved exactly.");
+    }
   }
 
   const topicsInBlueprint = assessment.blueprint.topicsAndObjectives
