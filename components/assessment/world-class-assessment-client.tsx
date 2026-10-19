@@ -352,6 +352,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [durationMinutes, setDurationMinutes] = useState("45");
   const [purpose, setPurpose] = useState("");
   const [teacherInstructions, setTeacherInstructions] = useState("");
+  const [questionStyleInstructions, setQuestionStyleInstructions] = useState("");
   const [sourceLessonId, setSourceLessonId] = useState("");
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [topics, setTopics] = useState<TopicDraft[]>([
@@ -694,6 +695,9 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
       if (topics.some((topic) => !topic.topic.trim())) {
         throw new Error("Every topic row needs a topic name.");
       }
+      if (assessmentMode === "mixed" && Object.values(counts).reduce((sum, count) => sum + count, 0) !== Number(totalItems)) {
+        throw new Error("Question counts must add up to the total number of questions.");
+      }
 
       const payload = await authenticatedPost({
         action: "generate",
@@ -722,6 +726,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
           resourceIds: selectedResourceIds,
           purpose,
           teacherInstructions,
+          questionStyleInstructions,
           itemCounts: counts,
         },
       });
@@ -1185,9 +1190,9 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
 
             {assessmentMode === "mixed" ? (
               <div className="mt-5 rounded-2xl border border-zinc-200 bg-stone-50 p-4">
-                <p className="text-sm font-semibold">Question-format distribution</p>
+                <p className="text-sm font-semibold">Choose how many questions of each type</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  These four numbers must add up to the total number of items.
+                  Choose the exact number of objective, subjective, critical-thinking and project questions. Zero is allowed.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {ITEM_TYPES.map((item) => (
@@ -1200,8 +1205,28 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                     />
                   ))}
                 </div>
+                <p role="status" className={"mt-3 text-sm font-semibold " + (Object.values(counts).reduce((sum, count) => sum + count, 0) === Number(totalItems) ? "text-emerald-800" : "text-red-700")}>
+                  Selected: {Object.values(counts).reduce((sum, count) => sum + count, 0)} of {totalItems || "0"} questions
+                  {Object.values(counts).reduce((sum, count) => sum + count, 0) === Number(totalItems) ? " ✓" : " — adjust the counts"}
+                </p>
               </div>
-            ) : null}
+            ) : (
+              <p className="mt-5 rounded-xl bg-stone-50 p-4 text-sm text-zinc-700">
+                All {totalItems || "0"} questions will use the selected format. Choose Mixed question formats to set separate counts.
+              </p>
+            )}
+
+            <div className="mt-5 rounded-2xl border border-emerald-900/20 bg-emerald-50/40 p-4">
+              <TextArea
+                label="How exactly should KSI write your questions? (optional)"
+                value={questionStyleInstructions}
+                onChange={setQuestionStyleInstructions}
+                rows={4}
+              />
+              <p className="mt-2 text-xs leading-5 text-zinc-600">
+                Example: Use short everyday sentences. Ask subjective questions to explain with one familiar example. Give critical-thinking questions a simple real-life situation and ask learners to explain their choice. KSI always aims for clear, unambiguous wording.
+              </p>
+            </div>
 
             <details className="mt-5 rounded-2xl border border-zinc-200 bg-stone-50 p-4">
               <summary className="cursor-pointer text-sm font-semibold text-zinc-800">

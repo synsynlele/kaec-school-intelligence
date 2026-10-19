@@ -320,6 +320,10 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
         ? input.teacherInstructions.trim()
         : "",
     itemCounts,
+    questionStyleInstructions:
+      typeof input.questionStyleInstructions === "string"
+        ? input.questionStyleInstructions.trim().slice(0, 3000)
+        : "",
   };
 }
 
