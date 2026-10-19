@@ -730,7 +730,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     setError(null);
     setNotice(null);
     try {
-      if (topicWeightTotal !== 100) {
+      if (topicAllocationMode === "automatic" && topicWeightTotal !== 100) {
         throw new Error(
           `Topic weights must add up to 100%. Current total: ${topicWeightTotal}%.`,
         );
@@ -1207,7 +1207,10 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                 <SelectInput
                   label="Who decides which topic gets each question type?"
                   value={topicAllocationMode}
-                  onChange={(value) => setTopicAllocationMode(value as "automatic" | "custom")}
+                  onChange={(value) => {
+                    setTopicAllocationMode(value as "automatic" | "custom");
+                    if (value === "custom") setTopics((current) => rebalanceTopics(current));
+                  }}
                   options={[
                     { value: "automatic", label: "Let KSI distribute questions by topic emphasis" },
                     { value: "custom", label: "I will set question counts and formats for every topic" },
@@ -1309,7 +1312,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                     <p className="mt-3 text-xs font-semibold text-emerald-800">Each topic and question type matches the assessment blueprint. ✓</p>
                   )}
                 </div>
-              )
+              )}
             </div>
 
             {assessmentMode === "mixed" ? (
