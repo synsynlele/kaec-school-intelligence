@@ -28,6 +28,11 @@ import {
   ZERO_TOPIC_QUESTION_COUNTS,
 } from "@/lib/assessment/topic-allocation";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
+import {
+  MAX_ASSESSMENT_SOURCE_LESSONS,
+  assertCompatibleHqlsSources,
+  reconcileHqlsTopics,
+} from "@/lib/assessment/source-lessons";
 
 const ITEM_TYPES = [
   { value: "objective", label: "Objective" },
@@ -126,6 +131,7 @@ type TopicDraft = {
   objective: string;
   weight: number;
   itemCounts: AssessmentItemCounts;
+  sourceLessonId?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -239,6 +245,15 @@ function rebalanceTopics(topics: TopicDraft[]) {
     remainder -= extra;
     return { ...topic, weight: base + extra };
   });
+}
+
+function requestedWorkflowLessonIds() {
+  if (typeof window === "undefined") return [];
+  const search = new URLSearchParams(window.location.search);
+  const multiple = search.get("lessons");
+  if (multiple) return [...new Set(multiple.split(",").map((id) => id.trim()).filter(Boolean))];
+  const single = search.get("lesson")?.trim();
+  return single ? [single] : [];
 }
 
 function requestedWorkflowId(key: "lesson" | "assessment") {
@@ -366,7 +381,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [teacherInstructions, setTeacherInstructions] = useState("");
   const [questionStyleInstructions, setQuestionStyleInstructions] = useState("");
   const [topicAllocationMode, setTopicAllocationMode] = useState<"automatic" | "custom">("automatic");
-  const [sourceLessonId, setSourceLessonId] = useState("");
+  const [sourceLessonIds, setSourceLessonIds] = useState<string[]>([]);
+  const [lessonSearch, setLessonSearch] = useState("");
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [topics, setTopics] = useState<TopicDraft[]>([
     { topic: "", objective: "", weight: 100, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } },
@@ -412,6 +428,19 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     () => topics.reduce((sum, topic) => sum + Number(topic.weight || 0), 0),
     [topics],
   );
+  const firstSelectedLesson = useMemo(
+    () => state?.lessons.find((lesson) => lesson.id === sourceLessonIds[0]) ?? null,
+    [state?.lessons, sourceLessonIds],
+  );
+  const visibleSourceLessons = useMemo(() => {
+    const query = lessonSearch.trim().toLowerCase();
+    return (state?.lessons ?? []).filter((lesson) =>
+      (!firstSelectedLesson ||
+        (lesson.subject_id === firstSelectedLesson.subject_id &&
+         lesson.class_id === firstSelectedLesson.class_id)) &&
+      (!query || (lesson.topic + " " + lesson.title).toLowerCase().includes(query))
+    );
+  }, [state?.lessons, firstSelectedLesson, lessonSearch]);
   const effectiveCounts = useMemo(
     () => expectedQuestionCounts(assessmentMode, Number(totalItems), counts),
     [assessmentMode, totalItems, counts],
@@ -551,18 +580,20 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
           return;
         }
 
-        const lessonId = requestedWorkflowId("lesson");
-        if (!lessonId) return;
-        if (!next.lessons.some((lesson) => lesson.id === lessonId)) {
-          setError(
-            "The linked HQLS lesson is not available as a validated assessment source in the active workspace.",
+        const lessonIds = requestedWorkflowLessonIds();
+        if (!lessonIds.length) return;
+        try {
+          applySourceLessonsFromState(next, lessonIds);
+          setNotice(
+            "Selected HQLS topics loaded. Review question counts, topic weights and marks before generating.",
           );
-          return;
+        } catch (caught) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "The linked HQLS lessons are not available in this school.",
+          );
         }
-        applySourceLessonFromState(next, lessonId);
-        setNotice(
-          "Validated HQLS lesson loaded. Review the assessment blueprint, then generate the assessment.",
-        );
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -618,52 +649,67 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     return payload;
   }
 
-  function applySourceLessonFromState(
+  function applySourceLessonsFromState(
     currentState: WorkspaceState,
-    lessonId: string,
+    lessonIds: string[],
   ) {
-    setSourceLessonId(lessonId);
-    const lesson = currentState.lessons.find((item) => item.id === lessonId);
-    if (!lesson) return false;
-    setTopics([{ topic: lesson.topic, objective: lesson.objective, weight: 100, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } }]);
-    setTitle(`${lesson.title} — Assessment`);
-    if (lesson.subject_id) {
-      const match = currentState.subjects.find(
-        (item) => item.id === lesson.subject_id,
+    const selected = lessonIds.map((id) => {
+      const lesson = currentState.lessons.find((item) => item.id === id);
+      if (!lesson) throw new Error("A selected HQLS lesson is unavailable or not validated in this school.");
+      return lesson;
+    });
+    assertCompatibleHqlsSources(selected);
+    const mergedTopics = reconcileHqlsTopics(topics, selected);
+    setSourceLessonIds(lessonIds);
+    setTopics(mergedTopics);
+    if (selected.length) {
+      const first = selected[0];
+      setTitle((current) =>
+        !current.trim() || current.endsWith(" — Assessment") || / — [0-9]+ HQLS topics Assessment$/.test(current)
+          ? selected.length === 1
+            ? first.title + " — Assessment"
+            : (currentState.subjects.find((item) => item.id === first.subject_id)?.name ?? "Multiple topics") + " — " + selected.length + " HQLS topics Assessment"
+          : current,
       );
-      if (match) setSubject(match.name);
-    }
-    if (lesson.class_id) {
-      const match = currentState.classes.find(
-        (item) => item.id === lesson.class_id,
-      );
-      if (match) {
-        setClassLevel(match.name);
-        setAgeRange(match.age_range ?? lesson.age_range ?? "");
+      if (first.subject_id) {
+        const match = currentState.subjects.find((item) => item.id === first.subject_id);
+        if (match) setSubject(match.name);
+      }
+      if (first.class_id) {
+        const match = currentState.classes.find((item) => item.id === first.class_id);
+        if (match) {
+          setClassLevel(match.name);
+          setAgeRange(match.age_range ?? first.age_range ?? "");
+        }
       }
     }
-    return true;
   }
 
-  function applySourceLesson(lessonId: string) {
+  function applySourceLessons(lessonIds: string[]) {
     setError(null);
     setNotice(null);
-    if (!lessonId) {
-      setSourceLessonId("");
-      router.replace("/assessment", { scroll: false });
-      return;
+    if (!state) return;
+    try {
+      applySourceLessonsFromState(state, lessonIds);
+      const query = lessonIds.length === 1
+        ? "?lesson=" + encodeURIComponent(lessonIds[0])
+        : lessonIds.length
+          ? "?lessons=" + encodeURIComponent(lessonIds.join(","))
+          : "";
+      router.replace("/assessment" + query, { scroll: false });
+      setNotice(lessonIds.length
+        ? lessonIds.length + " validated HQLS lesson(s) selected. Each topic is now in the assessment blueprint."
+        : "HQLS sources cleared. You can enter assessment topics directly.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not select those HQLS lessons.");
     }
-    if (!state || !applySourceLessonFromState(state, lessonId)) {
-      setError(
-        "The selected HQLS lesson is not available as a validated assessment source.",
-      );
-      return;
-    }
-    router.replace(`/assessment?lesson=${encodeURIComponent(lessonId)}`, {
-      scroll: false,
-    });
-    setNotice(
-      "Validated HQLS lesson loaded as the assessment source. Review the blueprint before generating.",
+  }
+
+  function toggleSourceLesson(lessonId: string) {
+    applySourceLessons(
+      sourceLessonIds.includes(lessonId)
+        ? sourceLessonIds.filter((id) => id !== lessonId)
+        : [...sourceLessonIds, lessonId],
     );
   }
 
@@ -681,6 +727,11 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   }
 
   function removeTopic(index: number) {
+    const lessonId = topics[index]?.sourceLessonId;
+    if (lessonId) {
+      applySourceLessons(sourceLessonIds.filter((id) => id !== lessonId));
+      return;
+    }
     setTopics((current) => {
       if (current.length === 1) return current;
       return rebalanceTopics(current.filter((_, itemIndex) => itemIndex !== index));
@@ -741,6 +792,9 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
       if (topics.some((topic) => !topic.topic.trim())) {
         throw new Error("Every topic row needs a topic name.");
       }
+      if (topics.length > Number(totalItems)) {
+        throw new Error("Set at least one question for each selected topic, or remove extra topics.");
+      }
       if (assessmentMode === "mixed" && Object.values(counts).reduce((sum, count) => sum + count, 0) !== Number(totalItems)) {
         throw new Error("Question counts must add up to the total number of questions.");
       }
@@ -790,7 +844,8 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
             ? questionMarks.slice(0, Number(totalItems))
             : undefined,
           durationMinutes: durationMinutes ? Number(durationMinutes) : null,
-          sourceLessonId: sourceLessonId || null,
+          sourceLessonId: sourceLessonIds[0] ?? null,
+          sourceLessonIds,
           resourceIds: selectedResourceIds,
           purpose,
           teacherInstructions,
@@ -1068,18 +1123,68 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
             </p>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
-              <SelectInput
-                label="Source HQLS lesson (optional)"
-                value={sourceLessonId}
-                onChange={applySourceLesson}
-                options={[
-                  { value: "", label: "Create from direct context" },
-                  ...state.lessons.map((lesson) => ({
-                    value: lesson.id,
-                    label: lesson.title,
-                  })),
-                ]}
-              />
+              <div className="sm:col-span-2 rounded-2xl border border-emerald-900/15 bg-emerald-50/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-950">
+                      Select HQLS lesson topics (optional)
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-emerald-900/80">
+                      Select several validated lessons from the same subject and class. Each selected topic becomes a separate assessment topic with its own objectives, weight and question allocation.
+                    </p>
+                  </div>
+                  {sourceLessonIds.length ? (
+                    <button
+                      type="button"
+                      onClick={() => applySourceLessons([])}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800"
+                    >
+                      Clear HQLS selections
+                    </button>
+                  ) : null}
+                </div>
+                <p role="status" className="mt-3 text-xs font-semibold text-emerald-900">
+                  {sourceLessonIds.length
+                    ? sourceLessonIds.length + " of " + MAX_ASSESSMENT_SOURCE_LESSONS + " HQLS topics selected"
+                    : "No lessons selected — create from direct context below, or select HQLS lessons."}
+                </p>
+                <input
+                  type="search"
+                  aria-label="Search saved HQLS lessons by topic or title"
+                  placeholder="Search saved HQLS lessons by topic or title…"
+                  value={lessonSearch}
+                  onChange={(event) => setLessonSearch(event.target.value)}
+                  className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-700"
+                />
+                <div className="mt-3 max-h-60 space-y-2 overflow-y-auto" role="group" aria-label="Available HQLS source lessons">
+                  {visibleSourceLessons.length ? visibleSourceLessons.map((lesson) => {
+                    const selected = sourceLessonIds.includes(lesson.id);
+                    const subjectLabel = state.subjects.find((item) => item.id === lesson.subject_id)?.name ?? "Unassigned subject";
+                    const classLabel = state.classes.find((item) => item.id === lesson.class_id)?.name ?? "Unassigned class";
+                    return (
+                      <label key={lesson.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleSourceLesson(lesson.id)}
+                          className="mt-1 h-4 w-4 shrink-0 accent-emerald-900"
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-zinc-900">{lesson.topic}</span>
+                          <span className="block text-xs text-zinc-600">{lesson.title}</span>
+                          <span className="mt-1 block text-xs text-zinc-500">{subjectLabel} · {classLabel}</span>
+                        </span>
+                      </label>
+                    );
+                  }) : (
+                    <p className="rounded-xl bg-white p-3 text-xs text-zinc-600">
+                      {state.lessons.length
+                        ? "No matching validated lessons in this subject/class. Clear selections to switch subject or class."
+                        : "No validated HQLS lessons are available yet. You can enter topics directly below."}
+                    </p>
+                  )}
+                </div>
+              </div>
               <TextInput
                 label="Assessment title"
                 value={title}
@@ -1093,6 +1198,10 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                   const selected = state.subjects.find(
                     (item) => item.id === value,
                   );
+                  if (sourceLessonIds.length && selected?.id !== firstSelectedLesson?.subject_id) {
+                    setError("Clear the selected HQLS lessons before changing the assessment subject.");
+                    return;
+                  }
                   setSubject(selected?.name ?? "");
                 }}
                 options={[
@@ -1110,6 +1219,10 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                   const selected = state.classes.find(
                     (item) => item.id === value,
                   );
+                  if (sourceLessonIds.length && selected?.id !== firstSelectedLesson?.class_id) {
+                    setError("Clear the selected HQLS lessons before changing the assessment class.");
+                    return;
+                  }
                   setClassLevel(selected?.name ?? "");
                   setAgeRange(selected?.age_range ?? "");
                 }}
@@ -1249,12 +1362,21 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
                       ) : null}
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_110px]">
-                      <TextInput
-                        label="Topic"
-                        value={topic.topic}
-                        onChange={(value) => updateTopic(index, "topic", value)}
-                        required
-                      />
+                      {topic.sourceLessonId ? (
+                        <div className="grid gap-1.5 text-sm">
+                          <span className="font-medium text-zinc-800">Topic (from validated HQLS lesson)</span>
+                          <p className="rounded-xl border border-zinc-200 bg-emerald-50 px-3 py-2.5 font-medium text-emerald-950">
+                            {topic.topic}
+                          </p>
+                        </div>
+                      ) : (
+                        <TextInput
+                          label="Topic"
+                          value={topic.topic}
+                          onChange={(value) => updateTopic(index, "topic", value)}
+                          required
+                        />
+                      )}
                       {topicAllocationMode === "automatic" ? (
                         <NumberInput
                           label="Weight %"

@@ -121,7 +121,9 @@ const client = await text(
 );
 for (const required of [
   "/api/assessment-v11",
-  "Source HQLS lesson",
+  "Select HQLS lesson topics (optional)",
+  "toggleSourceLesson",
+  "sourceLessonIds",
   "Assessment type",
   "Overall difficulty",
   "Topics, objectives and weighting",

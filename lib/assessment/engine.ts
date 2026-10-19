@@ -46,6 +46,7 @@ export type AssessmentRequest = {
   questionMarks?: number[];
   durationMinutes: number | null;
   sourceLessonId: string | null;
+  sourceLessonIds?: string[];
   resourceIds: string[];
   purpose: string;
   teacherInstructions: string;
