@@ -41,6 +41,10 @@ import { getSupabasePublicEnv } from "@/lib/env";
 import { KSI_RESOURCE_BUCKET } from "@/lib/resources/storage";
 import type { Database, KsiSupabaseClient } from "@/lib/supabase/database";
 import type { Json } from "@/lib/supabase/database.types";
+import {
+  assertCompatibleHqlsSources,
+  parseAssessmentSourceLessonIds,
+} from "@/lib/assessment/source-lessons";
 
 export const runtime = "nodejs";
 
@@ -310,6 +314,10 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
   const academicSession = optionalString(input.academicSession) ?? "";
 
   const topics = parseTopics(input.topics, input.topic, input.objective);
+  if (topics.length > totalItems) {
+    throw new Error("Select at least one question for each assessment topic.");
+  }
+  const sourceLessonIds = parseAssessmentSourceLessonIds(input.sourceLessonIds, input.sourceLessonId);
   if (input.topicAllocationMode !== undefined &&
       input.topicAllocationMode !== "automatic" &&
       input.topicAllocationMode !== "custom") {
@@ -350,7 +358,8 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
     typeMarks,
     questionMarks,
     durationMinutes: optionalPositiveNumber(input.durationMinutes, "Duration"),
-    sourceLessonId: optionalString(input.sourceLessonId),
+    sourceLessonId: sourceLessonIds[0] ?? null,
+    sourceLessonIds,
     resourceIds,
     purpose: typeof input.purpose === "string" ? input.purpose.trim() : "",
     teacherInstructions:
@@ -462,47 +471,83 @@ async function enforceAiRateLimit(
   }
 }
 
-async function loadSourceLesson(
+async function loadSourceLessons(
   supabase: KsiSupabaseClient,
   workspaceId: string,
-  lessonId: string | null,
+  lessonIds: string[],
+  request: WorldClassAssessmentRequest,
 ) {
-  if (!lessonId) return { lesson: null, context: "" };
-  const { data: lesson, error } = await supabase
-    .from("lessons")
-    .select("id,title,topic,objective,status,class_id,subject_id")
-    .eq("id", lessonId)
-    .eq("workspace_id", workspaceId)
-    .single();
-  if (error || !lesson) {
-    throw new Error("The selected HQLS lesson is not available in this workspace.");
-  }
-  const { data: stages, error: stageError } = await supabase
-    .from("lesson_stages")
-    .select("stage_number,stage_key,content")
-    .eq("lesson_id", lessonId)
-    .order("stage_number");
+  if (!lessonIds.length) return { lessons: [], context: "", sourceContext: [] as Json[] };
+
+  const [{ data: lessons, error: lessonError }, { data: stages, error: stageError }] =
+    await Promise.all([
+      supabase
+        .from("lessons")
+        .select("id,title,topic,objective,status,class_id,subject_id")
+        .eq("workspace_id", workspaceId)
+        .eq("status", "validated")
+        .in("id", lessonIds),
+      supabase
+        .from("lesson_stages")
+        .select("lesson_id,stage_number,stage_key,content")
+        .in("lesson_id", lessonIds)
+        .order("stage_number"),
+    ]);
+  if (lessonError) throw lessonError;
   if (stageError) throw stageError;
-  if (!stages || stages.length !== 7) {
-    throw new Error("The selected HQLS lesson is incomplete.");
+  if (!lessons || lessons.length !== lessonIds.length) {
+    throw new Error("One or more selected validated HQLS lessons are unavailable in this school.");
   }
-  const stageContext = stages
-    .map((stage) => {
+
+  const byId = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const ordered = lessonIds.map((id) => {
+    const lesson = byId.get(id);
+    if (!lesson) throw new Error("A selected HQLS lesson is no longer available.");
+    return lesson;
+  });
+  assertCompatibleHqlsSources(
+    ordered,
+    request.topics.map((topic) => topic.topic),
+    request.subjectId ?? undefined,
+    request.classId ?? undefined,
+  );
+
+  const context = ordered.map((lesson, index) => {
+    const lessonStages = (stages ?? []).filter((stage) => stage.lesson_id === lesson.id);
+    if (lessonStages.length !== 7 || new Set(lessonStages.map((stage) => stage.stage_number)).size !== 7) {
+      throw new Error('HQLS lesson "' + lesson.title + '" is incomplete. Use another validated lesson.');
+    }
+    const stageContext = lessonStages.map((stage) => {
       const content = record(stage.content) ?? {};
       const purpose = typeof content.purpose === "string" ? content.purpose : "";
-      const experience =
-        typeof content.experience === "string" ? content.experience : "";
+      const experience = typeof content.experience === "string" ? content.experience : "";
       const evidence = Array.isArray(content.evidenceToNotice)
-        ? content.evidenceToNotice
-            .filter((item): item is string => typeof item === "string")
-            .join("; ")
+        ? content.evidenceToNotice.filter((item): item is string => typeof item === "string").join("; ")
         : "";
-      return `Stage ${stage.stage_number} ${stage.stage_key}: purpose=${purpose}; experience=${experience}; evidence=${evidence}`;
-    })
-    .join("\n");
+      // Limit each lesson's excerpts when combining many lessons to protect
+      // generation latency and OpenAI context/token budgets.
+      const compact = lessonIds.length > 1;
+      const preview = (value: string, max: number) =>
+        compact && value.length > max ? value.slice(0, max).trimEnd() + "…" : value;
+      return "Stage " + stage.stage_number + " " + stage.stage_key
+        + ": purpose=" + preview(purpose, 200)
+        + "; experience=" + preview(experience, 450)
+        + "; evidence=" + preview(evidence, 250);
+    }).join("\n");
+    return "HQLS SOURCE " + (index + 1) + " OF " + lessonIds.length
+      + "\nLesson title: " + lesson.title + "\nTopic: " + lesson.topic
+      + "\nObjective: " + lesson.objective + "\n" + stageContext;
+  }).join("\n\n--- NEXT HQLS LESSON ---\n\n");
+
   return {
-    lesson,
-    context: `Lesson title: ${lesson.title}\nTopic: ${lesson.topic}\nObjective: ${lesson.objective}\n${stageContext}`,
+    lessons: ordered,
+    context,
+    sourceContext: ordered.map((lesson) => ({
+      sourceType: "hqls_lesson",
+      lessonId: lesson.id,
+      title: lesson.title,
+      topic: lesson.topic,
+    })) as Json[],
   };
 }
 
@@ -755,10 +800,11 @@ async function handleGenerate(
     await requireWorkspace(supabase, firstInput.workspaceId);
     const input = await resolveAcademicContext(supabase, firstInput);
     await enforceAiRateLimit(supabase, userId, input.workspaceId);
-    const sourceLesson = await loadSourceLesson(
+    const sourceLessons = await loadSourceLessons(
       supabase,
       input.workspaceId,
-      input.sourceLessonId,
+      input.sourceLessonIds ?? (input.sourceLessonId ? [input.sourceLessonId] : []),
+      input,
     );
     const resources = await loadResourceContext(
       supabase,
@@ -785,6 +831,7 @@ async function handleGenerate(
         totalItems: input.totalItems,
         totalMarks: input.totalMarks,
         sourceLessonId: input.sourceLessonId,
+        sourceLessonIds: input.sourceLessonIds,
         resourceCount: resources.rows.length,
       },
     });
@@ -795,7 +842,7 @@ async function handleGenerate(
         {
           text: buildWorldClassAssessmentPrompt(
             input,
-            sourceLesson.context,
+            sourceLessons.context,
             resources.labels,
           ),
         },
@@ -817,7 +864,7 @@ async function handleGenerate(
               input,
               assessment,
               validation,
-            ),
+            ) + (sourceLessons.context ? "\n\nAUTHORITIATIVE SELECTED HQLS LESSON CONTEXT:\n" + sourceLessons.context : ""),
           },
           ...resources.parts,
         ],
@@ -869,6 +916,7 @@ async function handleGenerate(
         assessmentKind: input.assessmentKind,
         overallDifficulty: input.overallDifficulty,
         requestedTopics: input.topics,
+        sourceLessonIds: input.sourceLessonIds,
         topicAllocationMode: input.topicAllocationMode,
         markMode: input.markMode,
         typeMarks: input.typeMarks,
@@ -878,7 +926,7 @@ async function handleGenerate(
         academicSession: input.academicSession,
         qualitySummary,
       },
-      sourceContext: resources.sourceContext,
+      sourceContext: [...sourceLessons.sourceContext, ...resources.sourceContext],
       engineVersion: ASSESSMENT_ENGINE_VERSION_V11,
       promptVersion: ASSESSMENT_PROMPT_VERSION_V11,
       items: assessment.items.map(toAssessmentItemInput),
@@ -1037,6 +1085,7 @@ async function handleSaveEdits(
         assessmentKind: request.assessmentKind,
         overallDifficulty: request.overallDifficulty,
         requestedTopics: request.topics,
+        sourceLessonIds: blueprint.sourceLessonIds ?? (current.assessment.source_lesson_id ? [current.assessment.source_lesson_id] : []),
         topicAllocationMode: request.topicAllocationMode,
         markMode: request.markMode,
         typeMarks: request.typeMarks,
