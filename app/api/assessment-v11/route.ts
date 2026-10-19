@@ -10,6 +10,8 @@ import {
 } from "@/lib/assessment/engine";
 import {
   expectedQuestionCounts,
+  marksTotalForActiveTypes,
+  parseActiveTypeMarks,
   topicAllocationIssues,
 } from "@/lib/assessment/topic-allocation";
 import {
@@ -285,18 +287,14 @@ function validateGenerateInput(value: unknown): WorldClassAssessmentRequest {
   }
 
   const markMode = input.markMode === "by_type" || input.markMode === "per_question" ? input.markMode : "automatic";
-  const typeMarks = markMode === "by_type" ? parseCounts(input.typeMarks) : undefined;
   const questionMarks = markMode === "per_question" && Array.isArray(input.questionMarks) ? input.questionMarks : undefined;
-  const effectiveCounts = assessmentMode === "mixed" ? itemCounts : {
-    objective: assessmentMode === "objective" ? totalItems : 0,
-    subjective: assessmentMode === "subjective" ? totalItems : 0,
-    critical_thinking: assessmentMode === "critical_thinking" ? totalItems : 0,
-    project: assessmentMode === "project" ? totalItems : 0,
-  };
-  if (typeMarks && Object.values(typeMarks).some((mark) => mark < 1 || mark > 100)) throw new Error("Marks per type must be between 1 and 100.");
+  const effectiveCounts = expectedQuestionCounts(assessmentMode, totalItems, itemCounts);
+  const typeMarks = markMode === "by_type"
+    ? parseActiveTypeMarks(input.typeMarks, effectiveCounts)
+    : undefined;
   if (markMode === "per_question" && (!questionMarks || questionMarks.length !== totalItems || questionMarks.some((mark) => !Number.isInteger(mark) || mark < 1 || mark > 100))) throw new Error("Enter 1 to 100 marks for each question.");
   const assigned = typeMarks
-    ? (Object.keys(effectiveCounts) as Array<keyof AssessmentItemCounts>).reduce((sum, key) => sum + effectiveCounts[key] * typeMarks[key], 0)
+    ? marksTotalForActiveTypes(effectiveCounts, typeMarks)
     : questionMarks?.reduce((sum, mark) => sum + mark, 0);
   if (assigned !== undefined && assigned !== optionalPositiveNumber(input.totalMarks, "Total marks")) throw new Error("Allocated marks must match Total marks.");
 
