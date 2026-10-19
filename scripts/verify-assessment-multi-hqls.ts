@@ -76,7 +76,7 @@ for (const required of [
   '.eq("status", "validated")',
   "assertCompatibleHqlsSources(",
   "sourceLessonIds: input.sourceLessonIds",
-  "sourceLessonIds: blueprint.sourceLessonIds",
+  "sourceLessonIds: Array.isArray(blueprint.sourceLessonIds)",
   "...sourceLessons.sourceContext",
   "sourceLessons.context",
 ]) assert.ok(api.includes(required), "Missing multi-HQLS backend safeguard: " + required);
