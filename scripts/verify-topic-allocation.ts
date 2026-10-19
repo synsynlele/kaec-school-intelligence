@@ -5,6 +5,7 @@ import {
 } from "../lib/assessment/topic-allocation";
 import { readFile } from "node:fs/promises";
 
+async function main() {
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
 };
@@ -60,3 +61,9 @@ for (const required of ["topic_question_distribution_mismatch", "topicAllocation
 assert(engine.includes("teacher_mark_mismatch") && engine.includes("questionStyleInstructions"),
   "Teacher marking and question-language preferences must persist in generation.");
 console.log("Assessment topic-by-format and marks-control checks passed.");
+ 
+}
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
