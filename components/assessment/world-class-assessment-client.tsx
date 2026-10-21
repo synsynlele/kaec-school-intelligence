@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
+import { HqlsLessonPicker } from "@/components/assessment/hqls-lesson-picker";
 import {
   parseGeneratedAssessment,
   type AssessmentItemCounts,
@@ -29,7 +30,6 @@ import {
 } from "@/lib/assessment/topic-allocation";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
-  MAX_ASSESSMENT_SOURCE_LESSONS,
   assertCompatibleHqlsSources,
   reconcileHqlsTopics,
 } from "@/lib/assessment/source-lessons";
@@ -382,7 +382,6 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
   const [questionStyleInstructions, setQuestionStyleInstructions] = useState("");
   const [topicAllocationMode, setTopicAllocationMode] = useState<"automatic" | "custom">("automatic");
   const [sourceLessonIds, setSourceLessonIds] = useState<string[]>([]);
-  const [lessonSearch, setLessonSearch] = useState("");
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [topics, setTopics] = useState<TopicDraft[]>([
     { topic: "", objective: "", weight: 100, itemCounts: { ...ZERO_TOPIC_QUESTION_COUNTS } },
@@ -432,15 +431,6 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     () => state?.lessons.find((lesson) => lesson.id === sourceLessonIds[0]) ?? null,
     [state?.lessons, sourceLessonIds],
   );
-  const visibleSourceLessons = useMemo(() => {
-    const query = lessonSearch.trim().toLowerCase();
-    return (state?.lessons ?? []).filter((lesson) =>
-      (!firstSelectedLesson ||
-        (lesson.subject_id === firstSelectedLesson.subject_id &&
-         lesson.class_id === firstSelectedLesson.class_id)) &&
-      (!query || (lesson.topic + " " + lesson.title).toLowerCase().includes(query))
-    );
-  }, [state?.lessons, firstSelectedLesson, lessonSearch]);
   const effectiveCounts = useMemo(
     () => expectedQuestionCounts(assessmentMode, Number(totalItems), counts),
     [assessmentMode, totalItems, counts],
@@ -685,10 +675,10 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     }
   }
 
-  function applySourceLessons(lessonIds: string[]) {
+  function applySourceLessons(lessonIds: string[]): string | null {
     setError(null);
     setNotice(null);
-    if (!state) return;
+    if (!state) return "The assessment workspace is not available.";
     try {
       applySourceLessonsFromState(state, lessonIds);
       const query = lessonIds.length === 1
@@ -698,19 +688,14 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
           : "";
       router.replace("/assessment" + query, { scroll: false });
       setNotice(lessonIds.length
-        ? lessonIds.length + " validated HQLS lesson(s) selected. Each topic is now in the assessment blueprint."
+        ? lessonIds.length + " validated HQLS " + (lessonIds.length === 1 ? "topic" : "topics") + " added to the assessment blueprint."
         : "HQLS sources cleared. You can enter assessment topics directly.");
+      return null;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not select those HQLS lessons.");
+      const message = caught instanceof Error ? caught.message : "Could not select those HQLS lessons.";
+      setError(message);
+      return message;
     }
-  }
-
-  function toggleSourceLesson(lessonId: string) {
-    applySourceLessons(
-      sourceLessonIds.includes(lessonId)
-        ? sourceLessonIds.filter((id) => id !== lessonId)
-        : [...sourceLessonIds, lessonId],
-    );
   }
 
   function addTopic() {
@@ -1123,68 +1108,13 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
             </p>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2 rounded-2xl border border-emerald-900/15 bg-emerald-50/40 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-950">
-                      Select HQLS lesson topics (optional)
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-emerald-900/80">
-                      Select several validated lessons from the same subject and class. Each selected topic becomes a separate assessment topic with its own objectives, weight and question allocation.
-                    </p>
-                  </div>
-                  {sourceLessonIds.length ? (
-                    <button
-                      type="button"
-                      onClick={() => applySourceLessons([])}
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800"
-                    >
-                      Clear HQLS selections
-                    </button>
-                  ) : null}
-                </div>
-                <p role="status" className="mt-3 text-xs font-semibold text-emerald-900">
-                  {sourceLessonIds.length
-                    ? sourceLessonIds.length + " of " + MAX_ASSESSMENT_SOURCE_LESSONS + " HQLS topics selected"
-                    : "No lessons selected — create from direct context below, or select HQLS lessons."}
-                </p>
-                <input
-                  type="search"
-                  aria-label="Search saved HQLS lessons by topic or title"
-                  placeholder="Search saved HQLS lessons by topic or title…"
-                  value={lessonSearch}
-                  onChange={(event) => setLessonSearch(event.target.value)}
-                  className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-700"
-                />
-                <div className="mt-3 max-h-60 space-y-2 overflow-y-auto" role="group" aria-label="Available HQLS source lessons">
-                  {visibleSourceLessons.length ? visibleSourceLessons.map((lesson) => {
-                    const selected = sourceLessonIds.includes(lesson.id);
-                    const subjectLabel = state.subjects.find((item) => item.id === lesson.subject_id)?.name ?? "Unassigned subject";
-                    const classLabel = state.classes.find((item) => item.id === lesson.class_id)?.name ?? "Unassigned class";
-                    return (
-                      <label key={lesson.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleSourceLesson(lesson.id)}
-                          className="mt-1 h-4 w-4 shrink-0 accent-emerald-900"
-                        />
-                        <span className="min-w-0">
-                          <span className="block font-semibold text-zinc-900">{lesson.topic}</span>
-                          <span className="block text-xs text-zinc-600">{lesson.title}</span>
-                          <span className="mt-1 block text-xs text-zinc-500">{subjectLabel} · {classLabel}</span>
-                        </span>
-                      </label>
-                    );
-                  }) : (
-                    <p className="rounded-xl bg-white p-3 text-xs text-zinc-600">
-                      {state.lessons.length
-                        ? "No matching validated lessons in this subject/class. Clear selections to switch subject or class."
-                        : "No validated HQLS lessons are available yet. You can enter topics directly below."}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <HqlsLessonPicker
+                lessons={state.lessons}
+                subjects={state.subjects}
+                classes={state.classes}
+                selectedIds={sourceLessonIds}
+                onApply={applySourceLessons}
+              />
               <TextInput
                 label="Assessment title"
                 value={title}
