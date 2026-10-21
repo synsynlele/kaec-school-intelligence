@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { MAX_ASSESSMENT_SOURCE_LESSONS } from "@/lib/assessment/source-lessons";
@@ -43,14 +43,14 @@ export function HqlsLessonPicker({ lessons, subjects, classes, selectedIds, onAp
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const lessonById = useMemo(() => new Map(lessons.map((lesson) => [lesson.id, lesson])), [lessons]);
-  const subjectName = useMemo(() => new Map(subjects.map((item) => [item.id, item.name])), [subjects]);
-  const className = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
+  const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const subjectName = new Map(subjects.map((item) => [item.id, item.name]));
+  const className = new Map(classes.map((item) => [item.id, item.name]));
   const chosenLessons = selectedIds.map((id) => lessonById.get(id)).filter((lesson): lesson is Lesson => Boolean(lesson));
   const draftedLessons = draftIds.map((id) => lessonById.get(id)).filter((lesson): lesson is Lesson => Boolean(lesson));
   const reference = draftedLessons[0] ?? null;
 
-  const matchingLessons = useMemo(() => {
+  const matchingLessons = (() => {
     const q = search.trim().toLocaleLowerCase();
     return lessons
       .filter((lesson) => lesson.status === "validated")
@@ -65,18 +65,18 @@ export function HqlsLessonPicker({ lessons, subjects, classes, selectedIds, onAp
         className.get(lesson.class_id ?? "") ?? "",
       ].some((value) => value.toLocaleLowerCase().includes(q)))
       .sort((a, b) => Number(draftIds.includes(b.id)) - Number(draftIds.includes(a.id)));
-  }, [lessons, reference, subjectId, classId, search, subjectName, className, draftIds]);
+  })();
 
-  const availableSubjects = useMemo(() => subjects.filter((subject) =>
+  const availableSubjects = subjects.filter((subject) =>
     lessons.some((lesson) => lesson.status === "validated" && lesson.subject_id === subject.id)
-  ), [subjects, lessons]);
-  const availableClasses = useMemo(() => classes.filter((schoolClass) =>
+  );
+  const availableClasses = classes.filter((schoolClass) =>
     lessons.some((lesson) =>
       lesson.status === "validated" &&
       lesson.class_id === schoolClass.id &&
       (!subjectId || lesson.subject_id === subjectId)
     )
-  ), [classes, lessons, subjectId]);
+  );
 
   function openPicker() {
     setDraftIds([...selectedIds]);
