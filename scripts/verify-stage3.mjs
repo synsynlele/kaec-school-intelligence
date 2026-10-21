@@ -122,7 +122,7 @@ const client = await text(
 for (const required of [
   "/api/assessment-v11",
   "HqlsLessonPicker",
-  "toggleSourceLesson",
+  "onApply={applySourceLessons}",
   "sourceLessonIds",
   "Assessment type",
   "Overall difficulty",
