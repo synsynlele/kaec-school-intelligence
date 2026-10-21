@@ -69,6 +69,7 @@ assert.deepEqual(original.map((topic) => topic.topic), ["Fractions"]);
 
 const api = readFileSync("app/api/assessment-v11/route.ts","utf8");
 const ui = readFileSync("components/assessment/world-class-assessment-client.tsx","utf8");
+const picker = readFileSync("components/assessment/hqls-lesson-picker.tsx","utf8");
 for (const required of [
   "parseAssessmentSourceLessonIds",
   "loadSourceLessons(",
@@ -82,19 +83,52 @@ for (const required of [
 ]) assert.ok(api.includes(required), "Missing multi-HQLS backend safeguard: " + required);
 
 for (const required of [
-  'aria-label="Search saved HQLS lessons by topic or title"',
-  "Select HQLS lesson topics (optional)",
+  "HqlsLessonPicker",
+  "onApply={applySourceLessons}",
+  "lessons={state.lessons}",
+  "selectedIds={sourceLessonIds}",
   "reconcileHqlsTopics(topics, selected)",
   "sourceLessonIds,",
   "sourceLessonId: sourceLessonIds[0] ?? null",
-  "toggleSourceLesson",
   "applySourceLessonsFromState",
   "requestedWorkflowLessonIds",
-  "Clear HQLS selections",
   "topic.sourceLessonId",
   "topicAllocationMode",
   "itemCounts: topic.itemCounts",
 ]) assert.ok(ui.includes(required), "Missing HQLS multi-topic UX: " + required);
 
+// The HQLS chooser is an isolated, mobile-first modal rather than a
+// nested scrollable checkbox list embedded in the assessment form.
+for (const required of [
+  'createPortal(',
+  'document.body,',
+  'role="dialog"',
+  'aria-modal="true"',
+  'aria-labelledby={headingId}',
+  'aria-describedby={hintId}',
+  'h-[100dvh]',
+  'sm:max-w-2xl',
+  'min-h-0 flex-1 overflow-y-auto overscroll-contain',
+  'pb-[max(1rem,env(safe-area-inset-bottom))]',
+  'type="search"',
+  'text-base outline-none',
+  'aria-label="Search saved HQLS lessons by topic or title"',
+  'aria-label="Filter HQLS lessons by subject"',
+  'aria-label="Filter HQLS lessons by class"',
+  'aria-label="Close HQLS lesson picker"',
+  'setDraftIds([...selectedIds])',
+  'const error = onApply(draftIds);',
+  'onClick={dismissPicker}',
+  'event.key === "Escape"',
+  'event.key !== "Tab"',
+  'document.body.style.overflow = "hidden"',
+  'Choose HQLS topics',
+  'Edit selected HQLS topics',
+  'Use direct context',
+  'role="alert"',
+  'Clear selection',
+  'Show more lessons',
+]) assert.ok(picker.includes(required), "Missing mobile lesson-picker behavior: " + required);
 assert.ok(!ui.includes('label="Source HQLS lesson (optional)"'),"Legacy single-source picker remains");
-console.log("KSI multi-HQLS assessment source regression tests passed.");
+assert.ok(!ui.includes('max-h-60 space-y-2 overflow-y-auto'),"Legacy nested-scroll lesson list remains");
+console.log("KSI multi-HQLS assessment source and mobile picker checks passed.");
