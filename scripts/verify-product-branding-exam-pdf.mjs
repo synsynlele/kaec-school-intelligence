@@ -95,6 +95,8 @@ for (const required of [
   "PROJECT / PRACTICAL",
   "Name: ____________________________________________",
   "MARKING GUIDE - NOT FOR STUDENTS",
+  'this.current.push("q 0.160 0.180 0.220 RG 1.6 w")',
+  'l S Q',
   'if (this.mode === "exam") this.addExam()',
 ]) {
   assert(

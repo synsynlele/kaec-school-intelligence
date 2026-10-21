@@ -254,9 +254,11 @@ class PdfComposer {
         });
       }
       this.y -= 17;
-      this.current.push("0.790 0.820 0.850 RG 0.45 w");
+      // Dark, printer-friendly 1.6 pt rules: legible even on low-ink school printers.
+      // Isolate the stroke so subsequent PDF elements retain their own styling.
+      this.current.push("q 0.160 0.180 0.220 RG 1.6 w");
       this.current.push(
-        `${LEFT + 10} ${this.y.toFixed(1)} m ${PAGE_WIDTH - RIGHT} ${this.y.toFixed(1)} l S`,
+        `${LEFT + 10} ${this.y.toFixed(1)} m ${PAGE_WIDTH - RIGHT} ${this.y.toFixed(1)} l S Q`,
       );
       this.y -= 7;
     }
