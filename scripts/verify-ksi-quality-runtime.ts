@@ -18,7 +18,7 @@ import { buildAssessmentPrompt } from "../lib/assessment/engine";
 import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
 import { resolvePdfBranding } from "../lib/pdf/pdf-branding";
 import { createHqlsLessonPdf } from "../lib/pdf/hqls-lesson-pdf";
-import { createAssessmentPdf } from "../lib/pdf/assessment-pdf";
+import { createAssessmentPdf, assessmentAnswerLines } from "../lib/pdf/assessment-pdf";
 import { createDiagnosisPdf } from "../lib/pdf/diagnosis-pdf";
 import { createInterventionPdf } from "../lib/pdf/intervention-pdf";
 import type { GeneratedAssessment } from "../lib/assessment/engine";
@@ -357,6 +357,17 @@ async function verifyQuality() {
     diagnosis: createDiagnosisPdf({ ...branding, studentName: "Learner é", className: "JSS1", academicSession: "2026/2027", term: "First", diagnosisMode: "teacher", assessmentTitle: "Evidence", diagnosis, reviewedAt: "2026-10-07", finalisedAt: "2026-10-07" }),
     intervention: createInterventionPdf({ ...branding, studentName: "Learner", className: "JSS1", status: "active", diagnosisSummary: notation, priorityGrowthTarget: "Read symbols", evidenceBasis: notation, schoolIntervention: [], parentIntervention: [], timeframe: "Week", successIndicator: "Accurate reading", reviewDate: "2026-10-14", nextLearningAdjustment: notation }),
   };
+  const examContent = Buffer.from(outputs.exam).toString("latin1");
+  const answerRule = "q 0.160 0.180 0.220 RG 1.6 w";
+  const answerRuleCount = examContent.split(answerRule).length - 1;
+  assert.equal(
+    answerRuleCount,
+    assessmentAnswerLines(assessment.items[0]),
+    "Every written-answer line must use the stronger 1.6 pt dark stroke.",
+  );
+  assert(!examContent.includes("0.790 0.820 0.850 RG 0.45 w"), "Faint answer lines must not return.");
+  assert(!Buffer.from(outputs.marking).toString("latin1").includes(answerRule),
+    "Answer-writing rules belong on student papers, not marking guides.");
   for (const [name, bytes] of Object.entries(outputs)) {
     const path = join(dir, `${name}.pdf`); writeFileSync(path, bytes);
     const text = execFileSync("pdftotext", [path, "-"], { encoding: "utf8" });
