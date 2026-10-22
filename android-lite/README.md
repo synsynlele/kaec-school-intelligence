@@ -76,3 +76,12 @@ References:
 - https://developer.android.com/develop/ui/views/layout/webapps/guide-trusted-web-activities-version2
 - https://developer.chrome.com/docs/android/trusted-web-activity/quick-start/
 - https://developer.android.com/training/app-links/verify-applinks
+
+
+## October 22, 2026 — User-supplied KSI signing candidates
+
+Three additional valid SHA-256 certificate fingerprints were supplied for KSI's full-screen Android fix and added to the canonical Digital Asset Links binding **alongside the permanent downloadable APK signer**. The Play Console signing-certificate view did not allow independent identification of which of these is the current KSI Play App Signing key. This is an *association update*, not proof that any particular key signs the Play-installed KSI package. It does not alter the generated Android binary.
+
+Once the actual KSI Play app-signing certificate can be matched, retain only confirmed KSI signing identities (plus the known APK certificate) and remove any unrelated candidate. Google Digital Asset Links checks confirm a website's trust *statement*, not the certificate-to-application provenance. Users should verify KSI opens without the X/app-name bar from their real install source.
+
+Run `node scripts/verify-ksi-twa-trust.mjs --live` against production after deployment to verify each trusted certificate from Google's Digital Asset Links service.

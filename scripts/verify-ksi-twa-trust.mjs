@@ -41,11 +41,18 @@ export async function verifyKsiTwaTrust({
   assert(fingerprintList.includes(productionUploadKey),
     "Keep the permanent downloadable APK certificate in Digital Asset Links.");
 
-  if (expectedPlaySha256) {
-    const playKey = expectedPlaySha256.trim();
-    assert.match(playKey, pattern, "Play App Signing SHA-256 must be uppercase colon-separated bytes.");
-    assert(fingerprintList.includes(playKey),
-      "Google Play App Signing certificate is missing from Digital Asset Links. Add it alongside the permanent APK signing certificate.");
+  // A Play Console certificate value may be one fingerprint, or a comma-separated
+  // set of user-supplied app-signing candidates. Never delete the known APK signer.
+  const expectedPlayFingerprints = expectedPlaySha256
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (expectedPlayFingerprints.length) {
+    for (const playKey of expectedPlayFingerprints) {
+      assert.match(playKey, pattern, "Play App Signing SHA-256 must be uppercase colon-separated bytes.");
+      assert(fingerprintList.includes(playKey),
+        "The supplied Google Play SHA-256 certificate is missing from Digital Asset Links.");
+    }
   } else {
     console.log("Play App Signing certificate not supplied; fullscreen verification for Play-installed KSI cannot be confirmed.");
   }
@@ -67,7 +74,10 @@ export async function verifyKsiTwaTrust({
       entry.relation?.includes("delegate_permission/common.handle_all_urls")
     );
     assert(liveBinding, "Live website missing the KSI Android binding.");
-    const expected = expectedPlaySha256 ? [productionUploadKey, expectedPlaySha256.trim()] : [productionUploadKey];
+    // Check all published signer associations, not just the original upload key.
+    // The lookup validates domain association, not whether a certificate
+    // was actually issued for the Play-installed KSI package.
+    const expected = fingerprintList;
     for (const fingerprint of expected) {
       assert(liveBinding.target.sha256_cert_fingerprints?.includes(fingerprint),
         "Live Digital Asset Links missing fingerprint " + fingerprint);

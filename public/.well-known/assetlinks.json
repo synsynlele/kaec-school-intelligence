@@ -1,11 +1,16 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "ng.name.ksi.lite",
       "sha256_cert_fingerprints": [
-        "10:5B:EB:D5:27:D9:85:73:43:BF:10:A5:AA:9D:E0:0A:3E:7D:0A:E2:BC:9C:20:2C:2C:59:6C:B4:66:B6:85:DD"
+        "10:5B:EB:D5:27:D9:85:73:43:BF:10:A5:AA:9D:E0:0A:3E:7D:0A:E2:BC:9C:20:2C:2C:59:6C:B4:66:B6:85:DD",
+        "77:83:FC:83:EC:E5:BE:F9:C1:0A:67:23:E1:03:99:93:68:86:23:AE:FC:07:CF:BD:BB:17:77:B2:80:4A:89:A7",
+        "73:D7:F3:82:82:06:D4:A5:24:B6:D6:05:55:5A:E1:C5:AA:28:B0:CB:73:C9:CC:DA:6E:B5:8C:85:56:FF:E5:36",
+        "50:91:32:EC:EC:30:24:AB:09:07:F5:37:33:92:00:BF:A6:33:C1:77:A0:31:B3:B7:40:1E:F7:C5:E9:27:04:61"
       ]
     }
   }
