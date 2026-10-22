@@ -51,8 +51,8 @@ export async function verifyKsiTwaTrust({
   }
 
   // Updating this web-hosted file must not rebuild/clobber a Play AAB or APK.
-  assert(!/^\s+- public\/\.well-known\/assetlinks\.json\s*$/m.test(workflow),
-    "Changing assetlinks.json must not trigger a signed Android release.");
+  assert(!/^\s*push\s*:/m.test(workflow),
+    "Signed Android releases must be manual; web-only changes must not build or overwrite APK/AAB.");
 
   if (checkLive) {
     const origin = "https://" + twa.host;

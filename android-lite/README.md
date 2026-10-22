@@ -35,7 +35,7 @@ Future Android wrapper releases must use the exact same production key. Incremen
 
 ## Stage 17 pre-merge release gate
 
-The release workflow also runs when Android distribution files change on the `stage17-ksi-lite-distribution` branch. Until the protected signing secrets exist, that branch run is expected to stop at the signing-secret gate. Once the secrets are stored, rerun the failed job; it will verify the permanent certificate, build the signed APK/AAB and publish `KSI-Lite.apk` before the web landing-page download is allowed into production.
+Historically, the release workflow ran when Android distribution files changed on the `stage17-ksi-lite-distribution` branch. Until the protected signing secrets exist, that branch run is expected to stop at the signing-secret gate. Once the secrets are stored, rerun the failed job; it will verify the permanent certificate, build the signed APK/AAB and publish `KSI-Lite.apk` before the web landing-page download is allowed into production.
 
 After Stage 17 is merged, normal wrapper releases are manual via `workflow_dispatch` and only needed when the Android wrapper itself changes.
 
@@ -66,7 +66,7 @@ Run with the real full fingerprint in an environment variable:
 
 Commit and deploy the website. After deployment, run the same command with --live to check HTTP 200, JSON content type, zero redirects, SHA fingerprints and Google's Digital Asset Links API verification of both keys.
 
-This is a **website association fix**, not a binary feature change. Do not rebuild or submit a new Android bundle solely to add Google's signer to the website. The Android release workflow does not trigger on assetlinks-only changes.
+This is a **website association fix**, not a binary feature change. Do not rebuild or submit a new Android bundle solely to add Google's signer to the website. The Android release workflow is manual-only to prevent automatically replacing signed binaries during web or association changes.
 
 For existing Android installations, update Chrome and open KSI again. If Android has cached a failure, a fresh install of the appropriate APK/Play build may be necessary; warn users that this can clear local sign-in data. External Google OAuth domains may legitimately display browser controls and should not be hidden.
 
