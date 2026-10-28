@@ -7,14 +7,16 @@ import { useRouter } from "next/navigation";
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
+import { diagnosisStudentsForClass } from "@/lib/diagnosis/student-picker";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Workspace = { id: string; name: string; role: string; canApprove: boolean };
 type Student = { id: string; name: string; classId: string | null; className: string };
+type SchoolClass = { id: string; name: string };
 type AssessmentItem = { id: string; position: number; item_type: string; topic: string | null; marks: number | string | null };
 type Assessment = { id: string; title: string; status: string; items: AssessmentItem[] };
 type DiagnosisEntry = { row: { id: string; student_id: string; diagnosis_mode: DiagnosisMode; status: string; academic_session: string; term: string; updated_at: string } };
-type Payload = { workspace: Workspace; students: Student[]; assessments: Assessment[]; diagnoses: DiagnosisEntry[] };
+type Payload = { workspace: Workspace; classes: SchoolClass[]; students: Student[]; assessments: Assessment[]; diagnoses: DiagnosisEntry[] };
 type Observation = { domain: "academic" | "skill" | "character"; statement: string };
 
 type TeacherSheet = {
@@ -75,6 +77,7 @@ export function DiagnosisBuilderClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<DiagnosisMode>("quick_teacher");
+  const [classFilter, setClassFilter] = useState("");
   const [studentId, setStudentId] = useState("");
   const [academicSession, setAcademicSession] = useState("");
   const [term, setTerm] = useState("");
@@ -120,6 +123,10 @@ export function DiagnosisBuilderClient() {
     }
     setClassSessions(sessions);
     setData(payload);
+    if (payload.classes.length === 1) {
+      setClassFilter(payload.classes[0].id);
+      setAcademicSession(sessions[payload.classes[0].id] ?? "");
+    }
 
     if (!handoffApplied.current) {
       handoffApplied.current = true;
@@ -155,6 +162,18 @@ export function DiagnosisBuilderClient() {
   }, [load]);
 
   const selectedAssessment = useMemo(() => data?.assessments.find((item) => item.id === assessmentId) ?? null, [assessmentId, data]);
+  const eligibleStudents = useMemo(
+    () => diagnosisStudentsForClass(data?.students ?? [], classFilter),
+    [classFilter, data?.students],
+  );
+  const unassignedStudentCount = (data?.students ?? []).filter((student) => !student.classId).length;
+
+  function onClassChange(nextClassId: string) {
+    setClassFilter(nextClassId);
+    setStudentId("");
+    setAcademicSession(classSessions[nextClassId] ?? "");
+  }
+
 
   const visibleDiagnoses = useMemo(() => {
     const query = diagnosisSearch.trim().toLowerCase();
@@ -225,7 +244,11 @@ export function DiagnosisBuilderClient() {
   }
 
   async function generate() {
-    if (!data || !studentId) return;
+    if (!data) return;
+    if (!classFilter) return setError("Select a class before choosing a learner.");
+    if (!studentId || !eligibleStudents.some((student) => student.id === studentId)) {
+      return setError("Choose a learner from the selected class.");
+    }
     const observations = teacherObservations(teacherSheet);
     if (!academicSession.trim()) return setError("Academic Session is required for the parent diagnosis report.");
     if (!term.trim()) return setError("Select the Term for this diagnosis report.");
@@ -294,8 +317,30 @@ export function DiagnosisBuilderClient() {
           {notice ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</div> : null}
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Field label="Class">
+              <select value={classFilter} onChange={(event) => onClassChange(event.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3">
+                <option value="">Choose class</option>
+                {data.classes.map((schoolClass) => (
+                  <option key={schoolClass.id} value={schoolClass.id}>
+                    {schoolClass.name} ({data.students.filter((student) => student.classId === schoolClass.id).length})
+                  </option>
+                ))}
+                {unassignedStudentCount ? <option value="unassigned">Without a class ({unassignedStudentCount})</option> : null}
+                <option value="all">All learners ({data.students.length})</option>
+              </select>
+            </Field>
+            <Field label="Learner">
+              <select value={studentId} onChange={(event) => onStudentChange(event.target.value)} disabled={!classFilter || !eligibleStudents.length} className="min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500">
+                <option value="">{!classFilter ? "Choose class first" : eligibleStudents.length ? "Select learner" : "No learners in this class"}</option>
+                {eligibleStudents.map((student) => (
+                  <option key={student.id} value={student.id}>{student.name}{classFilter === "all" ? ` · ${student.className}` : ""}</option>
+                ))}
+              </select>
+              <span role="status" className="text-xs font-normal text-zinc-500">
+                {!classFilter ? "Select a class to see its learners." : `${eligibleStudents.length} ${eligibleStudents.length === 1 ? "learner" : "learners"} available`}
+              </span>
+            </Field>
             <Field label="Diagnosis Mode"><select value={mode} onChange={(event) => onModeChange(event.target.value as DiagnosisMode)} className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3"><option value="quick_teacher">Quick Teacher Diagnosis</option><option value="assessment_based">Assessment-Based Diagnosis</option><option value="combined">Combined Evidence Diagnosis</option></select></Field>
-            <Field label="Learner"><select value={studentId} onChange={(event) => onStudentChange(event.target.value)} className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3"><option value="">Select learner</option>{data.students.map((student) => <option key={student.id} value={student.id}>{student.name} · {student.className}</option>)}</select></Field>
             <Field label="Academic Session"><input value={academicSession} onChange={(event) => setAcademicSession(event.target.value)} placeholder="2026/2027" className="min-h-11 rounded-xl border border-zinc-300 px-3" /></Field>
             <Field label="Term"><select value={term} onChange={(event) => setTerm(event.target.value)} className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3"><option value="">Select term</option>{TERMS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
           </div>
@@ -325,7 +370,7 @@ export function DiagnosisBuilderClient() {
             </div>
           ) : null}
 
-          <button type="button" disabled={!studentId || busy} onClick={() => void generate()} className="mt-6 min-h-12 w-full rounded-xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40 sm:w-auto">{busy ? "Generating diagnosis…" : "Generate Diagnosis Draft"}</button>
+          <button type="button" disabled={!studentId || !eligibleStudents.some((student) => student.id === studentId) || busy} onClick={() => void generate()} className="mt-6 min-h-12 w-full rounded-xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40 sm:w-auto">{busy ? "Generating diagnosis…" : "Generate Diagnosis Draft"}</button>
         </section>
 
         <aside className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
