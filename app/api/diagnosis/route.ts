@@ -668,6 +668,7 @@ export async function GET(request: Request) {
 
     return json({
       workspace: { id: workspace.workspaceId, name: workspace.workspaceName, role: workspace.role, canApprove: workspace.canApprove },
+      classes: (classesResult.data ?? []).map((schoolClass) => ({ id: schoolClass.id, name: schoolClass.name })),
       students: (studentsResult.data ?? []).map((student) => ({
         id: student.id,
         name: student.display_name,
