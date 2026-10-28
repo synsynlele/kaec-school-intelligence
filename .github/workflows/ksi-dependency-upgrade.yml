@@ -1,0 +1,38 @@
+name: Prepare KSI dependency security patch
+
+on:
+  push:
+    branches:
+      - feat/diagnosis-class-student-dropdown
+    paths:
+      - .github/workflows/ksi-dependency-upgrade.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/diagnosis-class-student-dropdown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Update the vulnerable runtime and validation dependencies
+        run: |
+          npm install next@16.4.3 eslint-config-next@16.4.3 --save-exact --package-lock-only --ignore-scripts --no-audit
+          npm update zod --package-lock-only --ignore-scripts --no-audit
+          npm ci
+          npm audit --audit-level=high
+      - name: Commit package metadata and exact npm lockfile to this feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: upgrade vulnerable Next.js and Zod dependencies"
+          git push origin HEAD:feat/diagnosis-class-student-dropdown
