@@ -3,12 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { AcademicRecordsDirectory } from "@/components/workspace/academic-records-directory";
 import { useRouter } from "next/navigation";
 
-import {
-  classNameValidationMessage,
-  isTemporaryClassLabel,
-} from "@/lib/domain/academic-context";
+import { classNameValidationMessage } from "@/lib/domain/academic-context";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database";
 
@@ -182,11 +180,6 @@ export function AcademicSetupClient() {
   const canManage = useMemo(
     () => context?.role === "owner" || context?.role === "admin",
     [context?.role],
-  );
-
-  const classNames = useMemo(
-    () => new Map(context?.classes.map((item) => [item.id, item.name]) ?? []),
-    [context?.classes],
   );
 
   const refresh = useCallback(async () => {
@@ -683,139 +676,18 @@ export function AcademicSetupClient() {
         {error ? <Message tone="error">{error}</Message> : null}
         {success ? <Message tone="success">{success}</Message> : null}
 
-        <section className="mt-8 rounded-3xl border border-[#0B3268]/10 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2">
-                <Image
-                  src={context.workspace.logo_url || "/ksi-mark.svg"}
-                  alt={context.workspace.logo_url ? `${context.workspace.name} logo` : "KSI fallback mark"}
-                  width={72}
-                  height={72}
-                  unoptimized
-                  className="max-h-full max-w-full object-contain"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0B3268]">
-                  School document branding
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                  {context.workspace.name}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-                  This school logo becomes the primary identity on Exam, HQLS, Diagnosis and Intervention PDFs.
-                  If no logo is uploaded, KSI is used as the fallback with a small “by KAEC-NG” endorsement.
-                </p>
-              </div>
-            </div>
-            {canManage ? (
-              <div className="flex flex-wrap gap-2">
-                <label className="cursor-pointer rounded-xl bg-[#0B3268] px-4 py-2.5 text-sm font-semibold text-white">
-                  {saving === "school-logo" ? "Saving…" : context.workspace.logo_url ? "Replace logo" : "Upload school logo"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    disabled={saving === "school-logo"}
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.currentTarget.value = "";
-                      if (file) void saveSchoolLogo(file);
-                    }}
-                  />
-                </label>
-                {context.workspace.logo_url ? (
-                  <button
-                    type="button"
-                    disabled={saving === "school-logo"}
-                    onClick={() => void removeSchoolLogo()}
-                    className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-700 disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        {!canManage ? (
-          <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
-            Teachers can view this setup, but only workspace owners and admins can change subjects, classes or students.
-          </section>
-        ) : (
-          <section className="grid gap-5 py-8 lg:grid-cols-3">
-            <SetupForm title="Add subject" onSubmit={addSubject} busy={saving === "subject"}>
-              <Input
-                label="Subject name"
-                value={subjectName}
-                onChange={setSubjectName}
-                placeholder="Mathematics"
-                required
-              />
-              <Input
-                label="Code (optional)"
-                value={subjectCode}
-                onChange={setSubjectCode}
-                placeholder="MATH"
-              />
-            </SetupForm>
-
-            <SetupForm title="Add class" onSubmit={addClass} busy={saving === "class"}>
-              <Input
-                label="Class name"
-                value={className}
-                onChange={setClassName}
-                placeholder="JSS 1"
-                required
-              />
-              <Input
-                label="Age range"
-                value={ageRange}
-                onChange={setAgeRange}
-                placeholder="10–12"
-              />
-              <Input
-                label="Academic session"
-                value={academicSession}
-                onChange={setAcademicSession}
-                placeholder="2026/2027"
-              />
-            </SetupForm>
-
-            <SetupForm title="Add student" onSubmit={addStudent} busy={saving === "student"}>
-              <Input
-                label="Student name"
-                value={studentName}
-                onChange={setStudentName}
-                placeholder="Student name"
-                required
-              />
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-zinc-800">Class</span>
-                <select
-                  value={studentClassId}
-                  onChange={(event) => setStudentClassId(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 outline-none focus:border-emerald-700"
-                >
-                  <option value="">Not assigned</option>
-                  {context.classes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Input
-                label="Reference (optional)"
-                value={studentReference}
-                onChange={setStudentReference}
-                placeholder="Admission / local reference"
-              />
-            </SetupForm>
-          </section>
-        )}
+        <AcademicRecordsDirectory
+          classes={context.classes}
+          students={context.students}
+          subjects={context.subjects}
+          canManage={canManage}
+          busy={saving !== null}
+          onEditSubject={beginSubjectEdit}
+          onEditClass={beginClassEdit}
+          onEditStudent={beginStudentEdit}
+          onToggle={(kind, id, active) => void setRecordActive(kind, id, active)}
+          onDelete={(kind, id, name) => void deleteRecord(kind, id, name)}
+        />
 
         {canManage && editing ? (
           <form
@@ -913,85 +785,153 @@ export function AcademicSetupClient() {
           </form>
         ) : null}
 
-        <section className="grid gap-5 pb-10 lg:grid-cols-3">
-          <DataCard title="Subjects" empty="No subjects yet.">
-            {context.subjects.map((item) => (
-              <DataRow
-                key={item.id}
-                primary={item.name}
-                secondary={item.code || "No code"}
-                active={item.active}
-                actions={
-                  canManage ? (
-                    <RecordActions
-                      busy={saving !== null}
-                      active={item.active}
-                      onEdit={() => beginSubjectEdit(item)}
-                      onToggle={() => void setRecordActive("subject", item.id, !item.active)}
-                      onDelete={() => void deleteRecord("subject", item.id, item.name)}
-                    />
-                  ) : null
-                }
-              />
-            ))}
-          </DataCard>
-          <DataCard title="Classes" empty="No classes yet.">
-            {context.classes.map((item) => (
-              <DataRow
-                key={item.id}
-                primary={item.name}
-                secondary={
-                  [
-                    isTemporaryClassLabel(item.name)
-                      ? "Needs rename — use the actual class name"
-                      : null,
-                    item.age_range,
-                    item.academic_session,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "No additional details"
-                }
-                active={item.active}
-                actions={
-                  canManage ? (
-                    <RecordActions
-                      busy={saving !== null}
-                      active={item.active}
-                      onEdit={() => beginClassEdit(item)}
-                      onToggle={() => void setRecordActive("class", item.id, !item.active)}
-                      onDelete={() => void deleteRecord("class", item.id, item.name)}
-                    />
-                  ) : null
-                }
-              />
-            ))}
-          </DataCard>
-          <DataCard title="Students" empty="No students yet.">
-            {context.students.map((item) => (
-              <DataRow
-                key={item.id}
-                primary={item.display_name}
-                secondary={
-                  item.class_id
-                    ? classNames.get(item.class_id) ?? "Assigned class"
-                    : "Not assigned to a class"
-                }
-                active={item.active}
-                actions={
-                  canManage ? (
-                    <RecordActions
-                      busy={saving !== null}
-                      active={item.active}
-                      onEdit={() => beginStudentEdit(item)}
-                      onToggle={() => void setRecordActive("student", item.id, !item.active)}
-                      onDelete={() => void deleteRecord("student", item.id, item.display_name)}
-                    />
-                  ) : null
-                }
-              />
-            ))}
-          </DataCard>
+        <details className="mt-6 rounded-2xl border border-zinc-200 bg-white">
+          <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-zinc-800">
+            School branding <span className="ml-2 text-xs font-normal text-zinc-500">Logo and document identity</span>
+          </summary>
+          <div className="px-4 pb-4 sm:px-5">
+        <section className="rounded-2xl border border-[#0B3268]/10 bg-white p-4 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2">
+                <Image
+                  src={context.workspace.logo_url || "/ksi-mark.svg"}
+                  alt={context.workspace.logo_url ? `${context.workspace.name} logo` : "KSI fallback mark"}
+                  width={72}
+                  height={72}
+                  unoptimized
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0B3268]">
+                  School document branding
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                  {context.workspace.name}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                  This school logo becomes the primary identity on Exam, HQLS, Diagnosis and Intervention PDFs.
+                  If no logo is uploaded, KSI is used as the fallback with a small “by KAEC-NG” endorsement.
+                </p>
+              </div>
+            </div>
+            {canManage ? (
+              <div className="flex flex-wrap gap-2">
+                <label className="cursor-pointer rounded-xl bg-[#0B3268] px-4 py-2.5 text-sm font-semibold text-white">
+                  {saving === "school-logo" ? "Saving…" : context.workspace.logo_url ? "Replace logo" : "Upload school logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={saving === "school-logo"}
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.currentTarget.value = "";
+                      if (file) void saveSchoolLogo(file);
+                    }}
+                  />
+                </label>
+                {context.workspace.logo_url ? (
+                  <button
+                    type="button"
+                    disabled={saving === "school-logo"}
+                    onClick={() => void removeSchoolLogo()}
+                    className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-700 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </section>
+          </div>
+        </details>
+
+        <details className="mt-6 rounded-2xl border border-zinc-200 bg-white">
+          <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-zinc-800">
+            Add records <span className="ml-2 text-xs font-normal text-zinc-500">New subject, class or student</span>
+          </summary>
+          <div className="px-3 pb-4 sm:px-4">
+        {!canManage ? (
+          <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
+            Teachers can view this setup, but only workspace owners and admins can change subjects, classes or students.
+          </section>
+        ) : (
+          <section className="grid gap-5 py-8 lg:grid-cols-3">
+            <SetupForm title="Add subject" onSubmit={addSubject} busy={saving === "subject"}>
+              <Input
+                label="Subject name"
+                value={subjectName}
+                onChange={setSubjectName}
+                placeholder="Mathematics"
+                required
+              />
+              <Input
+                label="Code (optional)"
+                value={subjectCode}
+                onChange={setSubjectCode}
+                placeholder="MATH"
+              />
+            </SetupForm>
+
+            <SetupForm title="Add class" onSubmit={addClass} busy={saving === "class"}>
+              <Input
+                label="Class name"
+                value={className}
+                onChange={setClassName}
+                placeholder="JSS 1"
+                required
+              />
+              <Input
+                label="Age range"
+                value={ageRange}
+                onChange={setAgeRange}
+                placeholder="10–12"
+              />
+              <Input
+                label="Academic session"
+                value={academicSession}
+                onChange={setAcademicSession}
+                placeholder="2026/2027"
+              />
+            </SetupForm>
+
+            <SetupForm title="Add student" onSubmit={addStudent} busy={saving === "student"}>
+              <Input
+                label="Student name"
+                value={studentName}
+                onChange={setStudentName}
+                placeholder="Student name"
+                required
+              />
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-zinc-800">Class</span>
+                <select
+                  value={studentClassId}
+                  onChange={(event) => setStudentClassId(event.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 outline-none focus:border-emerald-700"
+                >
+                  <option value="">Not assigned</option>
+                  {context.classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input
+                label="Reference (optional)"
+                value={studentReference}
+                onChange={setStudentReference}
+                placeholder="Admission / local reference"
+              />
+            </SetupForm>
+          </section>
+        )}
+          </div>
+        </details>
       </div>
     </main>
   );
@@ -1076,98 +1016,3 @@ function Input({
   );
 }
 
-function DataCard({
-  title,
-  empty,
-  children,
-}: {
-  title: string;
-  empty: string;
-  children: React.ReactNode;
-}) {
-  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
-  return (
-    <div className="rounded-3xl border border-zinc-200 bg-white p-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <div className="mt-4 divide-y divide-zinc-100">
-        {hasChildren ? children : <p className="py-3 text-sm text-zinc-500">{empty}</p>}
-      </div>
-    </div>
-  );
-}
-
-function DataRow({
-  primary,
-  secondary,
-  active,
-  actions,
-}: {
-  primary: string;
-  secondary: string;
-  active: boolean;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div className="py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-zinc-900">{primary}</p>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                active ? "bg-emerald-50 text-emerald-800" : "bg-zinc-100 text-zinc-500"
-              }`}
-            >
-              {active ? "Active" : "Inactive"}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">{secondary}</p>
-        </div>
-      </div>
-      {actions ? <div className="mt-3">{actions}</div> : null}
-    </div>
-  );
-}
-
-function RecordActions({
-  busy,
-  active,
-  onEdit,
-  onToggle,
-  onDelete,
-}: {
-  busy: boolean;
-  active: boolean;
-  onEdit: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onEdit}
-        className="rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 disabled:opacity-50"
-      >
-        Edit
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onToggle}
-        className="rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-600 disabled:opacity-50"
-      >
-        {active ? "Deactivate" : "Reactivate"}
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onDelete}
-        className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 disabled:opacity-50"
-      >
-        Delete
-      </button>
-    </div>
-  );
-}
