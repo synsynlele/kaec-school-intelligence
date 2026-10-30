@@ -6,6 +6,7 @@ import {
   listAcademicClasses,
   listAcademicStudents,
   listAcademicSubjects,
+  matchesAcademicSearch,
   type DirectorySort,
   type DirectoryStatus,
 } from "@/lib/workspace/academic-directory";
@@ -17,7 +18,7 @@ type Subject = Database["public"]["Tables"]["subjects"]["Row"];
 type SchoolClass = Database["public"]["Tables"]["classes"]["Row"];
 type Student = Database["public"]["Tables"]["students"]["Row"];
 type Kind = "class" | "student" | "subject";
-type Selection = { kind: Kind; id: string };
+type Selection = { kind: "student" | "subject"; id: string };
 
 type Props = {
   classes: SchoolClass[];
@@ -83,6 +84,8 @@ export function AcademicRecordsDirectory({
   const [sort, setSort] = useState<DirectorySort>("name_asc");
   const [classFilter, setClassFilter] = useState("all");
   const [selected, setSelected] = useState<Selection | null>(null);
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
+  const [rosterSearch, setRosterSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<RecordPageSize>(20);
 
@@ -107,13 +110,20 @@ export function AcademicRecordsDirectory({
   const safePage = Math.min(page, pageCount);
   const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const selectedClass = selected?.kind === "class" ? classes.find((item) => item.id === selected.id) : null;
   const selectedStudent = selected?.kind === "student" ? students.find((item) => item.id === selected.id) : null;
   const selectedSubject = selected?.kind === "subject" ? subjects.find((item) => item.id === selected.id) : null;
-  const selectedRoster = selectedClass
-    ? [...students].filter((item) => item.class_id === selectedClass.id)
-        .sort((a, b) => a.display_name.localeCompare(b.display_name, undefined, { numeric: true }))
-    : [];
+  const expandedRoster = useMemo(
+    () => students
+      .filter((item) => item.class_id === expandedClassId)
+      .sort((a, b) => a.display_name.localeCompare(b.display_name, undefined, { numeric: true })),
+    [students, expandedClassId],
+  );
+  const visibleRoster = useMemo(
+    () => expandedRoster.filter((item) =>
+      matchesAcademicSearch([item.display_name, item.external_reference], rosterSearch),
+    ),
+    [expandedRoster, rosterSearch],
+  );
 
   function changeTab(nextTab: Kind, filter = "all") {
     setTab(nextTab);
@@ -123,17 +133,23 @@ export function AcademicRecordsDirectory({
     setClassFilter(filter);
     setPage(1);
     setSelected(null);
+    setExpandedClassId(null);
+    setRosterSearch("");
   }
 
-  function view(kind: Kind, id: string) {
+  function view(kind: "student" | "subject", id: string) {
     setSelected((current) => current?.kind === kind && current.id === id ? null : { kind, id });
-    // The selection lives above the paged list, so it remains visible even when
-    // many records are present and does not create a second full-page directory.
     window.setTimeout(() => {
       document.getElementById("academic-directory-detail")?.scrollIntoView({
         behavior: "smooth", block: "nearest",
       });
     }, 0);
+  }
+
+  function toggleClass(classId: string) {
+    setSelected(null);
+    setRosterSearch("");
+    setExpandedClassId((current) => current === classId ? null : classId);
   }
 
   const buttonStyle = "min-h-10 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50";
@@ -192,7 +208,7 @@ export function AcademicRecordsDirectory({
       <div className="mt-4">
         <RecordListToolbar
           searchValue={search}
-          onSearchChange={(value) => { setSearch(value); setPage(1); setSelected(null); }}
+          onSearchChange={(value) => { setSearch(value); setPage(1); setSelected(null); setExpandedClassId(null); }}
           searchPlaceholder={tab === "class" ? "Search class, session, age…" : tab === "student" ? "Search name, class, admission reference…" : "Search subject name or code…"}
           sortValue={sort}
           onSortChange={(value) => { setSort(value as DirectorySort); setPage(1); }}
@@ -219,7 +235,7 @@ export function AcademicRecordsDirectory({
                 <select
                   aria-label="Filter records by status"
                   value={status}
-                  onChange={(event) => { setStatus(event.target.value as DirectoryStatus); setPage(1); setSelected(null); }}
+                  onChange={(event) => { setStatus(event.target.value as DirectoryStatus); setPage(1); setSelected(null); setExpandedClassId(null); }}
                   className="min-w-0 bg-white py-2 text-sm font-medium text-zinc-800"
                 >
                   <option value="all">All</option>
@@ -234,32 +250,26 @@ export function AcademicRecordsDirectory({
         />
       </div>
 
-      {selectedClass || selectedStudent || selectedSubject ? (
+      {selectedStudent || selectedSubject ? (
         <section id="academic-directory-detail" aria-label="Selected record details" className="mt-4 scroll-mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800">Record details</p>
               <h3 className="mt-1 break-words text-xl font-semibold text-zinc-950">
-                {selectedClass?.name ?? selectedStudent?.display_name ?? selectedSubject?.name}
+                {selectedStudent?.display_name ?? selectedSubject?.name}
               </h3>
             </div>
             <button type="button" className={buttonStyle} onClick={() => setSelected(null)} aria-label="Close record details">Close</button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div><DetailValue label="Status"><Status active={(selectedClass ?? selectedStudent ?? selectedSubject)!.active} /></DetailValue></div>
-            {selectedClass ? (
-              <>
-                <DetailValue label="Students">{classCounts.get(selectedClass.id) ?? 0}</DetailValue>
-                <DetailValue label="Academic session">{selectedClass.academic_session || "Not set"}</DetailValue>
-                <DetailValue label="Age range">{selectedClass.age_range || "Not set"}</DetailValue>
-              </>
-            ) : selectedStudent ? (
+            <div><DetailValue label="Status"><Status active={(selectedStudent ?? selectedSubject)!.active} /></DetailValue></div>
+            {selectedStudent ? (
               <>
                 <DetailValue label="Class">
                   {selectedStudent.class_id ? (
                     <button type="button" className="text-emerald-900 underline underline-offset-2" onClick={() => {
                       changeTab("class");
-                      setSelected({ kind: "class", id: selectedStudent.class_id! });
+                      setExpandedClassId(selectedStudent.class_id);
                     }}>
                       {classNames.get(selectedStudent.class_id) ?? "Assigned class"}
                     </button>
@@ -271,39 +281,12 @@ export function AcademicRecordsDirectory({
               <DetailValue label="Subject code">{selectedSubject.code || "Not set"}</DetailValue>
             ) : null}
           </div>
-          {selectedClass ? (
-            <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-zinc-950">Students in this class</h4>
-                <button type="button" className="text-xs font-semibold text-emerald-900 underline underline-offset-2" onClick={() => changeTab("student", selectedClass.id)}>
-                  View all ({selectedRoster.length})
-                </button>
-              </div>
-              {selectedRoster.length ? (
-                <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
-                  {selectedRoster.slice(0, 8).map((student) => (
-                    <li key={student.id}>
-                      <button
-                        type="button"
-                        onClick={() => { changeTab("student", selectedClass.id); setSelected({ kind: "student", id: student.id }); }}
-                        className="flex min-h-10 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-800 transition hover:bg-stone-50"
-                      >
-                        <span className="min-w-0 truncate">{student.display_name}</span><span className="text-zinc-400">›</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="mt-3 text-sm text-zinc-500">No students assigned to this class yet.</p>}
-              {selectedRoster.length > 8 ? <p className="mt-2 text-xs text-zinc-500">Showing the first 8 students. View all to search the full class list.</p> : null}
-            </div>
-          ) : null}
-          {selectedClass ? actions("class", selectedClass, selectedClass.name)
-            : selectedStudent ? actions("student", selectedStudent, selectedStudent.display_name)
-              : selectedSubject ? actions("subject", selectedSubject, selectedSubject.name) : null}
+          {selectedStudent ? actions("student", selectedStudent, selectedStudent.display_name)
+            : selectedSubject ? actions("subject", selectedSubject, selectedSubject.name) : null}
         </section>
       ) : null}
 
-      <div className="mt-4 divide-y divide-zinc-100 rounded-2xl border border-zinc-200">
+      <div className="mt-4 divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200">
         {paged.length ? paged.map((item) => {
           const name = tab === "student" ? (item as Student).display_name : (item as SchoolClass | Subject).name;
           const secondary = tab === "class"
@@ -311,25 +294,70 @@ export function AcademicRecordsDirectory({
             : tab === "student"
               ? `${(item as Student).class_id ? classNames.get((item as Student).class_id!) ?? "Assigned class" : "Not assigned"}${(item as Student).external_reference ? " · " + (item as Student).external_reference : ""}`
               : (item as Subject).code || "No subject code";
+          const isClassExpanded = tab === "class" && expandedClassId === item.id;
+          const isSelected = tab !== "class" && selected?.kind === tab && selected.id === item.id;
           return (
-            <button
-              key={item.id}
-              type="button"
-              aria-expanded={selected?.kind === tab && selected.id === item.id}
-              onClick={() => view(tab, item.id)}
-              className={`flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-stone-50 sm:px-5 ${
-                selected?.kind === tab && selected.id === item.id ? "bg-emerald-50/80" : "bg-white"
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="break-words text-sm font-semibold text-zinc-900">{name}</span>
-                  <Status active={item.active} />
+            <div key={item.id}>
+              <button
+                type="button"
+                aria-expanded={isClassExpanded || isSelected}
+                aria-controls={isClassExpanded ? `class-roster-${item.id}` : undefined}
+                onClick={() => tab === "class" ? toggleClass(item.id) : view(tab, item.id)}
+                className={`flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-stone-50 sm:px-5 ${
+                  isClassExpanded || isSelected ? "bg-emerald-50/80" : "bg-white"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-words text-sm font-semibold text-zinc-900">{name}</span>
+                    <Status active={item.active} />
+                  </div>
+                  <p className="mt-1 truncate text-xs text-zinc-500">{secondary}</p>
                 </div>
-                <p className="mt-1 truncate text-xs text-zinc-500">{secondary}</p>
-              </div>
-              <span aria-hidden="true" className="shrink-0 text-lg text-zinc-400">›</span>
-            </button>
+                <span aria-hidden="true" className="shrink-0 text-lg text-zinc-400">{isClassExpanded ? "⌄" : "›"}</span>
+              </button>
+              {isClassExpanded ? (
+                <div id={`class-roster-${item.id}`} className="border-t border-emerald-100 bg-emerald-50/40 px-4 py-4 sm:px-5" aria-label={`Students in ${name}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-zinc-950">Students in {name} ({expandedRoster.length})</h3>
+                    <button type="button" onClick={() => changeTab("student", item.id)} className="min-h-9 text-xs font-semibold text-emerald-900 underline underline-offset-2">
+                      Open student directory
+                    </button>
+                  </div>
+                  {expandedRoster.length ? (
+                    <>
+                      <label className="mt-3 block">
+                        <span className="sr-only">Search students in {name}</span>
+                        <input
+                          type="search"
+                          value={rosterSearch}
+                          onChange={(event) => setRosterSearch(event.target.value)}
+                          placeholder="Search students in this class…"
+                          className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-700"
+                        />
+                      </label>
+                      <p className="mt-2 text-xs text-zinc-500">Showing {visibleRoster.length} of {expandedRoster.length} students</p>
+                      <ul className="mt-2 max-h-80 divide-y divide-zinc-100 overflow-y-auto rounded-xl border border-zinc-200 bg-white">
+                        {visibleRoster.map((student) => (
+                          <li key={student.id}>
+                            <button
+                              type="button"
+                              onClick={() => { changeTab("student", item.id); setSelected({ kind: "student", id: student.id }); }}
+                              className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-stone-50"
+                            >
+                              <span className="min-w-0 truncate">{student.display_name}</span>
+                              <span className="shrink-0 text-xs text-zinc-500">{student.active ? "" : "Inactive"} ›</span>
+                            </button>
+                          </li>
+                        ))}
+                        {!visibleRoster.length ? <li className="px-3 py-4 text-sm text-zinc-500">No students match that search.</li> : null}
+                      </ul>
+                    </>
+                  ) : <p className="mt-3 text-sm text-zinc-500">No students assigned to this class yet.</p>}
+                  {actions("class", item as SchoolClass, name)}
+                </div>
+              ) : null}
+            </div>
           );
         }) : <p className="px-5 py-8 text-center text-sm text-zinc-500">
           {total === 0 ? `No ${CATEGORY_LABELS[tab].toLowerCase()} added yet.` : "No records match these filters. Try clearing your search or changing the class or status."}
@@ -340,8 +368,8 @@ export function AcademicRecordsDirectory({
           page={safePage}
           pageSize={pageSize}
           totalItems={filtered.length}
-          onPageChange={setPage}
-          onPageSizeChange={(value) => { setPageSize(value); setPage(1); setSelected(null); }}
+          onPageChange={(value) => { setPage(value); setExpandedClassId(null); setSelected(null); }}
+          onPageSizeChange={(value) => { setPageSize(value); setPage(1); setSelected(null); setExpandedClassId(null); }}
         />
       </div>
     </section>

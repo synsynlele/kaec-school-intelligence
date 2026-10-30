@@ -48,9 +48,8 @@ for (const requirement of [
   "RecordListToolbar",
   "RecordListPagination",
   "changeTab",
-  'selectedClass ?',
   "selectedRoster.slice(0, 8)",
-  'changeTab("student", selectedClass.id)',
+  'changeTab("student", item.id)',
   "onEditStudent",
   "onDelete",
   "classFilter",
@@ -64,4 +63,6 @@ for (const requirement of [
 assert(setup.includes("<AcademicRecordsDirectory"), "School records must use the new focused directory.");
 assert(setup.includes("School branding") && setup.includes("Add records") && setup.includes("<details"), "Secondary setup forms must be collapsed.");
 assert(!setup.includes("<DataCard"), "Old triple-column unbounded record lists must be removed.");
+assert(!ui.includes("selectedRoster.slice(0, 8)"), "Class expansion must show every student, not just an eight-person preview.");
+assert(ui.includes("max-h-80") && ui.includes("overflow-y-auto"), "Long class rosters must scroll without taking over the page.");
 console.log("Academic directory search, natural sort, status, class drilldown, pagination and clean setup verification passed.");
