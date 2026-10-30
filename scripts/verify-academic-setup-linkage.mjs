@@ -22,6 +22,10 @@ const academic = await readFile(
   join(ROOT, "lib/domain/academic-context.ts"),
   "utf8",
 );
+const directory = await readFile(
+  join(ROOT, "components/workspace/academic-records-directory.tsx"),
+  "utf8",
+);
 
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -43,13 +47,17 @@ for (const required of [
   "revealEditor",
   "classNameValidationMessage(className)",
   'classNameValidationMessage(editing.name)',
-  "Needs rename — use the actual class name",
 ]) {
   assert(
     setup.includes(required),
     `Academic Setup edit/validation requirement missing: ${required}`,
   );
 }
+
+assert(
+  directory.includes("Needs rename — use the actual class name"),
+  "The class directory must still highlight temporary class labels needing renaming.",
+);
 
 assert(
   hqls.includes('id="hqls-subject"') &&

@@ -11,6 +11,7 @@ import {
   type DirectoryStatus,
 } from "@/lib/workspace/academic-directory";
 import type { Database } from "@/lib/supabase/database";
+import { isTemporaryClassLabel } from "@/lib/domain/academic-context";
 import { RecordListPagination, type RecordPageSize } from "@/components/shared/record-list-pagination";
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 
@@ -269,7 +270,7 @@ export function AcademicRecordsDirectory({
                   {selectedStudent.class_id ? (
                     <button type="button" className="text-emerald-900 underline underline-offset-2" onClick={() => {
                       changeTab("class");
-                      setExpandedClassId(selectedStudent.class_id);
+                      setExpandedClassId(selectedStudent.class_id!);
                     }}>
                       {classNames.get(selectedStudent.class_id) ?? "Assigned class"}
                     </button>
@@ -311,6 +312,9 @@ export function AcademicRecordsDirectory({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="break-words text-sm font-semibold text-zinc-900">{name}</span>
                     <Status active={item.active} />
+                    {tab === "class" && isTemporaryClassLabel(name) ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">Needs rename — use the actual class name</span>
+                    ) : null}
                   </div>
                   <p className="mt-1 truncate text-xs text-zinc-500">{secondary}</p>
                 </div>

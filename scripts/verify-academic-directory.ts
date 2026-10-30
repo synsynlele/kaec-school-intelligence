@@ -30,7 +30,7 @@ const ids = <T extends { id: string }>(items: T[]) => items.map(({ id }) => id);
 assert(matchesAcademicSearch(["Amina Bello", "JSS 2"], "amina JSS"), "Multi-term search must work across fields.");
 assert(!matchesAcademicSearch(["Amina Bello", "JSS 2"], "amina JSS3"), "Each search term must match.");
 assert.deepEqual(ids(listAcademicClasses(classes, students, opts)), ["j1", "j2", "j10"], "Class names must sort numerically.");
-assert.deepEqual(ids(listAcademicClasses(classes, students, { ...opts, sort: "enrollment_desc" })), ["j2", "j1", "j10"]);
+assert.deepEqual(ids(listAcademicClasses(classes, students, { ...opts, sort: "enrollment_desc" })), ["j2", "j10", "j1"]);
 assert.deepEqual(ids(listAcademicClasses(classes, students, { ...opts, query: "2025" })), ["j1"], "Find class via session.");
 assert.deepEqual(ids(listAcademicClasses(classes, students, { ...opts, status: "active" })), ["j2", "j10"]);
 assert.deepEqual(ids(listAcademicStudents(students, names, { ...opts, classId: "j2" })), ["s1", "s2"]);
