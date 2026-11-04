@@ -26,6 +26,7 @@ export type CreateDiagnosisInput = {
   evidenceLimitations?: unknown[];
   engineVersion?: string | null;
   promptVersion?: string | null;
+  revision?: { sourceDiagnosisId: string; reason: string; approvedAt: string };
 };
 
 function toJson(value: unknown): Json {
@@ -73,7 +74,7 @@ export async function createDiagnosisDraft(
       workspaceId: input.workspaceId,
       artifactType: "diagnosis",
       artifactId: diagnosis.id,
-      snapshot: { diagnosis },
+      snapshot: { diagnosis, ...(input.revision ? { revision: input.revision } : {}) },
       origin: input.engineVersion ? "generated" : "manual_edit",
       engineVersion: input.engineVersion,
       promptVersion: input.promptVersion,
