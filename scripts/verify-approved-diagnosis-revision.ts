@@ -47,6 +47,6 @@ assert(result.includes("Revise Approved Diagnosis"), "Approved reports need an a
 assert(result.includes('action: "revise_approved"'));
 assert(result.includes('revisionSource.id'), "Corrections need a link back to the official original.");
 assert(result.includes('entry.row.status === "final"'), "Archived reports must remain read only.");
-assert(pdf.includes('diagnosis.status !== "final"') || pdf.includes('diagnosis.status === "final"'), "Downloads must preserve approval status checks.");
+assert(pdf.includes('!["final", "archived"].includes(diagnosis.status)'), "Downloads must preserve approval status checks.");
 
 console.log("Approved diagnosis revision authorization, immutable originals, evidence, provenance and UI checks passed.");
