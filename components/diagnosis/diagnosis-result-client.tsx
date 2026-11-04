@@ -200,15 +200,15 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
     }
   }
 
-  async function downloadPdf() {
+  async function downloadReport(format: "pdf" | "docx") {
     if (!entry) return;
-    setBusy("pdf");
+    setBusy(format);
     setError(null);
     try {
-      const response = await authenticatedFetch(`/api/diagnosis/pdf?id=${encodeURIComponent(entry.row.id)}`);
+      const response = await authenticatedFetch(`/api/diagnosis/pdf?id=${encodeURIComponent(entry.row.id)}&format=${format}`);
       if (!response.ok) {
         const result = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(result.error || "Parent PDF could not be prepared.");
+        throw new Error(result.error || "Parent report could not be prepared.");
       }
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
@@ -216,13 +216,13 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = match?.[1] ?? "kaec-diagnosis.pdf";
+      anchor.download = match?.[1] ?? `kaec-diagnosis.${format}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Parent PDF could not be downloaded.");
+      setError(caught instanceof Error ? caught.message : "Parent report could not be downloaded.");
     } finally {
       setBusy(null);
     }
@@ -253,7 +253,10 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
             {assessment ? <Link href={`/assessment/result?assessment=${encodeURIComponent(assessment.id)}`} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-center text-sm font-semibold text-blue-900">Open Evidence Assessment</Link> : null}
             {handoff ? <Link href={`/interventions/result?intervention=${encodeURIComponent(handoff.id)}`} className="min-h-11 rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">Open Intervention</Link> : null}
             {(entry.row.status === "final" || entry.row.status === "archived") && entry.row.finalised_at ? (
-              <button type="button" disabled={busy !== null} onClick={() => void downloadPdf()} className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy === "pdf" ? "Preparing PDF…" : "Download Parent PDF"}</button>
+              <>
+                <button type="button" disabled={busy !== null} onClick={() => void downloadReport("pdf")} className="min-h-11 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy === "pdf" ? "Preparing PDF…" : "Download Parent PDF"}</button>
+                <button type="button" disabled={busy !== null} onClick={() => void downloadReport("docx")} className="min-h-11 rounded-xl border border-emerald-950/30 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-950 disabled:opacity-50">{busy === "docx" ? "Preparing Word…" : "Download Word (.docx)"}</button>
+              </>
             ) : null}
           </div>
         </div>

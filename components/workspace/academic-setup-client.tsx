@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AcademicRecordsDirectory } from "@/components/workspace/academic-records-directory";
+import { studentPronounPreference, type StudentPronounPreference } from "@/lib/diagnosis/pronouns";
 import { useRouter } from "next/navigation";
 
 import { classNameValidationMessage } from "@/lib/domain/academic-context";
@@ -22,6 +23,7 @@ type SetupContext = {
   subjects: Subject[];
   classes: SchoolClass[];
   students: Student[];
+  pronounReady: boolean;
 };
 
 type EditingRecord =
@@ -39,6 +41,7 @@ type EditingRecord =
       name: string;
       classId: string;
       reference: string;
+      pronounPreference: StudentPronounPreference;
     };
 
 type RecordKind = EditingRecord["kind"];
@@ -156,6 +159,7 @@ async function loadSetupContext(): Promise<SetupContext | null> {
     subjects: subjectResult.data ?? [],
     classes: classResult.data ?? [],
     students: studentResult.data ?? [],
+    pronounReady: !(await supabase.from("students").select("pronoun_preference").eq("workspace_id", workspaceId).limit(1)).error,
   };
 }
 
@@ -176,6 +180,7 @@ export function AcademicSetupClient() {
   const [studentName, setStudentName] = useState("");
   const [studentClassId, setStudentClassId] = useState("");
   const [studentReference, setStudentReference] = useState("");
+  const [studentPronouns, setStudentPronouns] = useState<StudentPronounPreference>("name_only");
 
   const canManage = useMemo(
     () => context?.role === "owner" || context?.role === "admin",
@@ -297,11 +302,13 @@ export function AcademicSetupClient() {
           display_name: studentName.trim(),
           class_id: studentClassId || null,
           external_reference: studentReference.trim() || null,
+          ...(context.pronounReady ? { pronoun_preference: studentPronouns } : {}),
         });
       if (insertError) throw insertError;
       setStudentName("");
       setStudentClassId("");
       setStudentReference("");
+      setStudentPronouns("name_only");
       setSuccess("Student added.");
       await refresh();
     } catch (caught) {
@@ -394,6 +401,7 @@ export function AcademicSetupClient() {
       name: item.display_name,
       classId: item.class_id ?? "",
       reference: item.external_reference ?? "",
+      pronounPreference: studentPronounPreference(item.pronoun_preference),
     });
     setError(null);
     setSuccess(null);
@@ -447,6 +455,7 @@ export function AcademicSetupClient() {
             display_name: editing.name.trim(),
             class_id: editing.classId || null,
             external_reference: editing.reference.trim() || null,
+            ...(context.pronounReady ? { pronoun_preference: editing.pronounPreference } : {}),
           })
           .eq("id", editing.id)
           .eq("workspace_id", context.workspace.id);
@@ -765,6 +774,21 @@ export function AcademicSetupClient() {
                       ))}
                     </select>
                   </label>
+                  {context.pronounReady ? (
+                    <label className="block">
+                      <span className="mb-1.5 block text-sm font-medium text-zinc-800">Pronouns for diagnosis reports</span>
+                      <select
+                        value={editing.pronounPreference}
+                        onChange={(event) => setEditing({ ...editing, pronounPreference: studentPronounPreference(event.target.value) })}
+                        className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-zinc-900"
+                      >
+                        <option value="name_only">Use learner’s name (no pronouns recorded)</option>
+                        <option value="she_her">She / her</option>
+                        <option value="he_him">He / him</option>
+                        <option value="they_them">They / them</option>
+                      </select>
+                    </label>
+                  ) : null}
                   <Input
                     label="Reference (optional)"
                     value={editing.reference}
@@ -921,6 +945,24 @@ export function AcademicSetupClient() {
                   ))}
                 </select>
               </label>
+              {context.pronounReady ? (
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-zinc-800">Pronouns for diagnosis reports</span>
+                  <select
+                    value={studentPronouns}
+                    onChange={(event) => setStudentPronouns(studentPronounPreference(event.target.value))}
+                    className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-zinc-900"
+                  >
+                    <option value="name_only">Use learner’s name (not recorded)</option>
+                    <option value="she_her">She / her</option>
+                    <option value="he_him">He / him</option>
+                    <option value="they_them">They / them</option>
+                  </select>
+                  <span className="mt-1 block text-xs text-zinc-500">Optional. KSI never guesses a student’s pronouns from their name.</span>
+                </label>
+              ) : (
+                <p className="text-xs text-zinc-500">Reports use neutral wording until the student-record database update is installed.</p>
+              )}
               <Input
                 label="Reference (optional)"
                 value={studentReference}

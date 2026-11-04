@@ -17,7 +17,7 @@ function escapeXml(value: string | number | null | undefined) {
     .replace(/'/g, "&apos;");
 }
 
-function paragraph(
+export function paragraph(
   value: string,
   options: { bold?: boolean; size?: number; color?: string; spaceAfter?: number; keepNext?: boolean; rule?: boolean } = {},
 ) {
@@ -41,7 +41,7 @@ const sectionLabels: Array<[GeneratedAssessmentItem["itemType"], string]> = [
   ["project", "Project and practical"],
 ];
 
-function schoolLogo() {
+export function schoolLogo() {
   return '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="457200" cy="457200"/><wp:docPr id="1" name="School logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="School logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
 }
 
@@ -105,7 +105,7 @@ function crc32(bytes: Buffer) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function zip(entries: Array<[string, Buffer]>) {
+export function zip(entries: Array<[string, Buffer]>) {
   const local: Buffer[] = [];
   const central: Buffer[] = [];
   let offset = 0;
