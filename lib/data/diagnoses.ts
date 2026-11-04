@@ -75,7 +75,7 @@ export async function createDiagnosisDraft(
       artifactType: "diagnosis",
       artifactId: diagnosis.id,
       snapshot: { diagnosis, ...(input.revision ? { revision: input.revision } : {}) },
-      origin: input.engineVersion ? "generated" : "manual_edit",
+      origin: input.revision ? "manual_edit" : input.engineVersion ? "generated" : "manual_edit",
       engineVersion: input.engineVersion,
       promptVersion: input.promptVersion,
     });
