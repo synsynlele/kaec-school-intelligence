@@ -9,6 +9,8 @@ export type CreateDiagnosisInput = {
   userId: string;
   mode: DiagnosisMode;
   assessmentId?: string | null;
+  academicSession?: string;
+  term?: string;
   observedEvidence?: unknown[];
   detectedPatterns?: unknown[];
   possibleInterpretations?: unknown[];
@@ -45,6 +47,8 @@ export async function createDiagnosisDraft(
       created_by: input.userId,
       assessment_id: input.assessmentId ?? null,
       diagnosis_mode: input.mode,
+      academic_session: input.academicSession ?? "",
+      term: input.term ?? "",
       status: "draft",
       observed_evidence: toJson(input.observedEvidence ?? []),
       detected_patterns: toJson(input.detectedPatterns ?? []),
