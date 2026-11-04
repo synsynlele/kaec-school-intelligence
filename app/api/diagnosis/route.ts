@@ -16,6 +16,7 @@ import {
 } from "@/lib/diagnosis/engine";
 import { generateOpenAIJson, OpenAIProviderError } from "@/lib/ai/openai";
 import { alignDiagnosisPronouns } from "@/lib/diagnosis/pronouns";
+import { canReviseApprovedDiagnosis, isApprovedRevisionSource, validateRevisionReason } from "@/lib/diagnosis/revisions";
 import { completeAiRun, startAiRun } from "@/lib/data/ai-runs";
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import {
@@ -62,8 +63,9 @@ type GenerateInput = {
 
 type GenerateBody = { action: "generate"; input: unknown };
 type SaveBody = { action: "save_edits"; diagnosisId: string; diagnosis: unknown };
+type ReviseBody = { action: "revise_approved"; diagnosisId: string; reason: string };
 type LifecycleBody = { action: "review" | "approve"; diagnosisId: string };
-type DiagnosisBody = GenerateBody | SaveBody | LifecycleBody;
+type DiagnosisBody = GenerateBody | SaveBody | ReviseBody | LifecycleBody;
 
 function json(value: unknown, status = 200) {
   return Response.json(value, { status });
@@ -461,7 +463,7 @@ function diagnosisFromRow(row: DiagnosisRow): GeneratedDiagnosis {
     academicSkillChallenges: row.academic_challenges,
     characterStrengths: row.character_strengths,
     characterChallenges: row.character_challenges,
-    conciseDiagnosis: (() => {
+    conciseDiagnosis: row.concise_diagnosis || (() => {
       const interpretations = Array.isArray(row.possible_interpretations) ? row.possible_interpretations : [];
       const first = record(interpretations[0]);
       return typeof first?.summary === "string" ? first.summary : typeof first?.statement === "string" ? first.statement : "The current evidence has been reviewed and translated into the actions below.";
@@ -588,7 +590,7 @@ async function handleSaveEdits(supabase: KsiSupabaseClient, userId: string, body
   const diagnosisId = requiredText(body.diagnosisId, "Diagnosis id");
   const { data: current, error } = await supabase.from("diagnoses").select("*").eq("id", diagnosisId).single();
   if (error || !current) throw error ?? new Error("Diagnosis not found.");
-  if (current.status === "final") throw new Error("Final diagnoses are immutable. Create a new diagnosis if the evidence changes.");
+  if (current.status === "final" || current.status === "archived") throw new Error("Approved diagnoses cannot be overwritten. Use Revise Approved Diagnosis to create a correction draft.");
   const suppliedEvidence = await evidenceForDiagnosis(supabase, current as DiagnosisRow);
   const edited = parseGeneratedDiagnosis(body.diagnosis);
   edited.observedEvidence = suppliedEvidence;
@@ -605,6 +607,7 @@ async function handleSaveEdits(supabase: KsiSupabaseClient, userId: string, body
         ...item,
         ...(index === 0 ? { summary: edited.conciseDiagnosis } : {}),
       })) as unknown as Json,
+      concise_diagnosis: edited.conciseDiagnosis,
       academic_strengths: fields.academicStrengths as unknown as Json,
       academic_challenges: fields.academicChallenges as unknown as Json,
       character_strengths: fields.characterStrengths as unknown as Json,
@@ -634,6 +637,61 @@ async function handleSaveEdits(supabase: KsiSupabaseClient, userId: string, body
   });
 
   return json({ diagnosis: saved, generated: diagnosisFromRow(saved as DiagnosisRow), validation });
+}
+
+/**
+ * A correction is a new draft, never an in-place modification of an approved report.
+ * The first artifact version carries a durable link to the approved source and
+ * the human-supplied explanation, without requiring a new database column.
+ */
+async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string, body: ReviseBody) {
+  const diagnosisId = requiredText(body.diagnosisId, "Diagnosis id");
+  const reason = validateRevisionReason(body.reason);
+  if (!reason) return json({ error: "Explain the correction in 8 to 500 characters." }, 400);
+
+  const workspace = await workspaceContext(supabase, userId);
+  const { data: source, error: sourceError } = await supabase
+    .from("diagnoses")
+    .select("*")
+    .eq("id", diagnosisId)
+    .eq("workspace_id", workspace.workspaceId)
+    .single();
+  if (sourceError || !source) return json({ error: "Approved diagnosis not found in your active workspace." }, 404);
+  if (!isApprovedRevisionSource(source)) {
+    return json({ error: "Only an approved, active diagnosis can be revised." }, 409);
+  }
+  if (!canReviseApprovedDiagnosis(source, { workspaceId: workspace.workspaceId, userId, canApprove: workspace.canApprove })) {
+    return json({ error: "Only the report creator or a school Owner/Admin may prepare a correction." }, 403);
+  }
+
+  // Do not detach the evidence, change the original approval, or alter any linked intervention.
+  await evidenceForDiagnosis(supabase, source as DiagnosisRow);
+  const original = diagnosisFromRow(source as DiagnosisRow);
+  const fields = diagnosisToPersistence(original);
+  const correction = await createDiagnosisDraft(supabase, {
+    workspaceId: source.workspace_id,
+    studentId: source.student_id,
+    userId,
+    mode: source.diagnosis_mode as DiagnosisMode,
+    assessmentId: source.assessment_id,
+    academicSession: source.academic_session,
+    term: source.term,
+    conciseDiagnosis: original.conciseDiagnosis,
+    ...fields,
+    possibleInterpretations: original.possibleInterpretations.map((item, index) => ({
+      ...item,
+      ...(index === 0 ? { summary: original.conciseDiagnosis } : {}),
+    })),
+    engineVersion: source.engine_version,
+    promptVersion: source.prompt_version,
+    revision: {
+      sourceDiagnosisId: source.id,
+      reason,
+      approvedAt: source.finalised_at,
+    },
+  });
+
+  return json({ diagnosis: correction, generated: original, sourceDiagnosisId: source.id }, 201);
 }
 
 async function handleLifecycle(supabase: KsiSupabaseClient, body: LifecycleBody) {
@@ -666,6 +724,11 @@ export async function GET(request: Request) {
     const diagnoses = (diagnosesResult.data ?? []).map((diagnosis) => ({
       row: diagnosis,
       generated: diagnosisFromRow(diagnosis as DiagnosisRow),
+      canRevise: canReviseApprovedDiagnosis(diagnosis, {
+        workspaceId: workspace.workspaceId,
+        userId: user.id,
+        canApprove: workspace.canApprove,
+      }),
     }));
 
     return json({
@@ -694,6 +757,7 @@ export async function POST(request: Request) {
     if (!body || typeof body !== "object" || !("action" in body)) throw new Error("A valid diagnosis action is required.");
     if (body.action === "generate") return await handleGenerate(supabase, user.id, body.input);
     if (body.action === "save_edits") return await handleSaveEdits(supabase, user.id, body);
+    if (body.action === "revise_approved") return await handleReviseApproved(supabase, user.id, body);
     if (body.action === "review" || body.action === "approve") return await handleLifecycle(supabase, body);
     throw new Error("Unsupported diagnosis action.");
   } catch (caught) {

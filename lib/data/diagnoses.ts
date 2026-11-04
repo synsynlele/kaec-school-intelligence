@@ -9,6 +9,8 @@ export type CreateDiagnosisInput = {
   userId: string;
   mode: DiagnosisMode;
   assessmentId?: string | null;
+  academicSession?: string;
+  term?: string;
   observedEvidence?: unknown[];
   detectedPatterns?: unknown[];
   possibleInterpretations?: unknown[];
@@ -26,6 +28,7 @@ export type CreateDiagnosisInput = {
   evidenceLimitations?: unknown[];
   engineVersion?: string | null;
   promptVersion?: string | null;
+  revision?: { sourceDiagnosisId: string; reason: string; approvedAt: string };
 };
 
 function toJson(value: unknown): Json {
@@ -44,6 +47,8 @@ export async function createDiagnosisDraft(
       created_by: input.userId,
       assessment_id: input.assessmentId ?? null,
       diagnosis_mode: input.mode,
+      academic_session: input.academicSession ?? "",
+      term: input.term ?? "",
       status: "draft",
       observed_evidence: toJson(input.observedEvidence ?? []),
       detected_patterns: toJson(input.detectedPatterns ?? []),
@@ -73,8 +78,8 @@ export async function createDiagnosisDraft(
       workspaceId: input.workspaceId,
       artifactType: "diagnosis",
       artifactId: diagnosis.id,
-      snapshot: { diagnosis },
-      origin: input.engineVersion ? "generated" : "manual_edit",
+      snapshot: { diagnosis, ...(input.revision ? { revision: input.revision } : {}) },
+      origin: input.revision ? "manual_edit" : input.engineVersion ? "generated" : "manual_edit",
       engineVersion: input.engineVersion,
       promptVersion: input.promptVersion,
     });

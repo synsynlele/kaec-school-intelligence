@@ -26,7 +26,7 @@ type DiagnosisRow = {
   updated_at: string;
 };
 
-type DiagnosisEntry = { row: DiagnosisRow; generated: GeneratedDiagnosis };
+type DiagnosisEntry = { row: DiagnosisRow; generated: GeneratedDiagnosis; canRevise?: boolean };
 type Payload = {
   workspace: { id: string; name: string; role: string; canApprove: boolean };
   assessments: Array<{ id: string; title: string; status: string }>;
@@ -52,6 +52,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [revisionSource, setRevisionSource] = useState<{ id: string; reason: string; approvedAt: string } | null>(null);
 
   const authenticatedFetch = useCallback(async (path: string, init?: RequestInit) => {
     const supabase = getBrowserSupabaseClient();
@@ -75,7 +76,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
     if (!found) throw new Error("This diagnosis is not available in the active workspace.");
 
     const supabase = getBrowserSupabaseClient();
-    const [studentResult, handoffResult] = await Promise.all([
+    const [studentResult, handoffResult, revisionResult] = await Promise.all([
       supabase
         .from("students")
         .select("display_name,class_id")
@@ -88,9 +89,23 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
         .eq("workspace_id", next.workspace.id)
         .eq("diagnosis_id", diagnosisId)
         .maybeSingle(),
+      supabase
+        .from("artifact_versions")
+        .select("snapshot")
+        .eq("workspace_id", next.workspace.id)
+        .eq("artifact_type", "diagnosis")
+        .eq("artifact_id", diagnosisId)
+        .eq("version_number", 1)
+        .maybeSingle(),
     ]);
     if (studentResult.error) throw studentResult.error;
     if (handoffResult.error) throw handoffResult.error;
+    if (revisionResult.error) throw revisionResult.error;
+    const snapshot = revisionResult.data?.snapshot;
+    const metadata = snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+      ? (snapshot as Record<string, unknown>).revision : null;
+    const revision = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? metadata as Record<string, unknown> : null;
 
     let nextClassName = "Class not linked";
     if (studentResult.data?.class_id) {
@@ -108,6 +123,13 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
     setStudentName(studentResult.data?.display_name || "Student");
     setClassName(nextClassName);
     setHandoff((handoffResult.data as Handoff | null) ?? null);
+    setRevisionSource(typeof revision?.sourceDiagnosisId === "string"
+      ? {
+          id: revision.sourceDiagnosisId,
+          reason: typeof revision.reason === "string" ? revision.reason : "",
+          approvedAt: typeof revision.approvedAt === "string" ? revision.approvedAt : "",
+        }
+      : null);
   }, [authenticatedFetch, diagnosisId]);
 
   useEffect(() => {
@@ -158,6 +180,39 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The diagnosis action could not be completed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reviseApproved() {
+    if (!entry?.canRevise || entry.row.status !== "final") return;
+    const explanation = window.prompt(
+      "Why does this approved diagnosis need correction? The approved original will be preserved. The revised copy must be reviewed and approved again.",
+    );
+    if (explanation === null) return;
+    const reason = explanation.trim();
+    if (reason.length < 8 || reason.length > 500) {
+      setError("Explain the correction in 8 to 500 characters.");
+      return;
+    }
+
+    setBusy("revise_approved");
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await authenticatedFetch("/api/diagnosis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revise_approved", diagnosisId: entry.row.id, reason }),
+      });
+      const result = (await response.json()) as { error?: string; diagnosis?: { id?: string } };
+      if (!response.ok || !result.diagnosis?.id) {
+        throw new Error(result.error || "The correction draft could not be created.");
+      }
+      router.push(`/diagnosis/result?diagnosis=${encodeURIComponent(result.diagnosis.id)}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The correction draft could not be created.");
     } finally {
       setBusy(null);
     }
@@ -234,6 +289,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
   const assessment = payload.assessments.find((item) => item.id === entry.row.assessment_id) ?? null;
   const readOnly = entry.row.status === "final" || entry.row.status === "archived";
   const canManage = payload.workspace.canApprove;
+  const canRevise = Boolean(entry.canRevise);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
@@ -248,6 +304,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl">{studentName}</h1>
             <p className="mt-2 text-sm text-zinc-600">{className} · {entry.row.academic_session || "Session not set"} · {entry.row.term || "Term not set"}</p>
             <p className="mt-1 text-xs text-zinc-500">{payload.workspace.name} · {entry.row.diagnosis_mode.replaceAll("_", " ")}</p>
+            {revisionSource ? <p className="mt-3 text-sm text-amber-900">Correction based on <Link href={`/diagnosis/result?diagnosis=${encodeURIComponent(revisionSource.id)}`} className="font-semibold underline">previously approved diagnosis</Link> (approved {dateLabel(revisionSource.approvedAt)}). Reason: {revisionSource.reason}. This copy requires its own review and approval.</p> : null}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap md:justify-end">
             {assessment ? <Link href={`/assessment/result?assessment=${encodeURIComponent(assessment.id)}`} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-center text-sm font-semibold text-blue-900">Open Evidence Assessment</Link> : null}
@@ -302,6 +359,9 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
           {entry.row.status === "reviewed" ? (
             <button type="button" disabled={busy !== null || !payload.workspace.canApprove} onClick={() => void diagnosisAction("approve")} className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{busy === "approve" ? "Approving…" : payload.workspace.canApprove ? "Approve Final Report" : "Owner/Admin Approval Required"}</button>
           ) : null}
+          {canRevise && entry.row.status === "final" ? (
+            <button type="button" disabled={busy !== null} onClick={() => void reviseApproved()} className="rounded-xl border border-amber-500 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-950 disabled:opacity-50">{busy === "revise_approved" ? "Creating correction draft…" : "Revise Approved Diagnosis"}</button>
+          ) : null}
           {canManage && entry.row.status !== "archived" ? (
             <button type="button" disabled={busy !== null} onClick={() => void manage("archive")} className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">{busy === "archive" ? "Archiving…" : "Archive Diagnosis"}</button>
           ) : null}
@@ -309,6 +369,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
             <button type="button" disabled={busy !== null} onClick={() => void manage("delete")} className="rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 disabled:opacity-50">{busy === "delete" ? "Deleting…" : "Permanent Delete"}</button>
           ) : null}
         </div>
+        {entry.row.status === "final" ? <p className="mt-3 text-xs leading-5 text-amber-900">Approved originals are locked. Revising creates a separate editable draft; the previous approved report and linked interventions remain unchanged. The revised report cannot be downloaded for parents until it is reviewed and approved again.</p> : null}
         <p className="mt-3 text-xs leading-5 text-zinc-500">Reviewed: {dateLabel(entry.row.reviewed_at)} · Approved: {dateLabel(entry.row.finalised_at)}. Archive removes the record from active work without breaking history. Permanent deletion is allowed only after archival and only when no intervention depends on the diagnosis.</p>
       </section>
 
