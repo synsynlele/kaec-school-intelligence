@@ -16,6 +16,7 @@ import {
 } from "@/lib/diagnosis/engine";
 import { generateOpenAIJson, OpenAIProviderError } from "@/lib/ai/openai";
 import { alignDiagnosisPronouns } from "@/lib/diagnosis/pronouns";
+import { canReviseApprovedDiagnosis, isApprovedRevisionSource, validateRevisionReason } from "@/lib/diagnosis/revisions";
 import { completeAiRun, startAiRun } from "@/lib/data/ai-runs";
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import {
@@ -644,10 +645,8 @@ async function handleSaveEdits(supabase: KsiSupabaseClient, userId: string, body
  */
 async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string, body: ReviseBody) {
   const diagnosisId = requiredText(body.diagnosisId, "Diagnosis id");
-  const reason = requiredText(body.reason, "Correction reason");
-  if (reason.length < 8 || reason.length > 500) {
-    return json({ error: "Explain the correction in 8 to 500 characters." }, 400);
-  }
+  const reason = validateRevisionReason(body.reason);
+  if (!reason) return json({ error: "Explain the correction in 8 to 500 characters." }, 400);
 
   const workspace = await workspaceContext(supabase, userId);
   const { data: source, error: sourceError } = await supabase
@@ -657,10 +656,10 @@ async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string,
     .eq("workspace_id", workspace.workspaceId)
     .single();
   if (sourceError || !source) return json({ error: "Approved diagnosis not found in your active workspace." }, 404);
-  if (source.status !== "final" || !source.reviewed_at || !source.finalised_at) {
+  if (!isApprovedRevisionSource(source)) {
     return json({ error: "Only an approved, active diagnosis can be revised." }, 409);
   }
-  if (!workspace.canApprove && source.created_by !== userId) {
+  if (!canReviseApprovedDiagnosis(source, { workspaceId: workspace.workspaceId, userId, canApprove: workspace.canApprove })) {
     return json({ error: "Only the report creator or a school Owner/Admin may prepare a correction." }, 403);
   }
 
@@ -721,7 +720,11 @@ export async function GET(request: Request) {
     const diagnoses = (diagnosesResult.data ?? []).map((diagnosis) => ({
       row: diagnosis,
       generated: diagnosisFromRow(diagnosis as DiagnosisRow),
-      canRevise: diagnosis.status === "final" && (workspace.canApprove || diagnosis.created_by === user.id),
+      canRevise: canReviseApprovedDiagnosis(diagnosis, {
+        workspaceId: workspace.workspaceId,
+        userId: user.id,
+        canApprove: workspace.canApprove,
+      }),
     }));
 
     return json({
