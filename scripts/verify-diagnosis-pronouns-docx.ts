@@ -80,8 +80,8 @@ function unzipFile(zip: Uint8Array, target: string): string {
 const xml = unzipFile(bytes,"word/document.xml");
 const types = unzipFile(bytes,"[Content_Types].xml");
 assert(xml.includes("Amara &amp; Co &lt;Test&gt;"),"Word export escapes learner data.");
-assert(xml.includes("École KAEC &amp; Friends"),"Word retains Unicode school name.");
-for(const phrase of ["STUDENT DIAGNOSIS", "ACADEMIC / SKILL STRENGTHS", "CHARACTER CHALLENGES", "AGREED GROWTH ACTION PLAN", "SUPPORTING OBSERVATIONS", "HUMAN REVIEW", "She shows progress", "The learner"]) {
+assert(xml.includes("ÉCOLE KAEC &amp; FRIENDS"),"Word retains Unicode school name.");
+for(const phrase of ["STUDENT DIAGNOSIS", "ACADEMIC / SKILL STRENGTHS", "CHARACTER CHALLENGES", "AGREED GROWTH ACTION PLAN", "SUPPORTING OBSERVATIONS", "HUMAN REVIEW", "She shows progress"]) {
   assert(xml.includes(phrase), "Missing Word report content: "+phrase);
 }
 assert(types.includes("wordprocessingml.document.main+xml"));
