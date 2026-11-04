@@ -11,7 +11,7 @@ export type RevisionSource = {
   finalised_at: string | null;
 };
 
-export function isApprovedRevisionSource(source: RevisionSource): boolean {
+export function isApprovedRevisionSource(source: RevisionSource): source is RevisionSource & { status: "final"; reviewed_at: string; finalised_at: string } {
   return source.status === "final" && Boolean(source.reviewed_at && source.finalised_at);
 }
 
