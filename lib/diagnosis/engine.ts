@@ -2,7 +2,7 @@ import type { DiagnosisMode } from "@/lib/domain/diagnosis";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const DIAGNOSIS_ENGINE_VERSION = "DIAGNOSIS_ENGINE_v1.0";
-export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.1";
+export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.2";
 export const DIAGNOSIS_QUALITY_VERSION = "KAEC_DIAGNOSIS_QUALITY_v1.0";
 
 export const DIAGNOSIS_DOMAINS = ["academic", "skill", "character"] as const;
@@ -22,8 +22,11 @@ export type DiagnosisEvidencePacket = {
   metric: string;
 };
 
+import { diagnosisPronounInstruction } from "@/lib/diagnosis/pronouns";
+
 export type DiagnosisGenerationContext = {
   studentName: string;
+  pronounPreference?: string | null;
   className: string;
   ageRange?: string;
   mode: DiagnosisMode;
@@ -572,13 +575,14 @@ function evidenceText(context: DiagnosisGenerationContext) {
 }
 
 export function buildDiagnosisSystemInstruction() {
-  return `You are the KAEC Student Diagnosis Intelligence engine. This is educational/student-development diagnosis only, never medical, psychiatric or psychological diagnosis. Preserve the reasoning hierarchy Observed Evidence -> Detected Pattern -> Possible Interpretation -> Recommended Action. Never invent evidence. Never label a learner's worth, personality or condition. Treat each teacher input as raw professional evidence that must be understood, translated and explained rather than echoed. Convert brief, informal or non-technical teacher wording into clear educational language that explains what the observation means for the learner's present performance, demonstrated capability, support need or next growth priority. Preserve the factual meaning and evidence ID, but do not quote, copy or merely repeat the teacher's wording. Interpretations must remain tentative and evidence-linked. If a domain lacks adequate evidence, state Insufficient Evidence. Parent-facing language must be respectful, precise, readable and growth-oriented. Actions must be specific, feasible and time-bounded. Return only the required structured schema.`;
+  return `You are the KAEC Student Diagnosis Intelligence engine. This is educational/student-development diagnosis only, never medical, psychiatric or psychological diagnosis. Preserve the reasoning hierarchy Observed Evidence -> Detected Pattern -> Possible Interpretation -> Recommended Action. Never invent evidence. Never label a learner's worth, personality or condition. Treat each teacher input as raw professional evidence that must be understood, translated and explained rather than echoed. Convert brief, informal or non-technical teacher wording into clear educational language that explains what the observation means for the learner's present performance, demonstrated capability, support need or next growth priority. Preserve the factual meaning and evidence ID, but do not quote, copy or merely repeat the teacher's wording. Interpretations must remain tentative and evidence-linked. If a domain lacks adequate evidence, state Insufficient Evidence. Parent-facing language must be respectful, precise, readable and growth-oriented. Actions must be specific, feasible and time-bounded. Never infer a learner\'s pronouns from their name, teacher observations or cultural assumptions; use only registered report pronouns, and default to the learner or the learner\'s name. Return only the required structured schema.`;
 }
 
 export function buildDiagnosisPrompt(context: DiagnosisGenerationContext) {
   return `Generate a KAEC Student Diagnosis draft.
 
 Student: ${context.studentName}
+Pronoun and identity safety rule: ${diagnosisPronounInstruction(context.pronounPreference)}
 Class: ${context.className}
 ${learningLevelGuidance(context.className, context.ageRange ?? "")}
 Mode: ${context.mode}
@@ -596,7 +600,7 @@ Poor output: "The learner is good in maths."
 Professional output: "The learner demonstrates a comparatively secure grasp of mathematical tasks, providing a useful academic strength that can be leveraged while weaker subject areas are being developed."
 
 Teacher input: "loses temper easily"
-Poor output: "The learner loses his temper easily."
+Poor output: "The learner loses their temper easily."
 Professional output: "The learner currently shows difficulty maintaining emotional regulation when frustrated or challenged, indicating a need for consistent self-management routines and guided practice in responding calmly."
 
 Rules:
@@ -612,7 +616,8 @@ Rules:
 10. Builder Growth Direction should show the next capability/responsibility direction without ranking worth.
 11. Encouragement Note should be warm, specific and grounded in demonstrated potential/evidence, while still adding insight rather than repeating strengths word-for-word.
 12. Include at least one Evidence Limitation even with strong evidence, because this diagnosis reflects a bounded evidence window.
-13. Prefer concise, natural professional prose over jargon. The parent should understand why each observation matters and what should happen next.`;
+13. Prefer concise, natural professional prose over jargon. The parent should understand why each observation matters and what should happen next.
+14. Follow the registered pronoun preference throughout every paragraph, finding, limitation and action. Do not repeat gendered teacher input as identity evidence; when in doubt use "the learner".`;
 }
 
 export function buildDiagnosisRepairPrompt(

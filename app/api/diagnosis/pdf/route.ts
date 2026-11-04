@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { parseGeneratedDiagnosis } from "@/lib/diagnosis/engine";
+import { createDiagnosisDocx } from "@/lib/docx/diagnosis-docx";
 import { getSupabasePublicEnv } from "@/lib/env";
 import {
   createDiagnosisPdf,
@@ -70,7 +71,12 @@ export async function GET(request: Request) {
       );
     }
 
-    const diagnosisId = new URL(request.url).searchParams.get("id")?.trim();
+    const searchParams = new URL(request.url).searchParams;
+    const format = searchParams.get("format")?.trim() || "pdf";
+    if (format !== "pdf" && format !== "docx") {
+      return Response.json({ error: "Unsupported diagnosis document format." }, { status: 400 });
+    }
+    const diagnosisId = searchParams.get("id")?.trim();
     if (!diagnosisId) {
       return Response.json(
         { error: "Diagnosis id is required." },
@@ -94,7 +100,7 @@ export async function GET(request: Request) {
       return Response.json(
         {
           error:
-            "Parent PDF download is available only after human review and school approval.",
+            "Parent diagnosis downloads are available only after human review and school approval.",
         },
         { status: 409 },
       );
@@ -157,7 +163,7 @@ export async function GET(request: Request) {
     }
 
     const branding = resolvePdfBranding(workspaceResult.data.logo_url);
-    const safeInput = pdfSafeValue({
+    const reportInput = {
         workspaceName: workspaceResult.data.name,
         studentName: studentResult.data.display_name,
         className,
@@ -168,18 +174,19 @@ export async function GET(request: Request) {
         diagnosis: diagnosisFromRow(diagnosis),
         reviewedAt: diagnosis.reviewed_at,
         finalisedAt: diagnosis.finalised_at,
-      });
-    const bytes = createDiagnosisPdf({
-      ...safeInput,
-      brandLogoJpegBase64: branding.logoJpegBase64,
-      hasSchoolLogo: branding.hasSchoolLogo,
-    });
+      };
+    const brandedInput = { ...reportInput, brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
+    const bytes = format === "docx"
+      ? createDiagnosisDocx(brandedInput)
+      : createDiagnosisPdf(pdfSafeValue(brandedInput));
+    const filename = safeDiagnosisPdfFilename(studentResult.data.display_name);
+    const downloadName = format === "docx" ? filename.replace(/\\.pdf$/i, ".docx") : filename;
 
     return new Response(bytes as BodyInit, {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${safeDiagnosisPdfFilename(studentResult.data.display_name)}"`,
+        "Content-Type": format === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf",
+        "Content-Disposition": `attachment; filename="${downloadName}"`,
         "Cache-Control": "private, no-store",
       },
     });

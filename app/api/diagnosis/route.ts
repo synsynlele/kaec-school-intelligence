@@ -15,6 +15,7 @@ import {
   type GeneratedDiagnosis,
 } from "@/lib/diagnosis/engine";
 import { generateOpenAIJson, OpenAIProviderError } from "@/lib/ai/openai";
+import { alignDiagnosisPronouns } from "@/lib/diagnosis/pronouns";
 import { completeAiRun, startAiRun } from "@/lib/data/ai-runs";
 import { appendArtifactVersion } from "@/lib/data/artifact-version";
 import {
@@ -261,7 +262,7 @@ function parseGenerateInput(value: unknown): GenerateInput {
 async function loadStudent(supabase: KsiSupabaseClient, workspaceId: string, studentId: string) {
   const { data, error } = await supabase
     .from("students")
-    .select("id,display_name,class_id,active")
+    .select("*")
     .eq("workspace_id", workspaceId)
     .eq("id", studentId)
     .single();
@@ -507,6 +508,7 @@ async function handleGenerate(supabase: KsiSupabaseClient, userId: string, raw: 
 
     const context = {
       studentName: student.display_name,
+      pronounPreference: student.pronoun_preference ?? "name_only",
       className: student.className,
       ageRange: student.ageRange,
       mode: input.mode,
@@ -520,7 +522,7 @@ async function handleGenerate(supabase: KsiSupabaseClient, userId: string, raw: 
       schemaName: "ksi_student_diagnosis",
       maxOutputTokens: 10000,
     });
-    let diagnosis = parseGeneratedDiagnosis(generatedResult.data);
+    let diagnosis = alignDiagnosisPronouns(parseGeneratedDiagnosis(generatedResult.data), context.pronounPreference);
     let validation = validateDiagnosis(diagnosis, evidence);
 
     if (!validation.passed) {
@@ -531,10 +533,10 @@ async function handleGenerate(supabase: KsiSupabaseClient, userId: string, raw: 
         schemaName: "ksi_student_diagnosis_repair",
         maxOutputTokens: 10000,
       });
-      diagnosis = stabilizeDiagnosisAfterRepair(
+      diagnosis = alignDiagnosisPronouns(stabilizeDiagnosisAfterRepair(
         parseGeneratedDiagnosis(repairedResult.data),
         evidence,
-      );
+      ), context.pronounPreference);
       validation = validateDiagnosis(diagnosis, evidence);
     }
 
