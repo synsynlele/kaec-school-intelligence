@@ -463,7 +463,7 @@ function diagnosisFromRow(row: DiagnosisRow): GeneratedDiagnosis {
     academicSkillChallenges: row.academic_challenges,
     characterStrengths: row.character_strengths,
     characterChallenges: row.character_challenges,
-    conciseDiagnosis: (() => {
+    conciseDiagnosis: row.concise_diagnosis || (() => {
       const interpretations = Array.isArray(row.possible_interpretations) ? row.possible_interpretations : [];
       const first = record(interpretations[0]);
       return typeof first?.summary === "string" ? first.summary : typeof first?.statement === "string" ? first.statement : "The current evidence has been reviewed and translated into the actions below.";
@@ -607,6 +607,7 @@ async function handleSaveEdits(supabase: KsiSupabaseClient, userId: string, body
         ...item,
         ...(index === 0 ? { summary: edited.conciseDiagnosis } : {}),
       })) as unknown as Json,
+      concise_diagnosis: edited.conciseDiagnosis,
       academic_strengths: fields.academicStrengths as unknown as Json,
       academic_challenges: fields.academicChallenges as unknown as Json,
       character_strengths: fields.characterStrengths as unknown as Json,
@@ -673,6 +674,9 @@ async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string,
     userId,
     mode: source.diagnosis_mode as DiagnosisMode,
     assessmentId: source.assessment_id,
+    academicSession: source.academic_session,
+    term: source.term,
+    conciseDiagnosis: original.conciseDiagnosis,
     ...fields,
     possibleInterpretations: original.possibleInterpretations.map((item, index) => ({
       ...item,
