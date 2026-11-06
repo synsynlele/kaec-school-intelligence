@@ -33,16 +33,9 @@ const PAGE_HEIGHT = 595.28;
 const MARGIN_X = 28;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const FOREST: Color = [0.015, 0.22, 0.09];
-const CREAM: Color = [0.965, 0.94, 0.84];
 const TEXT: Color = [0.10, 0.10, 0.11];
 const MUTED: Color = [0.38, 0.39, 0.40];
-const BORDER: Color = [0.78, 0.79, 0.77];
 
-const HEADER_BRAND_X = 78;
-const HEADER_BRAND_WIDTH = 118;
-const HEADER_INFO_X = 210;
-const HEADER_INFO_WIDTH = 390;
-const HEADER_INFO_COLUMN_WIDTH = HEADER_INFO_WIDTH / 2;
 
 const ascii = normalizePdfText;
 
@@ -50,10 +43,6 @@ const pdfEscape = escapePdfText;
 
 function rgb([r, g, b]: Color) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
-}
-
-function strokeRgb([r, g, b]: Color) {
-  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
 }
 
 function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
@@ -79,27 +68,6 @@ function titleCase(value: string) {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
-}
-
-function rectTop(
-  commands: string[],
-  x: number,
-  top: number,
-  width: number,
-  height: number,
-  fill: Color | null,
-  stroke: Color | null = BORDER,
-) {
-  const y = PAGE_HEIGHT - top - height;
-  if (fill) {
-    commands.push(rgb(fill));
-    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re f`);
-  }
-  if (stroke) {
-    commands.push(strokeRgb(stroke));
-    commands.push("0.7 w");
-    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re S`);
-  }
 }
 
 function textAtTop(
@@ -181,230 +149,6 @@ function brandName(
   });
 }
 
-function listInCell(
-  commands: string[],
-  items: string[],
-  x: number,
-  top: number,
-  width: number,
-  height: number,
-) {
-  const content = items.length
-    ? items.map((item) => `- ${ascii(item)}`).join("\n")
-    : "- Insufficient Evidence to state a supported finding at this time.";
-  boxedText(commands, content, x, top, width, height, {
-    size: 8.15,
-    padding: 7,
-  });
-}
-
-function groupedMatrix(
-  commands: string[],
-  top: number,
-  groupLeft: string,
-  groupRight: string,
-  subheads: [string, string, string, string],
-  columns: [string[], string[], string[], string[]],
-  contentHeight: number,
-) {
-  const colWidth = CONTENT_WIDTH / 4;
-  const groupHeight = 24;
-  const subHeight = 22;
-  const left = MARGIN_X;
-
-  rectTop(commands, left, top, colWidth * 2, groupHeight, FOREST, FOREST);
-  rectTop(
-    commands,
-    left + colWidth * 2,
-    top,
-    colWidth * 2,
-    groupHeight,
-    FOREST,
-    FOREST,
-  );
-  textAtTop(commands, groupLeft, left + 12, top + 5, 9.5, true, [1, 1, 1]);
-  textAtTop(
-    commands,
-    groupRight,
-    left + colWidth * 2 + 12,
-    top + 5,
-    9.5,
-    true,
-    [1, 1, 1],
-  );
-
-  for (let index = 0; index < 4; index += 1) {
-    const x = left + colWidth * index;
-    rectTop(commands, x, top + groupHeight, colWidth, subHeight, CREAM, BORDER);
-    const headerWidth = wrapText(subheads[index], colWidth - 12, 8.2, true)[0] ?? subheads[index];
-    textAtTop(commands, headerWidth, x + 7, top + groupHeight + 5, 8.2, true);
-    rectTop(
-      commands,
-      x,
-      top + groupHeight + subHeight,
-      colWidth,
-      contentHeight,
-      [1, 1, 1],
-      BORDER,
-    );
-    listInCell(
-      commands,
-      columns[index],
-      x,
-      top + groupHeight + subHeight,
-      colWidth,
-      contentHeight,
-    );
-  }
-
-  return groupHeight + subHeight + contentHeight;
-}
-
-function firstPage(input: DiagnosisPdfInput) {
-  const commands: string[] = [];
-  const diagnosis = input.diagnosis;
-
-  if (input.hasSchoolLogo) {
-    commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
-  } else {
-    textAtTop(commands, "KSI", 30, 27, 16, true, FOREST);
-  }
-  brandName(
-    commands,
-    input.workspaceName,
-    HEADER_BRAND_X,
-    22,
-    HEADER_BRAND_WIDTH,
-    54,
-  );
-  textAtTop(
-    commands,
-    "STUDENT DIAGNOSIS",
-    PAGE_WIDTH - 196,
-    29,
-    18,
-    true,
-    FOREST,
-  );
-
-  rectTop(
-    commands,
-    HEADER_INFO_X,
-    23,
-    HEADER_INFO_WIDTH,
-    55,
-    [1, 1, 1],
-    TEXT,
-  );
-  boxedText(
-    commands,
-    input.studentName,
-    HEADER_INFO_X + 8,
-    27,
-    HEADER_INFO_COLUMN_WIDTH - 12,
-    21,
-    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "NAME: " },
-  );
-  boxedText(
-    commands,
-    input.className,
-    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
-    27,
-    HEADER_INFO_COLUMN_WIDTH - 12,
-    21,
-    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "CLASS: " },
-  );
-  boxedText(
-    commands,
-    input.academicSession || "Not specified",
-    HEADER_INFO_X + 8,
-    49,
-    HEADER_INFO_COLUMN_WIDTH - 12,
-    21,
-    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "SESSION: " },
-  );
-  boxedText(
-    commands,
-    input.term || "Not specified",
-    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
-    49,
-    HEADER_INFO_COLUMN_WIDTH - 12,
-    21,
-    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "TERM: " },
-  );
-
-  rectTop(commands, MARGIN_X, 88, CONTENT_WIDTH, 58, CREAM, BORDER);
-  textAtTop(commands, "DIAGNOSIS:", MARGIN_X + 10, 98, 10, true, FOREST);
-  boxedText(
-    commands,
-    diagnosis.conciseDiagnosis,
-    MARGIN_X + 92,
-    93,
-    CONTENT_WIDTH - 102,
-    48,
-    { size: 8.6, padding: 4 },
-  );
-
-  const findingsHeight = groupedMatrix(
-    commands,
-    156,
-    "ACADEMICS / SKILLS",
-    "CHARACTER (Discipline)",
-    ["Strengths", "Challenges", "Strengths", "Challenges"],
-    [
-      diagnosis.academicSkillStrengths.map((item) => item.statement),
-      diagnosis.academicSkillChallenges.map((item) => item.statement),
-      diagnosis.characterStrengths.map((item) => item.statement),
-      diagnosis.characterChallenges.map((item) => item.statement),
-    ],
-    137,
-  );
-
-  groupedMatrix(
-    commands,
-    156 + findingsHeight + 10,
-    "ACTION PLAN (Academics / Skills)",
-    "ACTION PLAN (Character)",
-    ["SCHOOL", "PARENTS", "SCHOOL", "PARENTS"],
-    [
-      diagnosis.schoolAcademicActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.parentAcademicActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.schoolCharacterActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.parentCharacterActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-    ],
-    137,
-  );
-
-  textAtTop(
-    commands,
-    "SCHOOL APPROVAL: Digitally approved through KAEC School Intelligence",
-    MARGIN_X,
-    542,
-    7.8,
-    true,
-    MUTED,
-  );
-  textAtTop(
-    commands,
-    dateLabel(input.finalisedAt),
-    PAGE_WIDTH - 118,
-    542,
-    7.8,
-    false,
-    MUTED,
-  );
-
-  return commands;
-}
-
 class FlowPage {
   commands: string[] = [];
   private pages: string[][] = [];
@@ -424,7 +168,7 @@ class FlowPage {
     brandName(this.commands, input.workspaceName, 74, 25, 170, 48, 8.4);
     textAtTop(
       this.commands,
-      "GROWTH & REVIEW NOTES",
+      "STUDENT DIAGNOSIS",
       PAGE_WIDTH - 260,
       30,
       12,
@@ -489,8 +233,6 @@ class FlowPage {
       { bold: true, size: 9.6, color: MUTED, gapAfter: 8 },
     );
 
-    this.section("Complete Findings & Action Plan");
-    this.line("The first page is a compact summary. Complete reviewed wording follows here.");
     this.section("Diagnosis");
     this.line(diagnosis.conciseDiagnosis);
     const findings = [
@@ -650,7 +392,7 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
     throw new Error("Parent diagnosis PDF requires Academic Session and Term.");
   }
 
-  const pages = [firstPage(input), ...new FlowPage(input).build()];
+  const pages = new FlowPage(input).build();
   return serializePdf(buildPdfObjects(pages, input));
 }
 
