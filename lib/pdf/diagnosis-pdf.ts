@@ -33,9 +33,16 @@ const PAGE_HEIGHT = 595.28;
 const MARGIN_X = 28;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const FOREST: Color = [0.015, 0.22, 0.09];
+const CREAM: Color = [0.965, 0.94, 0.84];
 const TEXT: Color = [0.10, 0.10, 0.11];
 const MUTED: Color = [0.38, 0.39, 0.40];
+const BORDER: Color = [0.78, 0.79, 0.77];
 
+const HEADER_BRAND_X = 78;
+const HEADER_BRAND_WIDTH = 118;
+const HEADER_INFO_X = 210;
+const HEADER_INFO_WIDTH = 390;
+const HEADER_INFO_COLUMN_WIDTH = HEADER_INFO_WIDTH / 2;
 
 const ascii = normalizePdfText;
 
@@ -43,6 +50,10 @@ const pdfEscape = escapePdfText;
 
 function rgb([r, g, b]: Color) {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`;
+}
+
+function strokeRgb([r, g, b]: Color) {
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`;
 }
 
 function wrapText(text: string, maxWidth: number, fontSize: number, bold = false) {
@@ -68,6 +79,27 @@ function titleCase(value: string) {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function rectTop(
+  commands: string[],
+  x: number,
+  top: number,
+  width: number,
+  height: number,
+  fill: Color | null,
+  stroke: Color | null = BORDER,
+) {
+  const y = PAGE_HEIGHT - top - height;
+  if (fill) {
+    commands.push(rgb(fill));
+    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re f`);
+  }
+  if (stroke) {
+    commands.push(strokeRgb(stroke));
+    commands.push("0.7 w");
+    commands.push(`${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)} re S`);
+  }
 }
 
 function textAtTop(
@@ -149,13 +181,147 @@ function brandName(
   });
 }
 
+function groupedMatrix(
+  commands: string[],
+  top: number,
+  groupLeft: string,
+  groupRight: string,
+  subheads: [string, string, string, string],
+  columns: [string[], string[], string[], string[]],
+  lineHeight: number,
+) {
+  const contentHeight = 14 + Math.max(...columns.map((lines) => lines.length)) * lineHeight;
+  const colWidth = CONTENT_WIDTH / 4;
+  const groupHeight = 24;
+  const subHeight = 22;
+  const left = MARGIN_X;
+
+  rectTop(commands, left, top, colWidth * 2, groupHeight, FOREST, FOREST);
+  rectTop(
+    commands,
+    left + colWidth * 2,
+    top,
+    colWidth * 2,
+    groupHeight,
+    FOREST,
+    FOREST,
+  );
+  textAtTop(commands, groupLeft, left + 12, top + 5, 9.5, true, [1, 1, 1]);
+  textAtTop(
+    commands,
+    groupRight,
+    left + colWidth * 2 + 12,
+    top + 5,
+    9.5,
+    true,
+    [1, 1, 1],
+  );
+
+  for (let index = 0; index < 4; index += 1) {
+    const x = left + colWidth * index;
+    rectTop(commands, x, top + groupHeight, colWidth, subHeight, CREAM, BORDER);
+    const headerWidth = wrapText(subheads[index], colWidth - 12, 8.2, true)[0] ?? subheads[index];
+    textAtTop(commands, headerWidth, x + 7, top + groupHeight + 5, 8.2, true);
+    rectTop(
+      commands,
+      x,
+      top + groupHeight + subHeight,
+      colWidth,
+      contentHeight,
+      [1, 1, 1],
+      BORDER,
+    );
+    columns[index].forEach((line, lineIndex) => {
+      textAtTop(commands, line, x + 7, top + groupHeight + subHeight + 7 + lineIndex * lineHeight, 8.15);
+    });
+  }
+
+  return groupHeight + subHeight + contentHeight;
+}
+
+function firstPageHeader(input: DiagnosisPdfInput) {
+  const commands: string[] = [];
+
+  if (input.hasSchoolLogo) {
+    commands.push("q 42 0 0 42 30 520 cm /Im1 Do Q");
+  } else {
+    textAtTop(commands, "KSI", 30, 27, 16, true, FOREST);
+  }
+  brandName(
+    commands,
+    input.workspaceName,
+    HEADER_BRAND_X,
+    22,
+    HEADER_BRAND_WIDTH,
+    54,
+  );
+  textAtTop(
+    commands,
+    "STUDENT DIAGNOSIS",
+    PAGE_WIDTH - 210,
+    29,
+    14,
+    true,
+    FOREST,
+  );
+
+  rectTop(
+    commands,
+    HEADER_INFO_X,
+    23,
+    HEADER_INFO_WIDTH,
+    55,
+    [1, 1, 1],
+    TEXT,
+  );
+  boxedText(
+    commands,
+    input.studentName,
+    HEADER_INFO_X + 8,
+    27,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "NAME: " },
+  );
+  boxedText(
+    commands,
+    input.className,
+    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
+    27,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "CLASS: " },
+  );
+  boxedText(
+    commands,
+    input.academicSession || "Not specified",
+    HEADER_INFO_X + 8,
+    49,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "SESSION: " },
+  );
+  boxedText(
+    commands,
+    input.term || "Not specified",
+    HEADER_INFO_X + HEADER_INFO_COLUMN_WIDTH + 4,
+    49,
+    HEADER_INFO_COLUMN_WIDTH - 12,
+    21,
+    { size: 8.8, bold: true, padding: 2, maxLines: 1, prefix: "TERM: " },
+  );
+
+  return commands;
+}
+
 class FlowPage {
   commands: string[] = [];
   private pages: string[][] = [];
   private y = PAGE_HEIGHT - 102;
 
   constructor(private readonly input: DiagnosisPdfInput) {
-    this.header();
+    this.commands = firstPageHeader(input);
+    this.y = PAGE_HEIGHT - 88;
   }
 
   private header() {
@@ -168,7 +334,7 @@ class FlowPage {
     brandName(this.commands, input.workspaceName, 74, 25, 170, 48, 8.4);
     textAtTop(
       this.commands,
-      "STUDENT DIAGNOSIS",
+      "GROWTH & REVIEW NOTES",
       PAGE_WIDTH - 260,
       30,
       12,
@@ -188,6 +354,37 @@ class FlowPage {
       this.y = PAGE_HEIGHT - 102;
       this.header();
     }
+  }
+
+  private matrix(
+    left: string,
+    right: string,
+    headings: [string, string, string, string],
+    columns: [string[], string[], string[], string[]],
+  ) {
+    const leading = 11;
+    const overhead = 60;
+    const lines = columns.map((items) =>
+      (items.length ? items : ["Insufficient Evidence to state a supported finding at this time."])
+        .flatMap((item) => wrapText(`- ${item}`, CONTENT_WIDTH / 4 - 14, 8.15)),
+    );
+    const total = Math.max(...lines.map((column) => column.length));
+    let offset = 0;
+    while (offset < total) {
+      this.ensure(overhead + leading);
+      const count = Math.floor((this.y - 42 - overhead) / leading);
+      const pageColumns: [string[], string[], string[], string[]] = [
+        lines[0].slice(offset, offset + count),
+        lines[1].slice(offset, offset + count),
+        lines[2].slice(offset, offset + count),
+        lines[3].slice(offset, offset + count),
+      ];
+      this.y -= groupedMatrix(
+        this.commands, PAGE_HEIGHT - this.y, left, right, headings, pageColumns, leading,
+      );
+      offset += count;
+    }
+    this.y -= 10;
   }
 
   line(value: string, options: FlowTextOptions = {}) {
@@ -226,76 +423,42 @@ class FlowPage {
     this.line(`- ${value}`, { size: 9.2, indent: 8, gapAfter: 2 });
   }
 
-  private table(rows: ReadonlyArray<readonly [string, string]>) {
-    const labelWidth = 245;
-    const padding = 7;
-    const leading = 13;
-    const size = 9.5;
-    const detailX = MARGIN_X + labelWidth;
-
-    const drawRow = (label: string, lines: string[], heading = false) => {
-      const height = padding * 2 + lines.length * leading;
-      const top = PAGE_HEIGHT - this.y;
-      this.commands.push(
-        `0.76 0.80 0.77 RG 0.5 w ${MARGIN_X} ${this.y - height} ${CONTENT_WIDTH} ${height} re S`,
-        `${detailX} ${this.y} m ${detailX} ${this.y - height} l S`,
-      );
-      textAtTop(this.commands, label, MARGIN_X + padding, top + padding, size, true, FOREST);
-      lines.forEach((line, index) => {
-        textAtTop(this.commands, line, detailX + padding, top + padding + index * leading, size, heading);
-      });
-      this.y -= height;
-    };
-
-    const drawHeading = () => drawRow("Area", ["Finding or action"], true);
-    this.ensure(2 * (padding * 2 + leading));
-    drawHeading();
-
-    for (const [label, detail] of rows) {
-      const lines = wrapText(detail, CONTENT_WIDTH - labelWidth - padding * 2, size);
-      let offset = 0;
-      while (offset < lines.length) {
-        if (this.y - padding * 2 - leading <= 42) {
-          this.ensure(padding * 2 + leading);
-          drawHeading();
-        }
-        const capacity = Math.floor((this.y - 42 - padding * 2) / leading);
-        const chunk = lines.slice(offset, offset + capacity);
-        drawRow(offset ? `${label} (continued)` : label, chunk);
-        offset += chunk.length;
-      }
-    }
-    this.y -= 8;
-  }
-
   build() {
     const diagnosis = this.input.diagnosis;
-    this.line(
-      `${this.input.studentName} | ${this.input.className} | ${this.input.academicSession} | ${this.input.term}`,
-      { bold: true, size: 9.6, color: MUTED, gapAfter: 8 },
+    this.section("DIAGNOSIS:");
+    this.line(diagnosis.conciseDiagnosis, { gapAfter: 10 });
+    this.matrix(
+      "ACADEMICS / SKILLS",
+      "CHARACTER (Discipline)",
+      ["Strengths", "Challenges", "Strengths", "Challenges"],
+      [
+        diagnosis.academicSkillStrengths.map((item) => item.statement),
+        diagnosis.academicSkillChallenges.map((item) => item.statement),
+        diagnosis.characterStrengths.map((item) => item.statement),
+        diagnosis.characterChallenges.map((item) => item.statement),
+      ],
     );
 
-    this.section("Diagnosis");
-    this.line(diagnosis.conciseDiagnosis);
-    const findings = [
-      ["Academic / Skill Strengths", diagnosis.academicSkillStrengths],
-      ["Academic / Skill Challenges", diagnosis.academicSkillChallenges],
-      ["Character Strengths", diagnosis.characterStrengths],
-      ["Character Challenges", diagnosis.characterChallenges],
-    ] as const;
-    const actions = [
-      ["School: Academics / Skills", diagnosis.schoolAcademicActions],
-      ["Parents: Academics / Skills", diagnosis.parentAcademicActions],
-      ["School: Character", diagnosis.schoolCharacterActions],
-      ["Parents: Character", diagnosis.parentCharacterActions],
-    ] as const;
-    this.table([
-      ...findings.flatMap(([label, items]) => items.length
-        ? items.map((item) => [label, item.statement] as const)
-        : [[label, "Insufficient evidence to state a supported finding."] as const]),
-      ...actions.flatMap(([label, items]) =>
-        items.map((item) => [label, `${item.action} (${item.timeframe})`] as const)),
-    ]);
+    this.matrix(
+      "ACTION PLAN (Academics / Skills)",
+      "ACTION PLAN (Character)",
+      ["SCHOOL", "PARENTS", "SCHOOL", "PARENTS"],
+      [
+        diagnosis.schoolAcademicActions.map(
+          (item) => `${item.action} (${item.timeframe})`,
+        ),
+        diagnosis.parentAcademicActions.map(
+          (item) => `${item.action} (${item.timeframe})`,
+        ),
+        diagnosis.schoolCharacterActions.map(
+          (item) => `${item.action} (${item.timeframe})`,
+        ),
+        diagnosis.parentCharacterActions.map(
+          (item) => `${item.action} (${item.timeframe})`,
+        ),
+      ],
+    );
+
 
     if (diagnosis.observedEvidence.length) this.section("Observed Evidence");
     diagnosis.observedEvidence.forEach((item) => this.bullet(item.statement));
@@ -329,7 +492,7 @@ class FlowPage {
     this.line(`Teacher review recorded: ${dateLabel(this.input.reviewedAt)}`, {
       size: 9.2,
     });
-    this.line(`School approval recorded: ${dateLabel(this.input.finalisedAt)}`, {
+    this.line(`SCHOOL APPROVAL recorded: ${dateLabel(this.input.finalisedAt)}`, {
       size: 9.2,
     });
 
