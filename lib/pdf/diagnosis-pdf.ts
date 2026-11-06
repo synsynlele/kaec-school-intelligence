@@ -258,9 +258,9 @@ function firstPageHeader(input: DiagnosisPdfInput) {
   textAtTop(
     commands,
     "STUDENT DIAGNOSIS",
-    PAGE_WIDTH - 196,
+    PAGE_WIDTH - 210,
     29,
-    18,
+    14,
     true,
     FOREST,
   );
