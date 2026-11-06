@@ -227,7 +227,7 @@ class FlowPage {
   }
 
   private table(rows: ReadonlyArray<readonly [string, string]>) {
-    const labelWidth = 190;
+    const labelWidth = 245;
     const padding = 7;
     const leading = 13;
     const size = 9.5;
