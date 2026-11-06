@@ -226,6 +226,48 @@ class FlowPage {
     this.line(`- ${value}`, { size: 9.2, indent: 8, gapAfter: 2 });
   }
 
+  private table(rows: ReadonlyArray<readonly [string, string]>) {
+    const labelWidth = 190;
+    const padding = 7;
+    const leading = 13;
+    const size = 9.5;
+    const detailX = MARGIN_X + labelWidth;
+
+    const drawRow = (label: string, lines: string[], heading = false) => {
+      const height = padding * 2 + lines.length * leading;
+      const top = PAGE_HEIGHT - this.y;
+      this.commands.push(
+        `0.76 0.80 0.77 RG 0.5 w ${MARGIN_X} ${this.y - height} ${CONTENT_WIDTH} ${height} re S`,
+        `${detailX} ${this.y} m ${detailX} ${this.y - height} l S`,
+      );
+      textAtTop(this.commands, label, MARGIN_X + padding, top + padding, size, true, FOREST);
+      lines.forEach((line, index) => {
+        textAtTop(this.commands, line, detailX + padding, top + padding + index * leading, size, heading);
+      });
+      this.y -= height;
+    };
+
+    const drawHeading = () => drawRow("Area", ["Finding or action"], true);
+    this.ensure(2 * (padding * 2 + leading));
+    drawHeading();
+
+    for (const [label, detail] of rows) {
+      const lines = wrapText(detail, CONTENT_WIDTH - labelWidth - padding * 2, size);
+      let offset = 0;
+      while (offset < lines.length) {
+        if (this.y - padding * 2 - leading <= 42) {
+          this.ensure(padding * 2 + leading);
+          drawHeading();
+        }
+        const capacity = Math.floor((this.y - 42 - padding * 2) / leading);
+        const chunk = lines.slice(offset, offset + capacity);
+        drawRow(offset ? `${label} (continued)` : label, chunk);
+        offset += chunk.length;
+      }
+    }
+    this.y -= 8;
+  }
+
   build() {
     const diagnosis = this.input.diagnosis;
     this.line(
@@ -241,22 +283,20 @@ class FlowPage {
       ["Character Strengths", diagnosis.characterStrengths],
       ["Character Challenges", diagnosis.characterChallenges],
     ] as const;
-    for (const [label, items] of findings) {
-      this.section(label);
-      if (!items.length) this.line("Insufficient evidence to state a supported finding.");
-      items.forEach((item) => this.bullet(item.statement));
-    }
     const actions = [
       ["School: Academics / Skills", diagnosis.schoolAcademicActions],
       ["Parents: Academics / Skills", diagnosis.parentAcademicActions],
       ["School: Character", diagnosis.schoolCharacterActions],
       ["Parents: Character", diagnosis.parentCharacterActions],
     ] as const;
-    for (const [label, items] of actions) {
-      if (!items.length) continue;
-      this.section(label);
-      items.forEach((item) => this.bullet(`${item.action} (${item.timeframe})`));
-    }
+    this.table([
+      ...findings.flatMap(([label, items]) => items.length
+        ? items.map((item) => [label, item.statement] as const)
+        : [[label, "Insufficient evidence to state a supported finding."] as const]),
+      ...actions.flatMap(([label, items]) =>
+        items.map((item) => [label, `${item.action} (${item.timeframe})`] as const)),
+    ]);
+
     if (diagnosis.observedEvidence.length) this.section("Observed Evidence");
     diagnosis.observedEvidence.forEach((item) => this.bullet(item.statement));
     if (diagnosis.detectedPatterns.length) this.section("Detected Patterns");
