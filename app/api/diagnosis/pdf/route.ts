@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { parseGeneratedDiagnosis } from "@/lib/diagnosis/engine";
+import { alignDiagnosisPronouns } from "@/lib/diagnosis/pronouns";
 import { createDiagnosisDocx } from "@/lib/docx/diagnosis-docx";
 import { getSupabasePublicEnv } from "@/lib/env";
 import {
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
         .single(),
       supabase
         .from("students")
-        .select("display_name,class_id")
+        .select("*")
         .eq("id", diagnosis.student_id)
         .single(),
       diagnosis.assessment_id
@@ -171,7 +172,10 @@ export async function GET(request: Request) {
         term: diagnosis.term,
         diagnosisMode: diagnosis.diagnosis_mode,
         assessmentTitle: assessmentResult.data?.title ?? "",
-        diagnosis: diagnosisFromRow(diagnosis),
+        diagnosis: alignDiagnosisPronouns(
+          diagnosisFromRow(diagnosis),
+          studentResult.data.pronoun_preference,
+        ),
         reviewedAt: diagnosis.reviewed_at,
         finalisedAt: diagnosis.finalised_at,
       };

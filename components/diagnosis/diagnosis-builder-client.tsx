@@ -89,6 +89,7 @@ export function DiagnosisBuilderClient() {
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
   const [classSessions, setClassSessions] = useState<Record<string, string>>({});
   const handoffApplied = useRef(false);
+  const [savedDiagnosisClass, setSavedDiagnosisClass] = useState("");
   const [diagnosisSearch, setDiagnosisSearch] = useState("");
   const [diagnosisStatus, setDiagnosisStatus] = useState("all");
   const [diagnosisSort, setDiagnosisSort] = useState<
@@ -184,6 +185,7 @@ export function DiagnosisBuilderClient() {
       const student = data?.students.find(
         (item) => item.id === entry.row.student_id,
       );
+      if (!savedDiagnosisClass || (student?.classId ?? "unassigned") !== savedDiagnosisClass) return false;
       if (!query) return true;
       return [
         student?.name ?? "",
@@ -207,7 +209,7 @@ export function DiagnosisBuilderClient() {
       const bTime = new Date(b.row.updated_at).getTime();
       return diagnosisSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
-  }, [data?.diagnoses, data?.students, diagnosisSearch, diagnosisSort, diagnosisStatus]);
+  }, [data?.diagnoses, data?.students, diagnosisSearch, diagnosisSort, diagnosisStatus, savedDiagnosisClass]);
 
   const diagnosisTotalPages = Math.max(
     1,
@@ -377,6 +379,17 @@ export function DiagnosisBuilderClient() {
           <div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-emerald-800">Saved work</p><h2 className="mt-1 text-xl font-semibold">Diagnoses</h2></div><span className="text-xs text-zinc-400">{data.diagnoses.length}</span></div>
           <p className="mt-2 text-xs leading-5 text-zinc-500">Results open on their own page, keeping this workspace focused on evidence entry.</p>
           <div className="mt-4">
+            <label className="mb-3 flex flex-col gap-1 text-sm font-medium">
+              Class for saved diagnoses
+              <select value={savedDiagnosisClass} onChange={(event) => {
+                setSavedDiagnosisClass(event.target.value);
+                setDiagnosisPage(1);
+              }} className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3">
+                <option value="">Select a class</option>
+                {data.classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                <option value="unassigned">Class not linked</option>
+              </select>
+            </label>
             <RecordListToolbar
               compact
               searchValue={diagnosisSearch}
@@ -420,7 +433,7 @@ export function DiagnosisBuilderClient() {
             {pagedDiagnoses.length ? pagedDiagnoses.map((entry) => {
               const student = data.students.find((item) => item.id === entry.row.student_id);
               return <Link key={entry.row.id} href={`/diagnosis/result?diagnosis=${encodeURIComponent(entry.row.id)}`} className="rounded-2xl border border-zinc-200 p-3 transition hover:bg-stone-50"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-zinc-900">{student?.name || "Student"}</span><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold uppercase text-zinc-600">{entry.row.status}</span></div><p className="mt-1 text-xs text-zinc-500">{student?.className || "Class not assigned"} · {entry.row.academic_session || "Session not set"} · {entry.row.term || "Term not set"}</p></Link>;
-            }) : <p className="text-sm text-zinc-500">{diagnosisSearch.trim() || diagnosisStatus !== "all" ? "No diagnoses match your search and filters." : "No saved diagnoses yet."}</p>}
+            }) : <p className="text-sm text-zinc-500">{!savedDiagnosisClass ? "Select a class to see its saved diagnoses." : diagnosisSearch.trim() || diagnosisStatus !== "all" ? "No diagnoses match your search and filters." : "No saved diagnoses for this class."}</p>}
           </div>
           {visibleDiagnoses.length ? (
             <div className="mt-4">

@@ -971,6 +971,7 @@ export type Database = {
           created_by: string
           display_name: string
           external_reference: string | null
+          gender: string | null
           pronoun_preference: string
           id: string
           updated_at: string
@@ -983,6 +984,7 @@ export type Database = {
           created_by: string
           display_name: string
           external_reference?: string | null
+          gender?: string | null
           pronoun_preference?: string
           id?: string
           updated_at?: string
@@ -995,6 +997,7 @@ export type Database = {
           created_by?: string
           display_name?: string
           external_reference?: string | null
+          gender?: string | null
           pronoun_preference?: string
           id?: string
           updated_at?: string
