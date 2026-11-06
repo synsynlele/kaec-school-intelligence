@@ -2,7 +2,7 @@ import type { DiagnosisMode } from "@/lib/domain/diagnosis";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const DIAGNOSIS_ENGINE_VERSION = "DIAGNOSIS_ENGINE_v1.0";
-export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.2";
+export const DIAGNOSIS_PROMPT_VERSION = "DIAGNOSIS_PROMPT_v1.3";
 export const DIAGNOSIS_QUALITY_VERSION = "KAEC_DIAGNOSIS_QUALITY_v1.0";
 
 export const DIAGNOSIS_DOMAINS = ["academic", "skill", "character"] as const;
@@ -617,7 +617,7 @@ Rules:
 11. Encouragement Note should be warm, specific and grounded in demonstrated potential/evidence, while still adding insight rather than repeating strengths word-for-word.
 12. Include at least one Evidence Limitation even with strong evidence, because this diagnosis reflects a bounded evidence window.
 13. Prefer concise, natural professional prose over jargon. The parent should understand why each observation matters and what should happen next.
-14. Follow the registered pronoun preference throughout every paragraph, finding, limitation and action. Do not repeat gendered teacher input as identity evidence; when in doubt use "the learner".`;
+14. Follow the registered pronoun preference throughout every paragraph, finding, limitation and action. Apply this rule to action timeframes and evidence limitations as well. Use uncontracted wording. Treat gendered wording in source notes as unverified, even when it occurs repeatedly. When the preference is missing or the reference is unclear, use "the learner".`;
 }
 
 export function buildDiagnosisRepairPrompt(

@@ -345,42 +345,36 @@ function firstPage(input: DiagnosisPdfInput) {
     { size: 8.6, padding: 4 },
   );
 
-  const findingsHeight = groupedMatrix(
-    commands,
-    156,
-    "ACADEMICS / SKILLS",
-    "CHARACTER (Discipline)",
-    ["Strengths", "Challenges", "Strengths", "Challenges"],
-    [
-      diagnosis.academicSkillStrengths.map((item) => item.statement),
-      diagnosis.academicSkillChallenges.map((item) => item.statement),
-      diagnosis.characterStrengths.map((item) => item.statement),
-      diagnosis.characterChallenges.map((item) => item.statement),
-    ],
-    137,
+  const findings = [
+    diagnosis.academicSkillStrengths.map((item) => item.statement),
+    diagnosis.academicSkillChallenges.map((item) => item.statement),
+    diagnosis.characterStrengths.map((item) => item.statement),
+    diagnosis.characterChallenges.map((item) => item.statement),
+  ] as const;
+  const actions = [
+    diagnosis.schoolAcademicActions,
+    diagnosis.parentAcademicActions,
+    diagnosis.schoolCharacterActions,
+    diagnosis.parentCharacterActions,
+  ].map((items) => items.map((item) => `${item.action} (${item.timeframe})`));
+  const cellHeight = 137;
+  const cellWidth = CONTENT_WIDTH / 4 - 14;
+  const maxCellLines = Math.floor((cellHeight - 14) / (8.15 * 1.28));
+  const summaryFits = wrapText(diagnosis.conciseDiagnosis, CONTENT_WIDTH - 110, 8.6).length
+    <= Math.floor(40 / (8.6 * 1.28));
+  const tablesFit = [...findings, ...actions].every((items) =>
+    wrapText(items.map((item) => `- ${ascii(item)}`).join("\n"), cellWidth, 8.15).length <= maxCellLines,
   );
+  if (!summaryFits || !tablesFit) return null;
 
+  const findingsHeight = groupedMatrix(
+    commands, 156, "ACADEMICS / SKILLS", "CHARACTER (Discipline)",
+    ["Strengths", "Challenges", "Strengths", "Challenges"], [...findings], cellHeight,
+  );
   groupedMatrix(
-    commands,
-    156 + findingsHeight + 10,
-    "ACTION PLAN (Academics / Skills)",
-    "ACTION PLAN (Character)",
+    commands, 156 + findingsHeight + 10, "ACTION PLAN (Academics / Skills)", "ACTION PLAN (Character)",
     ["SCHOOL", "PARENTS", "SCHOOL", "PARENTS"],
-    [
-      diagnosis.schoolAcademicActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.parentAcademicActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.schoolCharacterActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-      diagnosis.parentCharacterActions.map(
-        (item) => `${item.action} (${item.timeframe})`,
-      ),
-    ],
-    137,
+    [actions[0], actions[1], actions[2], actions[3]], cellHeight,
   );
 
   textAtTop(
@@ -410,7 +404,7 @@ class FlowPage {
   private pages: string[][] = [];
   private y = PAGE_HEIGHT - 102;
 
-  constructor(private readonly input: DiagnosisPdfInput) {
+  constructor(private readonly input: DiagnosisPdfInput, private readonly hasTablePage: boolean) {
     this.header();
   }
 
@@ -424,7 +418,7 @@ class FlowPage {
     brandName(this.commands, input.workspaceName, 74, 25, 170, 48, 8.4);
     textAtTop(
       this.commands,
-      "GROWTH & REVIEW NOTES",
+      this.hasTablePage ? "GROWTH & REVIEW NOTES" : "STUDENT DIAGNOSIS",
       PAGE_WIDTH - 260,
       30,
       12,
@@ -489,31 +483,31 @@ class FlowPage {
       { bold: true, size: 9.6, color: MUTED, gapAfter: 8 },
     );
 
-    this.section("Complete Findings & Action Plan");
-    this.line("The first page is a compact summary. Complete reviewed wording follows here.");
-    this.section("Diagnosis");
-    this.line(diagnosis.conciseDiagnosis);
-    const findings = [
-      ["Academic / Skill Strengths", diagnosis.academicSkillStrengths],
-      ["Academic / Skill Challenges", diagnosis.academicSkillChallenges],
-      ["Character Strengths", diagnosis.characterStrengths],
-      ["Character Challenges", diagnosis.characterChallenges],
-    ] as const;
-    for (const [label, items] of findings) {
-      this.section(label);
-      if (!items.length) this.line("Insufficient evidence to state a supported finding.");
-      items.forEach((item) => this.bullet(item.statement));
-    }
-    const actions = [
-      ["School: Academics / Skills", diagnosis.schoolAcademicActions],
-      ["Parents: Academics / Skills", diagnosis.parentAcademicActions],
-      ["School: Character", diagnosis.schoolCharacterActions],
-      ["Parents: Character", diagnosis.parentCharacterActions],
-    ] as const;
-    for (const [label, items] of actions) {
-      if (!items.length) continue;
-      this.section(label);
-      items.forEach((item) => this.bullet(`${item.action} (${item.timeframe})`));
+    if (!this.hasTablePage) {
+      this.section("Diagnosis");
+      this.line(diagnosis.conciseDiagnosis);
+      const findings = [
+        ["Academic / Skill Strengths", diagnosis.academicSkillStrengths],
+        ["Academic / Skill Challenges", diagnosis.academicSkillChallenges],
+        ["Character Strengths", diagnosis.characterStrengths],
+        ["Character Challenges", diagnosis.characterChallenges],
+      ] as const;
+      for (const [label, items] of findings) {
+        this.section(label);
+        if (!items.length) this.line("Insufficient evidence to state a supported finding.");
+        items.forEach((item) => this.bullet(item.statement));
+      }
+      const actions = [
+        ["School: Academics / Skills", diagnosis.schoolAcademicActions],
+        ["Parents: Academics / Skills", diagnosis.parentAcademicActions],
+        ["School: Character", diagnosis.schoolCharacterActions],
+        ["Parents: Character", diagnosis.parentCharacterActions],
+      ] as const;
+      for (const [label, items] of actions) {
+        if (!items.length) continue;
+        this.section(label);
+        items.forEach((item) => this.bullet(`${item.action} (${item.timeframe})`));
+      }
     }
     if (diagnosis.observedEvidence.length) this.section("Observed Evidence");
     diagnosis.observedEvidence.forEach((item) => this.bullet(item.statement));
@@ -650,7 +644,9 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
     throw new Error("Parent diagnosis PDF requires Academic Session and Term.");
   }
 
-  const pages = [firstPage(input), ...new FlowPage(input).build()];
+  const tablePage = firstPage(input);
+  const notes = new FlowPage(input, Boolean(tablePage)).build();
+  const pages = tablePage ? [tablePage, ...notes] : notes;
   return serializePdf(buildPdfObjects(pages, input));
 }
 

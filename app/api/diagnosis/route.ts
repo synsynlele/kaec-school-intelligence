@@ -666,8 +666,15 @@ async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string,
 
   // Do not detach the evidence, change the original approval, or alter any linked intervention.
   await evidenceForDiagnosis(supabase, source as DiagnosisRow);
-  const original = diagnosisFromRow(source as DiagnosisRow);
-  const fields = diagnosisToPersistence(original);
+  const { data: student, error: studentError } = await supabase
+    .from("students")
+    .select("*")
+    .eq("workspace_id", workspace.workspaceId)
+    .eq("id", source.student_id)
+    .maybeSingle();
+  if (studentError) throw studentError;
+  const corrected = alignDiagnosisPronouns(diagnosisFromRow(source as DiagnosisRow), student?.pronoun_preference);
+  const fields = diagnosisToPersistence(corrected);
   const correction = await createDiagnosisDraft(supabase, {
     workspaceId: source.workspace_id,
     studentId: source.student_id,
@@ -676,11 +683,11 @@ async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string,
     assessmentId: source.assessment_id,
     academicSession: source.academic_session,
     term: source.term,
-    conciseDiagnosis: original.conciseDiagnosis,
+    conciseDiagnosis: corrected.conciseDiagnosis,
     ...fields,
-    possibleInterpretations: original.possibleInterpretations.map((item, index) => ({
+    possibleInterpretations: corrected.possibleInterpretations.map((item, index) => ({
       ...item,
-      ...(index === 0 ? { summary: original.conciseDiagnosis } : {}),
+      ...(index === 0 ? { summary: corrected.conciseDiagnosis } : {}),
     })),
     engineVersion: source.engine_version,
     promptVersion: source.prompt_version,
@@ -691,7 +698,7 @@ async function handleReviseApproved(supabase: KsiSupabaseClient, userId: string,
     },
   });
 
-  return json({ diagnosis: correction, generated: original, sourceDiagnosisId: source.id }, 201);
+  return json({ diagnosis: correction, generated: corrected, sourceDiagnosisId: source.id }, 201);
 }
 
 async function handleLifecycle(supabase: KsiSupabaseClient, body: LifecycleBody) {

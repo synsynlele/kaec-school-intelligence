@@ -53,6 +53,8 @@ export function alignDiagnosisNarrative(text: string, value: unknown): string {
 
 export function alignDiagnosisPronouns(diagnosis: GeneratedDiagnosis, preference: unknown): GeneratedDiagnosis {
   const align = (value: string) => alignDiagnosisNarrative(value, preference);
+  const alignActions = (items: GeneratedDiagnosis["schoolAcademicActions"]) =>
+    items.map((item) => ({ ...item, action: align(item.action), timeframe: align(item.timeframe) }));
   return {
     ...diagnosis,
     observedEvidence: diagnosis.observedEvidence.map((item) => ({ ...item, statement: align(item.statement) })),
@@ -65,10 +67,10 @@ export function alignDiagnosisPronouns(diagnosis: GeneratedDiagnosis, preference
     characterStrengths: diagnosis.characterStrengths.map((item) => ({ ...item, statement: align(item.statement) })),
     characterChallenges: diagnosis.characterChallenges.map((item) => ({ ...item, statement: align(item.statement) })),
     conciseDiagnosis: align(diagnosis.conciseDiagnosis),
-    schoolAcademicActions: diagnosis.schoolAcademicActions.map((item) => ({ ...item, action: align(item.action) })),
-    parentAcademicActions: diagnosis.parentAcademicActions.map((item) => ({ ...item, action: align(item.action) })),
-    schoolCharacterActions: diagnosis.schoolCharacterActions.map((item) => ({ ...item, action: align(item.action) })),
-    parentCharacterActions: diagnosis.parentCharacterActions.map((item) => ({ ...item, action: align(item.action) })),
+    schoolAcademicActions: alignActions(diagnosis.schoolAcademicActions),
+    parentAcademicActions: alignActions(diagnosis.parentAcademicActions),
+    schoolCharacterActions: alignActions(diagnosis.schoolCharacterActions),
+    parentCharacterActions: alignActions(diagnosis.parentCharacterActions),
     builderGrowthDirection: align(diagnosis.builderGrowthDirection),
     encouragementNote: align(diagnosis.encouragementNote),
     evidenceLimitations: diagnosis.evidenceLimitations.map(align),
