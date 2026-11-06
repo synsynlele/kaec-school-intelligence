@@ -23,6 +23,7 @@ type SetupContext = {
   subjects: Subject[];
   classes: SchoolClass[];
   students: Student[];
+  genderReady: boolean;
   pronounReady: boolean;
 };
 
@@ -41,6 +42,7 @@ type EditingRecord =
       name: string;
       classId: string;
       reference: string;
+      gender: string;
       pronounPreference: StudentPronounPreference;
     };
 
@@ -159,6 +161,7 @@ async function loadSetupContext(): Promise<SetupContext | null> {
     subjects: subjectResult.data ?? [],
     classes: classResult.data ?? [],
     students: studentResult.data ?? [],
+    genderReady: !(await supabase.from("students").select("gender").eq("workspace_id", workspaceId).limit(1)).error,
     pronounReady: !(await supabase.from("students").select("pronoun_preference").eq("workspace_id", workspaceId).limit(1)).error,
   };
 }
@@ -180,6 +183,7 @@ export function AcademicSetupClient() {
   const [studentName, setStudentName] = useState("");
   const [studentClassId, setStudentClassId] = useState("");
   const [studentReference, setStudentReference] = useState("");
+  const [studentGender, setStudentGender] = useState("");
   const [studentPronouns, setStudentPronouns] = useState<StudentPronounPreference>("name_only");
 
   const canManage = useMemo(
@@ -302,12 +306,14 @@ export function AcademicSetupClient() {
           display_name: studentName.trim(),
           class_id: studentClassId || null,
           external_reference: studentReference.trim() || null,
+          ...(context.genderReady ? { gender: studentGender || null } : {}),
           ...(context.pronounReady ? { pronoun_preference: studentPronouns } : {}),
         });
       if (insertError) throw insertError;
       setStudentName("");
       setStudentClassId("");
       setStudentReference("");
+      setStudentGender("");
       setStudentPronouns("name_only");
       setSuccess("Student added.");
       await refresh();
@@ -401,6 +407,7 @@ export function AcademicSetupClient() {
       name: item.display_name,
       classId: item.class_id ?? "",
       reference: item.external_reference ?? "",
+      gender: item.gender ?? "",
       pronounPreference: studentPronounPreference(item.pronoun_preference),
     });
     setError(null);
@@ -455,6 +462,7 @@ export function AcademicSetupClient() {
             display_name: editing.name.trim(),
             class_id: editing.classId || null,
             external_reference: editing.reference.trim() || null,
+            ...(context.genderReady ? { gender: editing.gender || null } : {}),
             ...(context.pronounReady ? { pronoun_preference: editing.pronounPreference } : {}),
           })
           .eq("id", editing.id)
@@ -774,6 +782,17 @@ export function AcademicSetupClient() {
                       ))}
                     </select>
                   </label>
+                  {context.genderReady ? (
+                    <label className="block">
+                      <span className="mb-1.5 block text-sm font-medium text-zinc-800">Gender (optional)</span>
+                      <select value={editing.gender} onChange={(event) => setEditing({ ...editing, gender: event.target.value })} className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3">
+                        <option value="">Not recorded</option>
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                        <option value="another_gender">Another gender</option>
+                      </select>
+                    </label>
+                  ) : null}
                   {context.pronounReady ? (
                     <label className="block">
                       <span className="mb-1.5 block text-sm font-medium text-zinc-800">Pronouns for diagnosis reports</span>
@@ -945,6 +964,17 @@ export function AcademicSetupClient() {
                   ))}
                 </select>
               </label>
+              {context.genderReady ? (
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-zinc-800">Gender (optional)</span>
+                  <select value={studentGender} onChange={(event) => setStudentGender(event.target.value)} className="min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3">
+                    <option value="">Not recorded</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="another_gender">Another gender</option>
+                  </select>
+                </label>
+              ) : null}
               {context.pronounReady ? (
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium text-zinc-800">Pronouns for diagnosis reports</span>
