@@ -419,10 +419,6 @@ class FlowPage {
     });
   }
 
-  bullet(value: string) {
-    this.line(`- ${value}`, { size: 9.2, indent: 8, gapAfter: 2 });
-  }
-
   build() {
     const diagnosis = this.input.diagnosis;
     this.section("DIAGNOSIS:");
@@ -460,21 +456,11 @@ class FlowPage {
     );
 
 
-    if (diagnosis.observedEvidence.length) this.section("Observed Evidence");
-    diagnosis.observedEvidence.forEach((item) => this.bullet(item.statement));
-    if (diagnosis.detectedPatterns.length) this.section("Detected Patterns");
-    diagnosis.detectedPatterns.forEach((item) => this.bullet(item.statement));
-    if (diagnosis.possibleInterpretations.length) this.section("Possible Interpretations (not established facts)");
-    diagnosis.possibleInterpretations.forEach((item) => this.bullet(`${item.statement} ${item.uncertaintyNote}`));
-
     this.section("Builder Growth Direction");
     this.line(diagnosis.builderGrowthDirection, { size: 10 });
 
     this.section("Encouragement Note");
     this.line(diagnosis.encouragementNote, { size: 10, color: FOREST });
-
-    this.section("Evidence Limitations");
-    diagnosis.evidenceLimitations.forEach((item) => this.bullet(item));
 
     this.section("Report Basis");
     this.line(`Diagnosis mode: ${titleCase(this.input.diagnosisMode)}`, {
