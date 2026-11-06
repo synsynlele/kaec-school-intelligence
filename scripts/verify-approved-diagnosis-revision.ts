@@ -40,7 +40,7 @@ assert(route.includes('action: "revise_approved"'));
 assert(route.includes("await evidenceForDiagnosis(supabase, source as DiagnosisRow)"), "Copied report must retain traceable evidence.");
 assert(route.includes("await createDiagnosisDraft(supabase"), "Approved correction must become a new draft.");
 assert(route.includes("academicSession: source.academic_session") && route.includes("term: source.term"), "Correction must retain the original report period.");
-assert(route.includes("conciseDiagnosis: original.conciseDiagnosis"), "Correction must retain the original concise finding.");
+assert(route.includes("conciseDiagnosis: corrected.conciseDiagnosis"), "Correction must persist the pronoun-aligned concise finding.");
 assert(route.includes("concise_diagnosis: edited.conciseDiagnosis"), "Edited concise findings must persist for Word/PDF exports.");
 assert(repository.includes('academic_session: input.academicSession ?? ""') && repository.includes('term: input.term ?? ""'), "Copied report period must persist in new diagnosis draft.");
 assert(route.includes("revision: {") && route.includes("sourceDiagnosisId: source.id"), "Correction provenance is required.");
