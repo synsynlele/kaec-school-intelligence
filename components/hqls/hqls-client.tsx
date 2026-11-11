@@ -16,6 +16,7 @@ import {
   type HqlsStageAction,
   type HqlsStageContent,
 } from "@/lib/hqls/engine";
+import { useTeacherDraft } from "@/lib/drafts/use-teacher-draft";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Workspace = {
@@ -412,6 +413,41 @@ const refreshLessons = useCallback(async () => {
     );
   }, [state]);
 
+  const clearLessonDraft = useTeacherDraft(state?.workspace.id, editorOnly ? undefined : "lesson-new", {
+    subject,
+    topic,
+    classLevel,
+    ageRange,
+    durationMinutes,
+    objective,
+    previousLearning,
+    availableResources,
+    classContext,
+    teacherInstructions,
+    selectedResourceIds,
+  }, (draft) => {
+    setSubject(draft.subject);
+    setTopic(draft.topic);
+    setClassLevel(draft.classLevel);
+    setAgeRange(draft.ageRange);
+    setDurationMinutes(draft.durationMinutes);
+    setObjective(draft.objective);
+    setPreviousLearning(draft.previousLearning);
+    setAvailableResources(draft.availableResources);
+    setClassContext(draft.classContext);
+    setTeacherInstructions(draft.teacherInstructions);
+    setSelectedResourceIds(draft.selectedResourceIds);
+    setNotice("Your unsaved lesson inputs were restored.");
+  });
+
+  const clearLessonEdits = useTeacherDraft(state?.workspace.id, selectedLesson ? `lesson:${selectedLesson.id}:${selectedLesson.updated_at}` : undefined, {
+    editorStages,
+  }, (draft) => {
+    setEditorStages(draft.editorStages);
+    setDirty(true);
+    setNotice("Your unsaved lesson edits were restored.");
+  });
+
   useEffect(() => {
     let cancelled = false;
     void loadWorkspaceState(editorOnly)
@@ -646,6 +682,7 @@ const refreshLessons = useCallback(async () => {
           "The generated lesson was saved but its id was not returned.",
         );
       }
+      clearLessonDraft();
       await refreshLessons();
       await openLesson(lesson);
       setNotice(
@@ -660,6 +697,7 @@ const refreshLessons = useCallback(async () => {
       ) {
         try {
           if (await recoverGeneratedLesson(startedAt, requestedTopic)) {
+            clearLessonDraft();
             setNotice("Your lesson was generated and saved. It is open below.");
             return;
           }
@@ -718,6 +756,7 @@ const refreshLessons = useCallback(async () => {
         stages: editorStages,
         markReviewed,
       });
+      clearLessonEdits();
       if (!editorOnly) await refreshLessons();
       await openLesson(selectedLesson.id);
       setNotice(
