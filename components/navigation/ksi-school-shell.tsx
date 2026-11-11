@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
+import { TeacherDraftAccount } from "@/lib/drafts/use-teacher-draft";
 import { KaecBrand } from "@/components/branding/kaec-brand";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
@@ -35,24 +36,32 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GateState>("checking");
   const [error, setError] = useState<string | null>(null);
 
-  const resolveAccess = useCallback(async () => {
-    setState("checking");
+  const [identity, setIdentity] = useState<{ userId: string; workspaceId: string } | null>(null);
+  const accessCheck = useRef(0);
+
+  const resolveAccess = useCallback(async (background = false) => {
+    const check = ++accessCheck.current;
+    if (!background) setState("checking");
     setError(null);
 
     try {
       const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient());
+      if (check !== accessCheck.current) return;
       if (!access) {
+        setState("checking");
         router.replace("/sign-in");
         return;
       }
+      setIdentity(access.activeSchool ? { userId: access.user.id, workspaceId: access.activeSchool.workspace_id } : null);
       setState(access.activeSchool ? "ready" : "needs-school");
     } catch (caught) {
+      if (check !== accessCheck.current) return;
       setError(
         caught instanceof Error
           ? caught.message
           : "KSI could not confirm your school access. Retry the access check.",
       );
-      setState("error");
+      setState((current) => background && current === "ready" ? current : "error");
     }
   }, [router]);
 
@@ -69,7 +78,7 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (ungated) return;
-    const handleResume = () => void resolveAccess();
+    const handleResume = () => void resolveAccess(true);
     window.addEventListener("ksi:app-resume", handleResume);
     return () => window.removeEventListener("ksi:app-resume", handleResume);
   }, [resolveAccess, ungated]);
@@ -130,5 +139,12 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <TeacherDraftAccount.Provider value={identity?.userId ?? null}>
+      {error ? <p role="status" className="bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
+        KSI could not recheck school access. <button type="button" className="underline" onClick={() => void resolveAccess(true)}>Retry</button>
+      </p> : null}
+      <Fragment key={identity ? `${identity.userId}:${identity.workspaceId}` : undefined}>{children}</Fragment>
+    </TeacherDraftAccount.Provider>
+  );
 }
