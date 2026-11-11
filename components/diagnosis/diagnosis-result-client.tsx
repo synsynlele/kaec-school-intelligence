@@ -10,6 +10,7 @@ import type {
   DiagnosisStrengthChallenge,
   GeneratedDiagnosis,
 } from "@/lib/diagnosis/engine";
+import { useTeacherDraft } from "@/lib/drafts/use-teacher-draft";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type DiagnosisRow = {
@@ -132,6 +133,18 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
       : null);
   }, [authenticatedFetch, diagnosisId]);
 
+  const editableDiagnosis = entry && !["final", "archived"].includes(entry.row.status) ? entry : null;
+  const clearDiagnosisEdits = useTeacherDraft(
+    payload?.workspace.id,
+    editableDiagnosis ? `diagnosis:${editableDiagnosis.row.id}:${editableDiagnosis.row.updated_at}` : undefined,
+    editableDiagnosis?.generated,
+    (draft) => {
+      if (!draft) return;
+      setEntry((current) => current ? { ...current, generated: draft } : current);
+      setNotice("Your unsaved diagnosis edits were restored.");
+    },
+  );
+
   useEffect(() => {
     let active = true;
     const timer = window.setTimeout(() => {
@@ -170,6 +183,7 @@ export function DiagnosisResultClient({ diagnosisId }: { diagnosisId: string }) 
       });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "The diagnosis action could not be completed.");
+      if (action === "save_edits") clearDiagnosisEdits();
       await load();
       setNotice(
         action === "save_edits"
