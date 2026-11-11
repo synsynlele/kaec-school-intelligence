@@ -15,8 +15,8 @@ export function useTeacherDraft<T>(
   const key = account && workspaceId && form
     ? `ksi:draft:v1:${JSON.stringify([account, workspaceId, form])}`
     : null;
-  const snapshot = JSON.stringify(values);
-  const baseline = useRef<{ key: string; snapshot: string } | null>(null);
+  const snapshot = JSON.stringify(values) ?? "null";
+  const baseline = useRef<{ key: string; snapshot: string; previous: string } | null>(null);
 
   useEffect(() => {
     if (!key) {
@@ -25,7 +25,7 @@ export function useTeacherDraft<T>(
     }
     try {
       if (baseline.current?.key !== key) {
-        baseline.current = { key, snapshot };
+        baseline.current = { key, snapshot, previous: snapshot };
         const saved = localStorage.getItem(key);
         if (saved && saved !== snapshot) {
           const draft = JSON.parse(saved) as T;
@@ -35,9 +35,13 @@ export function useTeacherDraft<T>(
         }
         return;
       }
+      if (baseline.current.previous === snapshot) return;
       if (baseline.current.snapshot !== snapshot) {
         localStorage.setItem(key, snapshot);
+      } else if (localStorage.getItem(key) === baseline.current.previous) {
+        localStorage.removeItem(key);
       }
+      baseline.current.previous = snapshot;
     } catch {
       // The form still works when browser storage is blocked or full.
     }
@@ -49,7 +53,7 @@ export function useTeacherDraft<T>(
       const saved = localStorage.getItem(key);
       if (saved !== null && saved !== snapshot) return;
       localStorage.removeItem(key);
-      baseline.current = { key, snapshot };
+      baseline.current = { key, snapshot, previous: snapshot };
     } catch {
       // A successful server save does not depend on browser storage.
     }
