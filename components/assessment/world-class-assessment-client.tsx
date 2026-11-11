@@ -28,6 +28,7 @@ import {
   topicAllocationTotals,
   ZERO_TOPIC_QUESTION_COUNTS,
 } from "@/lib/assessment/topic-allocation";
+import { useTeacherDraft } from "@/lib/drafts/use-teacher-draft";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   assertCompatibleHqlsSources,
@@ -540,6 +541,65 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
     );
   }, [state]);
 
+  const clearAssessmentDraft = useTeacherDraft(state?.workspace.id, editorOnly ? undefined : "assessment-new", {
+    subject,
+    classLevel,
+    ageRange,
+    title,
+    assessmentKind,
+    term,
+    overallDifficulty,
+    assessmentMode,
+    totalItems,
+    totalMarks,
+    markMode,
+    typeMarks,
+    questionMarks,
+    durationMinutes,
+    purpose,
+    teacherInstructions,
+    questionStyleInstructions,
+    topicAllocationMode,
+    sourceLessonIds,
+    selectedResourceIds,
+    topics,
+    counts,
+  }, (draft) => {
+    setSubject(draft.subject);
+    setClassLevel(draft.classLevel);
+    setAgeRange(draft.ageRange);
+    setTitle(draft.title);
+    setAssessmentKind(draft.assessmentKind);
+    setTerm(draft.term);
+    setOverallDifficulty(draft.overallDifficulty);
+    setAssessmentMode(draft.assessmentMode);
+    setTotalItems(draft.totalItems);
+    setTotalMarks(draft.totalMarks);
+    setMarkMode(draft.markMode);
+    setTypeMarks(draft.typeMarks);
+    setQuestionMarks(draft.questionMarks);
+    setDurationMinutes(draft.durationMinutes);
+    setPurpose(draft.purpose);
+    setTeacherInstructions(draft.teacherInstructions);
+    setQuestionStyleInstructions(draft.questionStyleInstructions);
+    setTopicAllocationMode(draft.topicAllocationMode);
+    setSourceLessonIds(draft.sourceLessonIds);
+    setSelectedResourceIds(draft.selectedResourceIds);
+    setTopics(draft.topics);
+    setCounts(draft.counts);
+    setNotice("Your unsaved assessment inputs were restored.");
+  });
+
+  const clearAssessmentEdits = useTeacherDraft(state?.workspace.id, selectedAssessment ? `assessment:${selectedAssessment.id}:${selectedAssessment.updated_at}` : undefined, {
+    editor,
+    editTerm,
+  }, (draft) => {
+    setEditor(draft.editor);
+    setEditTerm(draft.editTerm);
+    setDirty(true);
+    setNotice("Your unsaved assessment edits were restored.");
+  });
+
   useEffect(() => {
     let cancelled = false;
     void loadWorkspaceState(editorOnly)
@@ -844,6 +904,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
           "The assessment was generated but its saved id was not returned.",
         );
       }
+      clearAssessmentDraft();
       await refreshAssessments();
       await openAssessment(row.id);
       const warnings = readStringList(payload.sourceWarnings);
@@ -960,6 +1021,7 @@ export function WorldClassAssessmentClient({ editorOnly = false }: { editorOnly?
         ? readValidation(payload.validation)
         : null;
       setValidation(validationRow);
+      clearAssessmentEdits();
       if (!editorOnly) await refreshAssessments();
       await openAssessment(selectedAssessment.id);
       setNotice(
