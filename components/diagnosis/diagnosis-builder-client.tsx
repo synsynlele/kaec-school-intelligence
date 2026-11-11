@@ -8,6 +8,7 @@ import { RecordListPagination, type RecordPageSize } from "@/components/shared/r
 import { RecordListToolbar } from "@/components/shared/record-list-toolbar";
 import type { DiagnosisMode } from "@/lib/domain/diagnosis";
 import { diagnosisStudentsForClass } from "@/lib/diagnosis/student-picker";
+import { useTeacherDraft } from "@/lib/drafts/use-teacher-draft";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Workspace = { id: string; name: string; role: string; canApprove: boolean };
@@ -144,6 +145,33 @@ export function DiagnosisBuilderClient() {
       }
     }
   }, [authenticatedFetch]);
+
+  const clearDiagnosisDraft = useTeacherDraft(data?.workspace.id, "diagnosis-new", {
+    mode,
+    classFilter,
+    studentId,
+    academicSession,
+    term,
+    teacherSheet,
+    assessmentId,
+    earnedMarks,
+    totalMarks,
+    itemMarks,
+    itemNotes,
+  }, (draft) => {
+    setMode(draft.mode);
+    setClassFilter(draft.classFilter);
+    setStudentId(draft.studentId);
+    setAcademicSession(draft.academicSession);
+    setTerm(draft.term);
+    setTeacherSheet(draft.teacherSheet);
+    setAssessmentId(draft.assessmentId);
+    setEarnedMarks(draft.earnedMarks);
+    setTotalMarks(draft.totalMarks);
+    setItemMarks(draft.itemMarks);
+    setItemNotes(draft.itemNotes);
+    setNotice("Your unsaved diagnosis inputs were restored.");
+  });
 
   useEffect(() => {
     let active = true;
@@ -296,6 +324,7 @@ export function DiagnosisBuilderClient() {
         target_term: term.trim(),
       });
       if (contextError) throw contextError;
+      clearDiagnosisDraft();
       router.push(`/diagnosis/result?diagnosis=${encodeURIComponent(diagnosisId)}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Diagnosis generation failed.");
