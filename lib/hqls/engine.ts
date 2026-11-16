@@ -2,7 +2,7 @@ import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.10";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.11";
 export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.36";
 
 export type HqlsStageAction =
@@ -521,7 +521,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
   if (
     includesAny(studentText, [
       /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
-      /we (?:are|will be) (?:learning|studying|looking at)/i,
+      /\bwe (?:are|will be) (?:learning|studying) (?:about )?the (?:topic|concept) of\b/i,
       /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
       /the (?:idea|concept|topic) is called/i,
     ])
@@ -529,12 +529,24 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
     return true;
   }
 
-  return topicRevealCandidates(topic).some((candidate) =>
-    new RegExp(
-      "(^|[^a-z0-9])" + escapeRegExp(candidate) + "([^a-z0-9]|$)",
+  // Topic words can occur naturally in clues, source text and examples.
+  // Require announcement, definition, or a standalone learner-facing label.
+  const lines = [stage.experience, ...stage.teacherPrompts, ...stage.learnerActions]
+    .flatMap((text) => text.split("\n"));
+  return topicRevealCandidates(topic).some((candidate) => {
+    const name = escapeRegExp(candidate);
+    const naming = new RegExp(
+      "\\b(?:we (?:are|will be) (?:learning|studying)(?: about)?|(?:do not|don't|never) (?:reveal|announce|name))\\s+[\"'“‘]?" +
+        name + "(?![\\w-])|\\b" + name + "\\s+is defined as\\b",
       "i",
-    ).test(studentText),
-  );
+    );
+    const label = new RegExp(
+      "^\\s*(?:#{1,6}\\s*|(?:topic|lesson topic)\\s*:\\s*)?[\"'“‘]?" +
+        name + "[\"'”’]?[.!]?\\s*$",
+      "i",
+    );
+    return naming.test(studentText) || lines.some((line) => label.test(line));
+  });
 }
 
 export function validateHqlsLesson(
@@ -750,7 +762,7 @@ export function validateHqlsLesson(
       fail(
         stage.stageKey,
         "pre_illumination_topic_revealed",
-        "Stages 1–4 must preserve suspense. Do not explicitly announce, name or teach the lesson topic to learners before Full Illumination.",
+        "Remove the explicit topic announcement, topic label or definition from this stage. Keep the useful scenario, clue or task, and reveal and teach the topic in Full Illumination.",
       );
     }
   }
