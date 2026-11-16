@@ -1,7 +1,7 @@
 import type { GeneratedHqlsLesson } from "./engine";
 
 const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
-const kinds = "picture-word cards|picture word cards|picture cards|word cards|sentence cards|scenario cards|words|sentences|examples|scenarios|cards|passages";
+const kinds = "picture-word cards|picture word cards|picture cards|word cards|sentence cards|scenario cards|words|sentences|examples|scenarios|cards|passages|items|questions|statements|pictures|data points";
 
 function textValues(value: unknown): string[] {
   if (typeof value === "string") return [value];
@@ -24,7 +24,7 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
         // "Card 1: sentence cards" labels an existing item; 1 is not a quantity.
         if (/^\d+$/.test(match[1]) && /\b(?:card|word|sentence|example|scenario|passage|item)\s*$/i.test(before)) continue;
         if (!/^\s+(?:below|provided|listed|shown|above)\b/i.test(after) &&
-          !/\b(?:give|use|reuse|reusing|revisit|read|sort|compare|study|show|distribute|classify)\b[^.!?\n]{0,90}$/i.test(before)) continue;
+          !/\b(?:give|use|reuse|reusing|revisit|read|sort|compare|study|show|distribute|classify|provide|hand out|present|display)\b[^.!?\n]{0,90}$/i.test(before)) continue;
         const expected = /^\d+$/.test(match[1]) ? Number(match[1]) : numberWords.indexOf(match[1].toLowerCase());
         const kind = match[2].toLowerCase();
         const subset = /\b(?:choose|select|pick|reuse|revisit|model)\b[^.!?\n]{0,90}$/i.test(before) ||
