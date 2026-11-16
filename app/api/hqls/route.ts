@@ -705,7 +705,7 @@ async function handleGenerate(
     });
 
     let lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(generated.data));
-    let validation = validateHqlsLesson(lesson, input.topic);
+    let validation = validateHqlsLesson(lesson, input.topic, true);
     let repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson" = "none";
     let repairDurationMs = 0;
 
@@ -758,7 +758,7 @@ ${(
             replacements.find((replacement) => replacement.stageNumber === stage.stageNumber) ?? stage,
           ),
         });
-        validation = validateHqlsLesson(lesson, input.topic);
+        validation = validateHqlsLesson(lesson, input.topic, true);
       } else {
         repairMode = "full_lesson";
         const repaired = await generateOpenAIJson<unknown>({
@@ -778,7 +778,7 @@ ${(
         });
         repairDurationMs = repaired.durationMs;
         lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(repaired.data));
-        validation = validateHqlsLesson(lesson, input.topic);
+        validation = validateHqlsLesson(lesson, input.topic, true);
       }
     }
 
@@ -801,7 +801,7 @@ ${(
       });
       repairDurationMs += repaired.durationMs;
       lesson = keepOneAwakeningQuestion(parseGeneratedHqlsLesson(repaired.data));
-      validation = validateHqlsLesson(lesson, input.topic);
+      validation = validateHqlsLesson(lesson, input.topic, true);
     }
 
     if (!validation.passed) {
@@ -1151,7 +1151,7 @@ async function handleRegenerateStage(
         stage.stageNumber === stageNumber ? replacement : stage,
       ),
     };
-    let validation = validateHqlsLesson(candidate, current.lesson.topic);
+    let validation = validateHqlsLesson(candidate, current.lesson.topic, targetStage.stageNumber === 4);
     let targetViolations = validation.violations.filter(
       (item) => item.stageKey === replacement.stageKey,
     );
@@ -1179,7 +1179,7 @@ async function handleRegenerateStage(
           stage.stageNumber === stageNumber ? replacement : stage,
         ),
       };
-      validation = validateHqlsLesson(candidate, current.lesson.topic);
+      validation = validateHqlsLesson(candidate, current.lesson.topic, targetStage.stageNumber === 4);
       targetViolations = validation.violations.filter(
         (item) => item.stageKey === replacement.stageKey,
       );
