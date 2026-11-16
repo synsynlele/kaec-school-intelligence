@@ -2,7 +2,7 @@ import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
 import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
-export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.11";
+export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.10";
 export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.36";
 
 export type HqlsStageAction =
