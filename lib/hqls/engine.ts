@@ -1,4 +1,5 @@
 import { HQLS_STAGES, type HqlsStageKey } from "@/lib/domain/hqls";
+import { checkPromisedMaterials } from "./materials";
 import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
@@ -170,7 +171,7 @@ The app calculates and displays one suggested timetable for all seven stages fro
 
 SUBJECT ACCURACY AND TASK INTEGRITY:
 - Keep facts, calculations, examples and expected answers correct. Use supplied curriculum and prerequisites. Judge a word by its role in its sentence, not spelling alone; distinguish pronouns from determiners and reflexive action from emphasis.
-- Supply the actual story, text, data or examples the task needs. Use a short familiar situation with enough facts to reason; never ask the teacher to invent content promised by the lesson.
+- Trial 1 must be ready to run. Whenever it asks the teacher to give learners sentences, words, cards, passages, questions, pictures, scenarios, data or other prepared items, include every actual item in Stage 4 experience before learners need it. For a numbered promise use the same count in the task and list; "give six sentences" must be followed by all six sentences. A clear reference to an earlier complete set is also valid. Examples, placeholders and teacher-only answers cannot stand in for missing entries. For a visual, give the actual stimulus or a complete description the teacher can draw or show. Ordinary classroom objects only need a practical quantity and sourcing instructions.
 - Prefer board examples, teacher voice and familiar objects unless printed cards are useful or requested. Write one complete master set in Stage 4. Later stages can say "Use the same set from Stage 4" and identify any selected entries; do not copy the whole list again.
 - Materials may use numbered lines, bullets, a compact inline list or clearly quoted examples. A particular heading or layout is not a learning requirement. Counts and required categories must agree with the actual content. Physical counters need a quantity, not a numbered list of identical stones.
 - Keep grouping practical: specify pairs or teams, what each learner contributes and one shared first attempt. Give only the allocation needed to run the task. Do not invent class enrolment or demand unnecessary container arithmetic.
@@ -552,6 +553,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
 export function validateHqlsLesson(
   lesson: GeneratedHqlsLesson,
   topic?: string,
+  requireTrialMaterials = false,
 ): HqlsValidationResult {
   const violations: HqlsViolation[] = [];
   const evidence: string[] = [];
@@ -731,6 +733,14 @@ export function validateHqlsLesson(
   evidence.push(
     "Micro-Illumination remains non-blocking on question count: the prompt prefers one short clue and no redundant questions, while deterministic fidelity only blocks premature solutions or a separate formal task.",
   );
+
+  if (requireTrialMaterials) {
+    for (const issue of checkPromisedMaterials(lesson)) {
+      if (issue.stageNumber === 4 && issue.category === "task_integrity") {
+        fail("trial_first", "trial_first_materials_missing", issue.correction);
+      }
+    }
+  }
 
   const trialFirst = lesson.stages[3];
   const firstAttemptText = [trialFirst.experience, ...trialFirst.teacherPrompts, ...trialFirst.learnerActions].join(" ");
