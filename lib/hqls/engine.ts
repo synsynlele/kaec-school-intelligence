@@ -3,7 +3,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.10";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.36";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.37";
 
 export type HqlsStageAction =
   | "improve"
@@ -148,18 +148,25 @@ STAGES 1–4 — SUSPENSE BEFORE FULL ILLUMINATION:
 - Trial 1 is the first real task. Give pairs or small teams a concrete challenge with clear outputs. Learners may sort, classify, predict, explain, decide, design, solve, justify, compare evidence or attempt a meaning using their crude thinking plus the minimal clarity from Stage 3. Expect mistakes and incomplete reasoning. The teacher observes and does not rescue, correct or reveal the formal topic yet.
 - Before Stage 5, prefer meaningful cases, images, headlines, word sets, short texts, demonstrations, conflicting claims, prediction problems, evidence sorting and real-life dilemmas over routine recall.
 
+PROBLEM SOLVING ACROSS THE LESSON:
+- Build the lesson around a subject-specific problem. Give learners something to explain, decide, interpret or improve using the target concept. Scale the clues and complexity to the class. A short text with an ambiguous meaning, two conflicting claims or a surprising number can be enough.
+- Awakening makes the problem worth noticing. Put one concrete tension, surprise or consequence inside the scenario and use the existing central question to invite a first judgement.
+- Exploration surfaces the reasoning behind first judgements. Within the existing oral questions, ask what clue supports an idea and what other explanation might fit, or what information would help learners decide. Leave competing ideas open.
+- Micro-Illumination points attention to one useful detail in the same problem. Keep the existing limit on clues and questions.
+- Trial 1 asks teams to commit to a provisional answer, choice or solution and show the evidence or reasoning behind it. Where appropriate, have them compare plausible options or explain a trade-off. Build this into the existing shared output, with a clear contribution from each learner.
+
 STAGE 5 — FULL ILLUMINATION:
 - Full Illumination occurs after Trial 1.
 - Once Stage 5 begins, ALL HQLS restrictions on teaching style end for this stage.
 - Treat Stage 5 as a normal, conventional lesson-teaching period.
 - The teacher may lecture, explain directly, define terms, give detailed notes, dictate or display notes, write on the board, use a textbook-like explanation, teach formulas/rules/laws, demonstrate procedures, solve worked examples, model answers, correct misconceptions and answer questions.
 - Do not force learner-discovery language, Guide/Hero language, productive-struggle language, mandatory learner participation, a special prompt count, a Trial 1 repair format, or any anti-lecture/anti-note rule inside Stage 5.
-- The only HQLS structural requirement for Stage 5 is its position after Trial 1. Its teaching style is otherwise unrestricted.
+- The only HQLS structural requirement for Stage 5 is its position after Trial 1. Its teaching style is otherwise unrestricted. Give the teacher enough actual teaching content to explain the concept, correct likely misconceptions and model how the concept can be applied.
 - Make the teaching accurate, age-appropriate, concise and genuinely useful to the stated lesson objective. Cover what the objective requires without turning Stage 5 into an exhaustive textbook chapter.
 
 STAGES 6–7:
-- Trial 2 requires genuine re-application so improvement is observable.
-- Integration includes reflection on changed thinking and transfer beyond the immediate lesson.
+- Trial 2 requires genuine re-application so improvement is observable. Revisit the first attempt and have learners revise or defend it with the concept just taught. Ask what changed in their answer or reasoning and why. Use a closely related example or changed condition only when it helps reveal whether learners can apply the concept independently.
+- Integration includes reflection on changed thinking and transfer beyond the immediate lesson. In the real-life assignment, have learners use the concept in a different familiar setting to make a decision, solve a practical problem or improve something. Name one feasible output and ask for brief evidence that explains the choice or shows what worked. Use materials learners can readily access and scale the evidence to their age.
 `;
 
 const HQLS_MODULE_RULES = `
