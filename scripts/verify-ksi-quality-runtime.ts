@@ -191,6 +191,15 @@ async function verifyQuality() {
   assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 5, category: "subject_accuracy", correction: "Correct the meaning." }]), [5]);
   assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 4, category: "task_integrity", correction: "Add a missing reflexive and update the mini-card pool.", repairScope: "materials_chain" }]), [4, 5, 6, 7]);
   assert.deepEqual(contentRepairStageNumbers([{ stageNumber: 5, category: "pacing_guidance", correction: "Use suggested pacing.", repairScope: "materials_chain" }]), [5]);
+  const genericItems = "Provide four items to each team. Ask each learner to explain one choice.";
+  const materialFailures = (experience: string) =>
+    validateHqlsLesson(materialLesson(experience), undefined, true).violations.filter(
+      (issue) => issue.code === "trial_first_materials_missing",
+    );
+  assert.equal(materialFailures(genericItems).length, 1);
+  assert.equal(materialFailures(genericItems + "\nItems (4):\n1. Rain\n2. Wind\n3. Sun\n4. Cloud").length, 0);
+  assert.equal(materialFailures(brokenTask + materialBlock(words.slice(0, 15))).length, 1);
+  assert.equal(materialFailures(brokenTask + materialBlock(words)).length, 0);
   const answerOnly = materialLesson(brokenTask);
   answerOnly.stages[4].teachingContent = materialBlock(words);
   assert.equal(checkPromisedMaterials(answerOnly).length, 1, "Later teacher answers do not supply Trial 1 materials.");
