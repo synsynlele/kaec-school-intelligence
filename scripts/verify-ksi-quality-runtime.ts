@@ -123,15 +123,20 @@ async function verifyQuality() {
   assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0], jointReplacements[0]], [1, 4]));
   assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0]], [1, 4]));
   assert.throws(() => mergeStageRepairs(lesson, [jointReplacements[0], stages[4]], [1, 4]));
-  const microCodes = (experience: string, learnerActions: string[] = []) => validateHqlsLesson({ ...lesson,
+  const microCodes = (experience: string, learnerActions: string[] = [], topic = "Syllable stress") => validateHqlsLesson({ ...lesson,
     stages: stages.map((stage) => stage.stageNumber === 3 ? { ...stage, experience, teacherPrompts: [], learnerActions } : { ...stage }),
-  }, "Syllable stress").violations.filter((issue) => issue.stageKey === "micro_illumination").map((issue) => issue.code);
+  }, topic).violations.filter((issue) => issue.stageKey === "micro_illumination").map((issue) => issue.code);
   assert.deepEqual(microCodes("Notice which part of the word your voice makes more noticeable. Do not work in pairs. Do not reveal syllable stress."), []);
   assert(microCodes("Work in pairs and write two answers.").includes("micro_illumination_becomes_task"));
   assert(microCodes("Do not work in pairs; learners must write two answers.").includes("micro_illumination_becomes_task"));
   assert(microCodes("Today the topic is syllable stress.").includes("pre_illumination_topic_revealed"));
   assert(microCodes("Do not write; this concept is called syllable stress.").includes("pre_illumination_topic_revealed"));
   assert(microCodes('Say: "Do not reveal syllable stress."').includes("pre_illumination_topic_revealed"), "Quoted speech still exposes the topic to learners.");
+  assert(!microCodes("We are looking at two transport routes. Notice where the delays occur.", [], "Transportation: Transport routes").includes("pre_illumination_topic_revealed"));
+  assert(!microCodes("Notice how stress changes in the two readings.", [], "Stress").includes("pre_illumination_topic_revealed"));
+  assert(microCodes("Topic: syllable stress").includes("pre_illumination_topic_revealed"));
+  assert(microCodes("We are learning about syllable stress.").includes("pre_illumination_topic_revealed"));
+  assert(microCodes("Syllable stress is defined as emphasis on one syllable.").includes("pre_illumination_topic_revealed"));
   assert(microCodes("The rule is to stress the first part.").includes("micro_illumination_becomes_full_solution"));
   assert(microCodes("Listen for the noticeable part.", ["Learners produce a poster."]).includes("micro_illumination_becomes_task"));
   const brokenTask = "Put learners in teams of three. Give each team the 16 word cards below. Each team must produce: (1) two piles, (2) a group paragraph, and (3) an individual slip listing five assigned words.";
