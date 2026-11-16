@@ -520,7 +520,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
   const studentText = studentFacingStageText(stage);
   if (
     includesAny(studentText, [
-      /today(?:'s| is)?\s+(?:lesson\s+)?topic\s+(?:is|will be)/i,
+      /\btoday(?:['’]s)?[\s,]+(?:the\s+)?(?:lesson\s+)?topic\s+(?:is|will be)\b/i,
       /\bwe (?:are|will be) (?:learning|studying) (?:about )?the (?:topic|concept) of\b/i,
       /this (?:idea|concept|topic|lesson) is (?:called|known as)/i,
       /the (?:idea|concept|topic) is called/i,
