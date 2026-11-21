@@ -23,7 +23,8 @@ const UNGATED_PREFIXES = [
 ];
 
 function isUngated(pathname: string) {
-  return pathname === "/" || UNGATED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return pathname === "/" || pathname === "/learning" || pathname === "/learning/join" ||
+    UNGATED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 type GateState = "checking" | "ready" | "needs-school" | "error";
