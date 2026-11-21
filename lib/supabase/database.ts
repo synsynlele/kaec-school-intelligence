@@ -123,6 +123,18 @@ type FinalStageFunctions = Omit<
   GeneratedDatabase["public"]["Functions"],
   "review_diagnosis" | "finalise_diagnosis"
 > & {
+  get_learning_score_sheet: { Args: { source_id: string }; Returns: Json };
+  save_learning_paper_scores: {
+    Args: {
+      source_id: string;
+      learner_id: string;
+      expected_revision: number;
+      subjective_score: number | null;
+      critical_thinking_score: number | null;
+      project_score: number | null;
+    };
+    Returns: number;
+  };
   assign_learning_cbt: { Args: { source_id: string }; Returns: string };
   get_learning_cbts: { Args: { target_id?: string }; Returns: Json };
   submit_learning_cbt: { Args: { target_id: string; responses: Json }; Returns: Json };
