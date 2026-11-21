@@ -5,7 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Mode = "sign_in" | "sign_up";
-type EntryRole = "owner" | "teacher";
+type EntryRole = "owner" | "teacher" | "learner";
 
 const AUTH_RETURN_KEY = "ksi:auth:returnTo";
 const AUTH_ENTRY_KEY = "ksi:auth:entryRole";
@@ -64,6 +64,15 @@ const ROLE_CONFIG: Record<
       "Sign in to your existing Teacher or Leadership workspace, or connect your account with a Staff Access Code.",
     destination: "/auth/resolve?entry=teacher",
     icon: "🧑🏾‍🏫",
+  },
+  learner: {
+    label: "Learner",
+    shortLabel: "Learner",
+    description: "For students taking school assessments.",
+    signUpHelp: "Create your learner account, then enter your school-issued access code.",
+    signInHelp: "Open your assigned assessments and submitted results.",
+    destination: "/learning",
+    icon: "📘",
   },
 };
 
@@ -230,7 +239,7 @@ export function AuthForm() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Enter KSI</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">Choose your workspace</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          KSI is built for teachers and school leadership. Your governed school membership—not the button you choose here—determines what opens after sign-in.
+          Choose your role to get started. Your school controls access to its workspace and assessments.
         </p>
       </div>
 
@@ -333,7 +342,7 @@ export function AuthForm() {
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
                 className="w-full rounded-xl border border-zinc-300 px-3.5 py-3 text-zinc-950 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/10"
-                placeholder={role === "teacher" ? "teacher@school.com" : "owner@school.com"}
+                placeholder={"you@example.com"}
               />
             </label>
 

@@ -200,7 +200,7 @@ export function StaffAccessManager() {
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">Invite teachers and authorised staff with a one-time code bound to their exact email. Choosing a role on the public sign-in page never creates membership by itself.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/setup/student-access" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Student Access</Link>
+          <Link href="/setup/learner-access" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Student Access</Link>
           <Link href="/teacher/join" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">Teacher join page</Link>
         </div>
       </div>

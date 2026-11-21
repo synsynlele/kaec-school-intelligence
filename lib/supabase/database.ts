@@ -123,6 +123,9 @@ type FinalStageFunctions = Omit<
   GeneratedDatabase["public"]["Functions"],
   "review_diagnosis" | "finalise_diagnosis"
 > & {
+  assign_learning_cbt: { Args: { source_id: string }; Returns: string };
+  get_learning_cbts: { Args: { target_id?: string }; Returns: Json };
+  submit_learning_cbt: { Args: { target_id: string; responses: Json }; Returns: Json };
   get_platform_school_overview: {
     Args: Record<PropertyKey, never>;
     Returns: Json;

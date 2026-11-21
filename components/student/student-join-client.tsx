@@ -112,7 +112,7 @@ export function StudentJoinClient() {
   }, []);
 
   function continueToSignIn() {
-    window.sessionStorage.setItem(AUTH_RETURN_KEY, "/student/join");
+    window.sessionStorage.setItem(AUTH_RETURN_KEY, "/learning/join");
     router.push("/sign-in");
   }
 
@@ -120,7 +120,7 @@ export function StudentJoinClient() {
     setBusy(true);
     setError(null);
     try {
-      window.sessionStorage.setItem(AUTH_RETURN_KEY, "/student/join");
+      window.sessionStorage.setItem(AUTH_RETURN_KEY, "/learning/join");
       await getBrowserSupabaseClient().auth.signOut();
       router.replace("/sign-in");
     } finally {
@@ -177,7 +177,7 @@ export function StudentJoinClient() {
           <p className="mt-3 text-sm leading-6 text-zinc-600">
             Your account is now securely linked to your learning record at {linked.workspace_name}.
           </p>
-          <Link href="/student" className="mt-6 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">
+          <Link href="/learning" className="mt-6 inline-flex rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white">
             Open Student KSI
           </Link>
         </section>
