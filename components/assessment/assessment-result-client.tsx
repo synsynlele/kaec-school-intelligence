@@ -57,6 +57,8 @@ function strings(value: unknown) {
 export function AssessmentResultClient({ assessmentId }: { assessmentId: string }) {
   const router = useRouter();
   const [state, setState] = useState<ResultState | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assigned, setAssigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloadingMode, setDownloadingMode] = useState<"exam" | "marking" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +182,23 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
     }
   }
 
+  async function assignCbt() {
+    if (!state || !window.confirm("Assign this assessment to the class now? Learners will see the correct answers after submitting.")) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("assign_learning_cbt", {
+        source_id: state.assessment.id,
+      });
+      if (error) throw new Error(error.message);
+      setAssigned(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The CBT could not be assigned.");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
   if (loading) return <div className="flex min-h-[55vh] items-center justify-center px-5 text-sm text-zinc-500">Opening assessment…</div>;
   if (!state) return <main className="mx-auto max-w-3xl px-5 py-10"><div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{error ?? "Assessment unavailable."}</div></main>;
 
@@ -204,6 +223,12 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             <p className="mt-1 text-xs text-zinc-500">{state.subjectName} · {state.className} · {state.workspaceName}</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap md:justify-end">
+            {state.assessment.status === "validated" && state.assessment.class_id && (
+              <button type="button" onClick={() => void assignCbt()} disabled={assigning || assigned}
+                className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                {assigned ? "CBT assigned" : assigning ? "Assigning…" : "Assign as CBT"}
+              </button>
+            )}
             {state.assessment.source_lesson_id ? (
               <Link href={`/hqls/result?lesson=${encodeURIComponent(state.assessment.source_lesson_id)}`} className="min-h-11 rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">Open Source HQLS Lesson</Link>
             ) : null}
