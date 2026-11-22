@@ -65,8 +65,9 @@ export function LearningAssessmentHub() {
       <Link href="/assessment" className="text-sm font-semibold text-emerald-900 underline">Back to Assess</Link>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-3xl font-bold">CBT &amp; Score Sheets</h1>
-        <div className="flex flex-wrap gap-2"><Link href="/assessment/cbt/new" className={action}>Write CBT questions</Link><Link href="/assessment" className="rounded-xl border px-4 py-2.5 text-sm font-semibold">Create mixed assessment</Link></div>
+        <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>
+      <p className="text-sm text-zinc-700">Generate an assessment for a class, review or edit its objective questions, then schedule the CBT.</p>
       <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
         event.preventDefault();
         showPage(query.trim(), 0);
@@ -80,7 +81,7 @@ export function LearningAssessmentHub() {
       </form>
       {loading ? <p role="status">Loading assessments…</p> : error ? <p role="alert">{error}</p> : (
         <>
-          {rows.length === 0 && <p>{filters.search ? "No assessments match this search." : "Create a class assessment to schedule your first CBT."}</p>}
+          {rows.length === 0 && <p>{filters.search ? "No assessments match this search." : "Generate a class assessment to schedule your first CBT."}</p>}
           <ul className="space-y-3">
             {rows.slice(0, pageSize).map((row) => (
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">

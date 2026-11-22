@@ -285,6 +285,10 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             <p className="text-sm">Add objective questions with answer keys to schedule a CBT.</p>
           ) : (
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void assignCbt(); }}>
+              <p className="text-sm">
+                <Link href={`/assessment/edit?assessment=${encodeURIComponent(state.assessment.id)}`}
+                  className="font-semibold text-emerald-900 underline">Edit objective questions and answer keys</Link> before scheduling.
+              </p>
               <p className="text-sm">Times are in West Africa Time (WAT). Learners receive their score on submission and see correct answers after the window closes.</p>
               <div className="flex flex-wrap gap-3">
                 <label className="grid gap-1 text-sm">Opens<input type="datetime-local" required value={opensAt}

@@ -145,7 +145,6 @@ type FinalStageFunctions = Omit<
     };
     Returns: number;
   };
-  create_manual_learning_assessment: { Args: { school_id: string; target_class: string; target_subject: string; assessment_title: string; items: Json }; Returns: string };
   schedule_learning_cbt: { Args: { source_id: string; opens_at: string; closes_at: string }; Returns: string };
   get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
   get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };

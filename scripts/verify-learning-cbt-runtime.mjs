@@ -163,28 +163,22 @@ await assert.rejects(saveScores(id(6), 5, 0, 4, 5), /Scores are locked/);
 await db.exec(`reset role;
   alter table classes add column workspace_id uuid, add column name text;
   update classes set workspace_id = '${id(4)}', name = 'JSS1';
-  alter table assessments add column updated_at timestamptz not null default now(),
-    add column created_by uuid, add column subject_id uuid, add column assessment_mode text;
-  create table subjects(id uuid primary key, workspace_id uuid);
-  insert into subjects values ('${id(21)}','${id(4)}');
-  create function public.append_artifact_version(uuid, text, uuid, jsonb, text)
-    returns uuid language sql as 'select $3';
-  alter table assessments alter column id set default gen_random_uuid();
-  alter table assessment_items alter column id set default gen_random_uuid();
+  alter table assessments add column updated_at timestamptz not null default now();
+  insert into assessments(id,workspace_id,class_id,title,status)
+    values ('${id(21)}','${id(4)}','${id(5)}','Generated Test','validated');
+  insert into assessment_items values
+    ('${id(22)}','${id(21)}',1,'{"prompt":"Choose A","options":["a","b","c","d"]}','objective','{"correctAnswer":"a"}',3);
+  update assessment_items set content = '{"prompt":"Choose B","options":["a","b","c","d"]}',
+    answer_key = '{"correctAnswer":"b"}' where id = '${id(22)}';
 `);
 await db.exec(readFileSync(new URL('../supabase/migrations/20261122210000_learning_cbt_schedule.sql', import.meta.url), 'utf8'));
 await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
-const manual = (items) => scalar('select create_manual_learning_assessment($1,$2,$3,$4,$5) as value',
-  [id(4), id(5), id(21), 'Manual Test', JSON.stringify(items)]);
-const question = { prompt: 'Choose B', options: ['a', 'b', 'c', 'd'], correct: 'b', marks: 3 };
-await assert.rejects(manual([question, { ...question, correct: 'wrong' }]), /four distinct choices/);
-assert.deepEqual(await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Manual Test']), []);
-const source = await manual([question]);
-const [listed] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'jss1']);
+const source = id(21);
+const [listed] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
 assert.equal(listed.id, source);
 assert.equal(listed.assigned, false);
 const scheduled = await scalar("select schedule_learning_cbt($1, now()+interval '1 hour', now()+interval '2 hours') as value", [source]);
-const [entry] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Manual Test']);
+const [entry] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
 assert.equal(entry.assigned, true);
 await assert.rejects(scalar("select schedule_learning_cbt($1, now()+interval '3 hours', now()+interval '4 hours') as value", [source]), /already assigned/);
 await db.exec(`set app.uid = '${id(3)}'`);
