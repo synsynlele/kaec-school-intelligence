@@ -23,7 +23,7 @@ const UNGATED_PREFIXES = [
 ];
 
 function isUngated(pathname: string) {
-  return pathname === "/" || pathname === "/learning" || pathname === "/learning/join" ||
+  return pathname === "/" || pathname === "/parent" || pathname === "/learning" || pathname === "/learning/join" ||
     UNGATED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

@@ -132,6 +132,15 @@ type FinalStageFunctions = Omit<
     Args: { source_id: string; expected_revision: number; comments: Json };
     Returns: undefined;
   };
+  get_learning_family_setup: { Args: { school_id: string }; Returns: Json };
+  register_learning_parent: { Args: { school_id: string; parent_id: string; parent_name: string; learner_ids: string[] }; Returns: undefined };
+  revoke_learning_parent: { Args: { school_id: string; account_id: string }; Returns: undefined };
+  activate_learning_parent: { Args: { account_id: string }; Returns: boolean };
+  get_my_learning_parent_status: { Args: Record<PropertyKey, never>; Returns: string | null };
+  get_my_parent_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
+  get_my_parent_learning_report: { Args: { assignment_id: string; target_learner: string }; Returns: Json };
+  save_learning_passport_photo: { Args: { school_id: string; target_learner: string; photo_jpeg: string | null }; Returns: undefined };
+  get_my_learning_result_report: { Args: { assignment_id: string }; Returns: Json };
   get_my_published_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   get_learning_score_sheet: { Args: { source_id: string }; Returns: Json };
   save_learning_paper_scores: {
@@ -145,6 +154,10 @@ type FinalStageFunctions = Omit<
     };
     Returns: number;
   };
+  schedule_learning_cbt: { Args: { source_id: string; opens_at: string; closes_at: string }; Returns: string };
+  get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
+  get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };
+  list_learning_assessments: { Args: { search_text: string; school_id: string; page_offset: number }; Returns: Json };
   assign_learning_cbt: { Args: { source_id: string }; Returns: string };
   get_learning_cbts: { Args: { target_id?: string }; Returns: Json };
   submit_learning_cbt: { Args: { target_id: string; responses: Json }; Returns: Json };

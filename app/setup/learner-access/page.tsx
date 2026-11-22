@@ -11,6 +11,7 @@ export default function StudentAccessPage() {
             <p className="text-sm font-bold text-emerald-950">People access</p>
             <p className="mt-1 text-xs leading-5 text-emerald-900">Student codes link learner records. Teacher/Staff codes connect authorised school staff.</p>
           </div>
+          <Link href="/setup/family-access" className="w-fit rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-bold text-emerald-950">Parent accounts and photos</Link>
           <Link href="/setup/staff-access" className="w-fit rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white">Manage Staff Access</Link>
         </div>
       </div>

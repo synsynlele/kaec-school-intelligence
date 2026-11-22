@@ -1,6 +1,7 @@
-import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import type { GeneratedDiagnosis } from "@/lib/diagnosis/engine";
-import { KSI_PDF_ATTRIBUTION } from "@/lib/pdf/pdf-branding";
+import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
+import { resultScores, type ResultReport, type ReportDiagnosis } from "@/lib/learning/result-report";
+import { KSI_PDF_ATTRIBUTION, resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 
 export type DiagnosisPdfInput = {
   workspaceName: string;
@@ -16,6 +17,8 @@ export type DiagnosisPdfInput = {
   reviewedAt: string;
   finalisedAt: string;
 };
+
+type DiagnosisLayoutInput = Omit<DiagnosisPdfInput, "diagnosis"> & { diagnosis: ReportDiagnosis };
 
 type Color = [number, number, number];
 
@@ -239,7 +242,7 @@ function groupedMatrix(
   return groupHeight + subHeight + contentHeight;
 }
 
-function firstPageHeader(input: DiagnosisPdfInput) {
+function firstPageHeader(input: DiagnosisLayoutInput) {
   const commands: string[] = [];
 
   if (input.hasSchoolLogo) {
@@ -319,7 +322,7 @@ class FlowPage {
   private pages: string[][] = [];
   private y = PAGE_HEIGHT - 102;
 
-  constructor(private readonly input: DiagnosisPdfInput) {
+  constructor(private readonly input: DiagnosisLayoutInput) {
     this.commands = firstPageHeader(input);
     this.y = PAGE_HEIGHT - 88;
   }
@@ -491,7 +494,32 @@ class FlowPage {
   }
 }
 
-function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
+function passportImage(base64: string | null | undefined) {
+  if (!base64 || base64.length > 220000) return null;
+  const bytes = Buffer.from(base64, "base64");
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 <= bytes.length && bytes[offset] === 0xff) {
+    const marker = bytes[offset + 1];
+    const length = bytes.readUInt16BE(offset + 2);
+    if (length < 2 || offset + 2 + length > bytes.length) return null;
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      const height = bytes.readUInt16BE(offset + 5);
+      const width = bytes.readUInt16BE(offset + 7);
+      if (width !== 320 || height !== 400 || bytes[offset + 9] !== 3) return null;
+      return { bytes, width, height };
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
+function buildPdfObjects(
+  pageCommands: string[][],
+  input: Pick<DiagnosisPdfInput, "brandLogoJpegBase64" | "hasSchoolLogo">,
+  documentLabel = "Diagnosis",
+  photo: ReturnType<typeof passportImage> = null,
+) {
   const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
   const objects: Buffer[] = [];
@@ -515,12 +543,21 @@ function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
     Buffer.from("\nendstream"),
   ]);
 
+  const photoRef = 6 + pageCount * 2;
+  if (photo) {
+    objects[photoRef] = Buffer.concat([
+      Buffer.from(`<< /Type /XObject /Subtype /Image /Width ${photo.width} /Height ${photo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${photo.bytes.length} >>\nstream\n`),
+      photo.bytes,
+      Buffer.from("\nendstream"),
+    ]);
+  }
+
   for (let index = 0; index < pageCount; index += 1) {
     const contentRef = 6 + index * 2;
     const pageRef = 7 + index * 2;
     const footer = [
       rgb(MUTED),
-      `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | Diagnosis | Page ${index + 1} of ${pageCount}) Tj ET`,
+      `BT /F1 7.2 Tf 1 0 0 1 28 20 Tm (${pdfEscape(KSI_PDF_ATTRIBUTION)} | ${documentLabel} | Page ${index + 1} of ${pageCount}) Tj ET`,
     ];
     const content = `${pageCommands[index].join("\n")}\n${footer.join("\n")}`;
     const contentBytes = Buffer.from(content, "utf8");
@@ -530,7 +567,7 @@ function buildPdfObjects(pageCommands: string[][], input: DiagnosisPdfInput) {
       Buffer.from("\nendstream"),
     ]);
     objects[pageRef] = Buffer.from(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentRef} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R${photo && index === 0 ? ` /Im2 ${photoRef} 0 R` : ""} >> >> /Contents ${contentRef} 0 R >>`,
     );
   }
 
@@ -583,6 +620,71 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
 
   const pages = new FlowPage(input).build();
   return serializePdf(buildPdfObjects(pages, input));
+}
+
+export function createLearningResultPdf(report: ResultReport) {
+  const branding = resolvePdfBranding(report.school_logo);
+  const logoInput = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
+  const { rows, total, maximum } = resultScores(report);
+  const cover: string[] = [];
+  const left = 48;
+  const width = PAGE_WIDTH - left * 2;
+  const write = (value: string, top: number, size = 11, bold = false, maxWidth = width, limit = 10) => {
+    const lines = wrapText(value, maxWidth, size, bold).slice(0, limit);
+    lines.forEach((line, index) => textAtTop(cover, line, left, top + index * (size + 3), size, bold));
+    return lines.length * (size + 3);
+  };
+  rectTop(cover, left, 28, width, 4, FOREST, null);
+  if (branding.hasSchoolLogo) cover.push(`q 42 0 0 42 ${left} ${PAGE_HEIGHT - 88} cm /Im1 Do Q`);
+  brandName(cover, report.school_name, branding.hasSchoolLogo ? left + 54 : left, 43, 430, 48, 13);
+  const photo = passportImage(report.passport_photo);
+  const photoX = PAGE_WIDTH - left - 84;
+  if (photo) {
+    cover.push(`q 84 0 0 105 ${photoX} ${PAGE_HEIGHT - 150} cm /Im2 Do Q`);
+  } else {
+    rectTop(cover, photoX, 45, 84, 105, null);
+    textAtTop(cover, "Passport photo", photoX + 12, 94, 8, false, MUTED);
+  }
+  let top = 105;
+  top += write("Official assessment result", top, 19, true, width - 105);
+  top += write(report.title, top + 3, 13, true, width - 105, 2) + 3;
+  top += write([report.learner_name, report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), top + 4, 10, false, width - 105, 2) + 4;
+  top += write(`Published ${dateLabel(report.published_at)}`, top + 3, 9, false) + 20;
+  rectTop(cover, left, top, width, 26, FOREST, null);
+  textAtTop(cover, "Assessment component", left + 12, top + 8, 10, true, CREAM);
+  textAtTop(cover, "Score", left + width - 110, top + 8, 10, true, CREAM);
+  top += 26;
+  for (const row of rows) {
+    rectTop(cover, left, top, width, 26, null);
+    textAtTop(cover, row.label, left + 12, top + 8, 10);
+    textAtTop(cover, `${row.score} / ${row.maximum}`, left + width - 110, top + 8, 10);
+    top += 26;
+  }
+  rectTop(cover, left, top, width, 30, CREAM);
+  textAtTop(cover, "Total", left + 12, top + 9, 11, true, FOREST);
+  textAtTop(cover, `${total} / ${maximum}`, left + width - 110, top + 9, 11, true, FOREST);
+  if (report.administrative_comment) {
+    top += write("Administrative comment", top + 46, 11, true) + 46;
+    write(report.administrative_comment, top + 4, 10);
+  }
+
+  const diagnosisPages = report.diagnosis && report.diagnosis_reviewed_at && report.diagnosis_finalised_at
+    ? new FlowPage({
+      ...logoInput,
+      workspaceName: report.school_name,
+      studentName: report.learner_name,
+      className: report.class_name ?? "",
+      academicSession: report.academic_session ?? "",
+      term: report.term ?? "",
+      diagnosisMode: report.diagnosis_mode ?? "",
+      assessmentTitle: report.title,
+      diagnosis: report.diagnosis,
+      reviewedAt: report.diagnosis_reviewed_at,
+      finalisedAt: report.diagnosis_finalised_at,
+    }).build()
+    : [];
+
+  return serializePdf(buildPdfObjects([cover, ...diagnosisPages], logoInput, "Assessment result", photo));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {

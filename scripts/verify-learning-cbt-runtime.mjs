@@ -159,5 +159,151 @@ await db.exec(`set app.uid = '${id(3)}'`);
 assert.deepEqual(await publishedResults(), []);
 await db.exec(`set app.uid = '${id(1)}'`);
 await assert.rejects(saveScores(id(6), 5, 0, 4, 5), /Scores are locked/);
+await db.exec(`reset role;
+  alter table workspaces add column name text default 'School A', add column logo_url text;
+  alter table classes add column name text default 'JSS1', add column workspace_id uuid, add column academic_session text;
+  alter table assessments add column blueprint jsonb default '{"term":"First Term","academicSession":"2026/2027"}';
+  create table diagnoses (
+    id uuid primary key, workspace_id uuid, student_id uuid, assessment_id uuid, status text,
+    term text, academic_session text, reviewed_at timestamptz, finalised_at timestamptz,
+    diagnosis_mode text, concise_diagnosis text, builder_growth_direction text, encouragement_note text,
+    academic_strengths jsonb default '[]', academic_challenges jsonb default '[]',
+    character_strengths jsonb default '[]', character_challenges jsonb default '[]',
+    school_academic_actions jsonb default '[]', parent_academic_actions jsonb default '[]',
+    school_character_actions jsonb default '[]', parent_character_actions jsonb default '[]'
+  );
+  insert into diagnoses (id,workspace_id,student_id,assessment_id,status,term,academic_session,
+    reviewed_at,finalised_at,diagnosis_mode,concise_diagnosis,academic_strengths)
+  values ('${id(30)}','${id(4)}','${id(6)}','${id(12)}','draft','First Term','2026/2027',
+    now(),now(),'assessment_based','Private draft','[{"statement":"Approved strength","evidenceIds":["internal"]}]');
+`);
+await db.exec(`
+  create role service_role;
+  create table auth.sessions (id uuid primary key, user_id uuid, created_at timestamptz);
+  create function auth.jwt() returns jsonb language sql as
+    'select jsonb_build_object(''session_id'', current_setting(''app.session'', true))';
+  alter table auth.users add column email text, add column raw_app_meta_data jsonb;
+  insert into auth.users (id,email,raw_app_meta_data) values
+    ('${id(31)}','synthetic.parent@parents.ksi.name.ng',jsonb_build_object('ksi_parent_school','${id(4)}')),
+    ('${id(32)}','different.parent@parents.ksi.name.ng',jsonb_build_object('ksi_parent_school','${id(11)}')),
+    ('${id(33)}',null,null);
+  create or replace function private.has_workspace_role(uuid,text[]) returns boolean language sql as
+    'select case auth.uid() when ''${id(1)}''::uuid then ''teacher'' = any($2)
+      when ''${id(17)}''::uuid then ''leader'' = any($2)
+      when ''${id(33)}''::uuid then $1 = ''${id(4)}''::uuid and ''owner'' = any($2)
+      else false end';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122150000_learning_result_report.sql', import.meta.url), 'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122153000_learning_family_access.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+const resultReport = () => scalar('select get_my_learning_result_report($1) as value', [midterm]);
+assert.equal((await resultReport()).diagnosis, null);
+await db.exec("reset role; update diagnoses set status='final', concise_diagnosis='Approved finding'; set role authenticated;");
+const report = await resultReport();
+assert.equal(report.school_name, 'School A');
+assert.equal(report.administrative_comment, 'Practise the next project task.');
+assert.equal(report.diagnosis.conciseDiagnosis, 'Approved finding');
+assert.deepEqual(report.diagnosis.academicSkillStrengths, [{ statement: 'Approved strength' }]);
+assert(!Object.hasOwn(report.diagnosis, 'observedEvidence'));
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.equal(await resultReport(), null);
+const registerParent = (parent, learner) => db.query(
+  'select register_learning_parent($1,$2,$3,$4)', [id(4), parent, 'Test Parent', [learner]]);
+const parentReports = () => scalar('select get_my_parent_learning_results() as value');
+const parentReport = (learner) => scalar(
+  'select get_my_parent_learning_report($1,$2) as value', [midterm, learner]);
+const savePhoto = (learner, jpeg) => db.query(
+  'select save_learning_passport_photo($1,$2,$3)', [id(4), learner, jpeg]);
+await db.exec(`set app.uid = '${id(1)}'`);
+await assert.rejects(registerParent(id(31), id(6)), /administrator access/);
+await db.exec(`set app.uid = '${id(33)}'`);
+await assert.rejects(registerParent(id(31), id(10)), /this school/);
+await assert.rejects(registerParent(id(32), id(6)), /identity could not be verified/);
+await registerParent(id(31), id(6));
+await assert.rejects(savePhoto(id(10), null), /Learner unavailable/);
+await assert.rejects(savePhoto(id(6), 'bm90YWpwZWc='), /valid JPEG/);
+const photo = '/9j/AAECA//Z';
+await savePhoto(id(6), photo);
+
+await db.exec(`reset role;
+  insert into auth.sessions values ('${id(34)}','${id(31)}',now() - interval '1 minute');
+  set role authenticated; set app.uid = '${id(31)}'; set app.session = '${id(34)}'`);
+assert.equal(await scalar('select get_my_learning_parent_status() as value'), 'temporary');
+assert.deepEqual(await parentReports(), []);
+assert.equal(await parentReport(id(6)), null);
+await assert.rejects(db.query('select activate_learning_parent($1)', [id(31)]), /permission denied/);
+await db.exec('reset role; set role service_role;');
+assert.equal(await scalar('select activate_learning_parent($1) as value', [id(31)]), true);
+await db.exec('set role authenticated;');
+assert.equal(await parentReport(id(6)), null);
+await db.exec(`reset role;
+  insert into auth.sessions values ('${id(35)}','${id(31)}',now() + interval '1 second');
+  set role authenticated; set app.session = '${id(35)}'`);
+assert.equal((await parentReports()).length, 1);
+assert.equal((await parentReport(id(6))).passport_photo, photo);
+assert.equal(await parentReport(id(10)), null);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await resultReport()).passport_photo, photo);
+await db.exec(`set app.uid = '${id(33)}'`);
+await db.query('select revoke_learning_parent($1,$2)', [id(4), id(31)]);
+await savePhoto(id(6), null);
+await db.exec(`set app.uid = '${id(31)}'`);
+assert.deepEqual(await parentReports(), []);
+assert.equal(await parentReport(id(6)), null);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await resultReport()).passport_photo, null);
+
+// Scheduled delivery uses PostgreSQL time and withholds item-level feedback until closing.
+await db.exec(`reset role;
+  update classes set workspace_id = '${id(4)}', name = 'JSS1';
+  alter table assessments add column updated_at timestamptz not null default now();
+  insert into assessments(id,workspace_id,class_id,title,status)
+    values ('${id(21)}','${id(4)}','${id(5)}','Generated Test','validated');
+  insert into assessment_items values
+    ('${id(22)}','${id(21)}',1,'{"prompt":"Choose A","options":["a","b","c","d"]}','objective','{"correctAnswer":"a"}',3);
+  update assessment_items set content = '{"prompt":"Choose B","options":["a","b","c","d"]}',
+    answer_key = '{"correctAnswer":"b"}' where id = '${id(22)}';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122210000_learning_cbt_schedule.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const source = id(21);
+const [listed] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
+assert.equal(listed.id, source);
+assert.equal(listed.assigned, false);
+const scheduled = await scalar("select schedule_learning_cbt($1, now()+interval '1 hour', now()+interval '2 hours') as value", [source]);
+const [entry] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
+assert.equal(entry.assigned, true);
+await assert.rejects(scalar("select schedule_learning_cbt($1, now()+interval '3 hours', now()+interval '4 hours') as value", [source]), /already assigned/);
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.deepEqual(await scalar('select get_learning_cbts($1) as value',[scheduled]), []);
+assert.deepEqual(await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), '']), []);
+await assert.rejects(scalar('select get_learning_cbt_item_insights($1) as value', [source]), /unavailable/);
+await db.exec(`set app.uid = '${id(2)}'`);
+const [upcoming] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(upcoming.availability, 'scheduled');
+assert.equal(upcoming.questions, null);
+await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has not opened/);
+await db.exec(`reset role; update private.learning_cbts set opens_at = now()-interval '1 minute'
+  where assessment_id = '${source}'; set role authenticated;`);
+const [running] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(running.availability, 'open');
+assert(!Object.hasOwn(running.questions[0], 'correct'));
+const result = await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, JSON.stringify({[running.questions[0].id]: 'b'})]);
+assert.equal(result.earned, 3);
+assert(!Object.hasOwn(result, 'review'));
+assert.deepEqual(await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, '{}']), result);
+const [inWindow] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert(!Object.hasOwn(inWindow.feedback, 'review'));
+await db.exec(`set app.uid = '${id(1)}'`);
+assert.equal((await readScoreSheet(source)).roster[0].objective, 3);
+assert.deepEqual(await scalar('select get_learning_cbt_item_insights($1) as value', [source]),
+  [{ position: 1, prompt: 'Choose B', submitted: 1, correct: 1, blank: 0 }]);
+await db.exec(`reset role; update private.learning_cbts set opens_at = now()-interval '2 minutes',
+  closes_at = now()-interval '1 minute' where assessment_id = '${source}'; set role authenticated; set app.uid = '${id(2)}'`);
+const [closed] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(closed.availability, 'closed');
+assert.equal(closed.feedback.review[0].correct, 'b');
+await db.exec(`reset role; delete from private.learning_cbt_submissions where cbt_id = '${scheduled}'; set role authenticated;`);
+await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has closed/);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
