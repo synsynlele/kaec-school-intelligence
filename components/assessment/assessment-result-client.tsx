@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Assessment = {
@@ -58,7 +59,10 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   const router = useRouter();
   const [state, setState] = useState<ResultState | null>(null);
   const [assigning, setAssigning] = useState(false);
-  const [assigned, setAssigned] = useState(false);
+  const [assignment, setAssignment] = useState<{ opensAt: string | null; closesAt: string | null } | null>(null);
+  const [opensAt, setOpensAt] = useState("");
+  const [closesAt, setClosesAt] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloadingMode, setDownloadingMode] = useState<"exam" | "marking" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +120,11 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
         if (data?.name) subjectName = data.name;
       }
 
+      const { data: assigned, error: assignmentError } =
+        await supabase.rpc("get_learning_cbt_staff_status", { source_id: assessmentId });
       if (!cancelled) {
+        setAssignment(assigned as typeof assignment);
+        if (assignmentError) setScheduleError(assignmentError.message);
         setState({
           workspaceName: workspaceResult.data.name,
           assessment: assessmentResult.data as Assessment,
@@ -183,17 +191,24 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   }
 
   async function assignCbt() {
-    if (!state || !window.confirm("Assign the objective questions as CBT? Learners will see the correct answers after submitting.")) return;
+    if (!state) return;
+    const opens = new Date(opensAt + ":00+01:00");
+    const closes = new Date(closesAt + ":00+01:00");
+    if (!Number.isFinite(opens.getTime()) || !Number.isFinite(closes.getTime()) || closes <= opens) {
+      setScheduleError("Choose an opening time and a later closing time.");
+      return;
+    }
     setAssigning(true);
-    setError(null);
+    setScheduleError("");
     try {
-      const { error } = await getBrowserSupabaseClient().rpc("assign_learning_cbt", {
-        source_id: state.assessment.id,
+      const window = { opensAt: opens.toISOString(), closesAt: closes.toISOString() };
+      const { error } = await getBrowserSupabaseClient().rpc("schedule_learning_cbt", {
+        source_id: state.assessment.id, opens_at: window.opensAt, closes_at: window.closesAt,
       });
       if (error) throw new Error(error.message);
-      setAssigned(true);
+      setAssignment(window);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The CBT could not be assigned.");
+      setScheduleError(caught instanceof Error ? caught.message : "The CBT could not be scheduled.");
     } finally {
       setAssigning(false);
     }
@@ -223,18 +238,6 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             <p className="mt-1 text-xs text-zinc-500">{state.subjectName} · {state.className} · {state.workspaceName}</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap md:justify-end">
-            {state.assessment.status === "validated" && state.assessment.class_id && (
-              <button type="button" onClick={() => void assignCbt()} disabled={assigning || assigned}
-                className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {assigned ? "CBT assigned" : assigning ? "Assigning…" : "Assign as CBT"}
-              </button>
-            )}
-            {state.assessment.status === "validated" && state.assessment.class_id && (
-              <Link href={`/assessment/score-sheet?assessment=${encodeURIComponent(state.assessment.id)}`}
-                className="rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">
-                Class score sheet
-              </Link>
-            )}
             {state.assessment.source_lesson_id ? (
               <Link href={`/hqls/result?lesson=${encodeURIComponent(state.assessment.source_lesson_id)}`} className="min-h-11 rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">Open Source HQLS Lesson</Link>
             ) : null}
@@ -266,6 +269,40 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             <button type="button" onClick={() => void downloadPdf("marking", "docx")} disabled={downloadingMode !== null} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Guide Word</button>
           </div>
         </div>
+        <section className="mt-6 space-y-3 rounded-2xl border border-emerald-900/15 bg-emerald-50/60 p-4">
+          <h2 className="font-semibold">CBT &amp; score sheet</h2>
+          {assignment ? (
+            <>
+              <p className="text-sm">{assignment.opensAt && assignment.closesAt
+                ? `${formatCbtTime(assignment.opensAt)} to ${formatCbtTime(assignment.closesAt)} (WAT)`
+                : "CBT assigned without a time window."}</p>
+              <Link href={`/assessment/score-sheet?assessment=${encodeURIComponent(state.assessment.id)}`}
+                className="inline-block rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">Open class score sheet</Link>
+            </>
+          ) : state.assessment.status !== "validated" || !state.assessment.class_id ? (
+            <p className="text-sm">Select a class and validate this assessment to schedule a CBT.</p>
+          ) : !state.items.some((item) => item.item_type === "objective") ? (
+            <p className="text-sm">Add objective questions with answer keys to schedule a CBT.</p>
+          ) : (
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void assignCbt(); }}>
+              <p className="text-sm">
+                <Link href={`/assessment/edit?assessment=${encodeURIComponent(state.assessment.id)}`}
+                  className="font-semibold text-emerald-900 underline">Edit objective questions and answer keys</Link> before scheduling.
+              </p>
+              <p className="text-sm">Times are in West Africa Time (WAT). Learners receive their score on submission and see correct answers after the window closes.</p>
+              <div className="flex flex-wrap gap-3">
+                <label className="grid gap-1 text-sm">Opens<input type="datetime-local" required value={opensAt}
+                  onChange={(event) => setOpensAt(event.target.value)} className="rounded-lg border bg-white p-2" /></label>
+                <label className="grid gap-1 text-sm">Closes<input type="datetime-local" required value={closesAt}
+                  onChange={(event) => setClosesAt(event.target.value)} className="rounded-lg border bg-white p-2" /></label>
+              </div>
+              <button disabled={assigning} className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                {assigning ? "Scheduling…" : "Schedule CBT"}
+              </button>
+            </form>
+          )}
+          {scheduleError && <p role="alert" className="text-sm text-red-900">{scheduleError}</p>}
+        </section>
         <div className="mt-6 rounded-2xl bg-stone-50 p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Student instructions</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">{studentInstructions}</p>

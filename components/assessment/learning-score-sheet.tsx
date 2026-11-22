@@ -19,6 +19,7 @@ type ScoreRow = PaperScores & {
   revision: number;
   editable: boolean;
 };
+type ItemInsight = { position: number; prompt: string; submitted: number; correct: number; blank: number };
 type ScoreSheet = {
   title: string;
   maxima: Record<PaperSection | "objective", number>;
@@ -32,7 +33,8 @@ type ScoreSheet = {
   administrative_comments?: Record<string, string>;
 };
 
-function LearnerScores({ row, maxima, writable, assessmentId, onDirty }: {
+function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }: {
+  onSaved: (id: string, scores: PaperScores, revision: number) => void;
   onDirty: (id: string, dirty: boolean) => void;
   assessmentId: string;
   row: ScoreRow;
@@ -73,6 +75,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty }: {
       });
       if (error) throw new Error(error.message);
       setRevision(data);
+      onSaved(row.id, scores, data);
       setDirty(false);
       onDirty(row.id, false);
       setMessage("Saved");
@@ -132,6 +135,8 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty }: {
 }
 
 export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
+  const [insights, setInsights] = useState<ItemInsight[]>([]);
+  const [insightsError, setInsightsError] = useState(false);
   const [sheet, setSheet] = useState<ScoreSheet | null>(null);
   const [error, setError] = useState("");
   const [reviewError, setReviewError] = useState("");
@@ -209,11 +214,17 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
     let cancelled = false;
     async function load() {
       try {
-        const { data, error } = await getBrowserSupabaseClient().rpc("get_learning_result_review", {
-          source_id: assessmentId,
-        });
-        if (error) throw new Error(error.message);
-        if (!cancelled) setSheet(data as unknown as ScoreSheet);
+        const client = getBrowserSupabaseClient();
+        const [result, itemResult] = await Promise.all([
+          client.rpc("get_learning_result_review", { source_id: assessmentId }),
+          client.rpc("get_learning_cbt_item_insights", { source_id: assessmentId }),
+        ]);
+        if (result.error) throw new Error(result.error.message);
+        if (!cancelled) {
+          setSheet(result.data as unknown as ScoreSheet);
+          setInsights((itemResult.data ?? []) as unknown as ItemInsight[]);
+          setInsightsError(Boolean(itemResult.error));
+        }
       } catch (caught) {
         if (!cancelled) setError(caught instanceof Error ? caught.message : "Could not load the score sheet.");
       }
@@ -229,10 +240,47 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   const statusLabel = { draft: "Draft", submitted: "Awaiting review", returned: "Returned for correction", published: "Published" }[sheet.status];
   const totalMaximum = maxima.objective + paperSections.reduce((sum, { key }) => sum + maxima[key], 0);
 
+  const currentLearners = sheet.roster.filter((row) => row.editable);
+  const submitted = currentLearners.filter((row) => row.objective !== null);
+  const missingPaper = currentLearners.filter((row) =>
+    paperSections.some(({ key }) => maxima[key] > 0 && row[key] === null));
+  const average = submitted.length && maxima.objective > 0
+    ? Math.round(submitted.reduce((total, row) => total + (row.objective ?? 0), 0)
+      / (submitted.length * maxima.objective) * 100)
+    : null;
+
   return (
     <>
       <h2 className="text-xl font-semibold">{sheet.title}</h2>
       <p className="text-sm text-zinc-700">CBT scores appear after submission. Enter the marked totals for Subjective, Critical Thinking and Project. Official results appear for learners after school approval.</p>
+      <section aria-label="Assessment insights" className="space-y-3">
+        <h3 className="font-semibold">Assessment insights</h3>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {([
+            ["CBT submitted", `${submitted.length} / ${currentLearners.length}`],
+            ["CBT pending", currentLearners.length - submitted.length],
+            ["Average CBT score", average === null ? "—" : `${average}%`],
+            ["Paper marks pending", missingPaper.length],
+          ] as const).map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-zinc-200 bg-white p-3">
+              <dt className="text-xs text-zinc-700">{label}</dt><dd className="text-xl font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <details className="rounded-xl border border-zinc-200 bg-white p-4">
+          <summary className="cursor-pointer font-semibold">CBT question analysis</summary>
+          {insightsError ? <p className="mt-2 text-sm">Question analysis is temporarily unavailable.</p> :
+            insights.length === 0 ? <p className="mt-2 text-sm">Question analysis appears after learners submit.</p> :
+            <ul className="mt-3 divide-y">
+              {insights.map((item) => (
+                <li key={item.position} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
+                  <span>{item.position}. {item.prompt}</span>
+                  <span className="font-medium">{item.correct} / {item.submitted} correct · {item.blank} blank</span>
+                </li>
+              ))}
+            </ul>}
+        </details>
+      </section>
       <section aria-label="Result publication" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4">
         <p role="status" className="font-semibold">{statusLabel}
           {sheet.recorded_at && <span className="ml-2 text-sm font-normal">{new Date(sheet.recorded_at).toLocaleString()}</span>}
@@ -300,7 +348,11 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
             <tbody>
               {sheet.roster.map((row) => (
                 <tr key={row.id} className="border-t border-zinc-200 align-top">
-                  <LearnerScores row={row} maxima={maxima} writable={sheet.writable && !reviewBusy} assessmentId={assessmentId} onDirty={trackDirty} />
+                  <LearnerScores row={row} maxima={maxima} writable={sheet.writable && !reviewBusy} assessmentId={assessmentId} onDirty={trackDirty}
+                    onSaved={(id, scores, revision) => setSheet((previous) => previous && ({
+                      ...previous,
+                      roster: previous.roster.map((learner) => learner.id === id ? { ...learner, ...scores, revision } : learner),
+                    }))} />
                 </tr>
               ))}
             </tbody>
