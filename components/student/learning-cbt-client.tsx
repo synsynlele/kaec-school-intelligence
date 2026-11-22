@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
+import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Question = {
@@ -18,10 +19,18 @@ type Feedback = {
   earned: number;
   possible: number;
   awaitingMarking: number;
-  review: (Question & { correct: string | null; answer: string | null; earned: number | null })[];
+  review?: (Question & { correct: string | null; answer: string | null; earned: number | null })[];
 };
 
-type Cbt = { id: string; title: string; feedback: Feedback | null; questions: Question[] | null };
+type Cbt = {
+  id: string;
+  title: string;
+  feedback: Feedback | null;
+  questions: Question[] | null;
+  opensAt: string | null;
+  closesAt: string | null;
+  availability: "scheduled" | "open" | "closed";
+};
 
 export function LearningCbtClient() {
   const [list, setList] = useState<Cbt[]>([]);
@@ -79,7 +88,7 @@ export function LearningCbtClient() {
   }
 
   async function submit(cbt: Cbt) {
-    if (!window.confirm("Submit your answers? You can review your score and correct answers after submission.")) return;
+    if (!window.confirm("Submit your answers? Your score is available immediately. For scheduled tests, correct answers appear after closing.")) return;
     setBusy(true);
     setError("");
     try {
@@ -112,7 +121,7 @@ export function LearningCbtClient() {
         <button key={item.id} disabled={busy} onClick={() => void open(item.id)}
           className="flex w-full justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left">
           <span className="font-semibold">{item.title}</span>
-          <span className="text-emerald-900">{item.feedback ? "View feedback" : "Open CBT"}</span>
+          <span className="text-emerald-900">{item.feedback ? "View feedback" : item.availability === "scheduled" ? "Scheduled" : item.availability === "closed" ? "Closed" : "Open CBT"}</span>
         </button>
       ))}
       {current && <button type="button" disabled={busy} onClick={() => {
@@ -120,15 +129,22 @@ export function LearningCbtClient() {
         setCurrent(null);
         setError("");
       }} className="font-semibold text-emerald-900 underline">Back to assessments</button>}
+      {current?.opensAt && current.closesAt && (
+        <p className="text-sm">CBT window {formatCbtTime(current.opensAt)} to {formatCbtTime(current.closesAt)} WAT.</p>
+      )}
+      {current && !current.feedback && !current.questions && (
+        <p>{current.availability === "scheduled" ? "This CBT has not opened yet." : "This CBT is closed."}</p>
+      )}
       {current?.feedback && (
         <section className="space-y-4">
-          {current.feedback.review.some((question) => question.type === "objective") && (
+          {current.feedback.possible > 0 && (
             <p className="rounded-xl bg-emerald-50 p-4 text-xl font-semibold">
               Objective score {current.feedback.earned} / {current.feedback.possible}
             </p>
           )}
           {current.feedback.awaitingMarking > 0 && <p>Written responses are awaiting marking.</p>}
-          {current.feedback.review.map((question, index) => (
+          {!current.feedback.review && <p>Correct answers will be available here after the CBT closes.</p>}
+          {current.feedback.review?.map((question, index) => (
             <article key={question.id} className="space-y-2 rounded-xl border border-zinc-200 bg-white p-4">
               <h2 className="font-semibold">{index + 1}. {question.prompt}</h2>
               <p className="whitespace-pre-wrap break-words">Your answer: {question.answer || "Unanswered"}</p>
