@@ -252,5 +252,58 @@ assert.deepEqual(await parentReports(), []);
 assert.equal(await parentReport(id(6)), null);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await resultReport()).passport_photo, null);
+
+// Scheduled delivery uses PostgreSQL time and withholds item-level feedback until closing.
+await db.exec(`reset role;
+  update classes set workspace_id = '${id(4)}', name = 'JSS1';
+  alter table assessments add column updated_at timestamptz not null default now();
+  insert into assessments(id,workspace_id,class_id,title,status)
+    values ('${id(21)}','${id(4)}','${id(5)}','Generated Test','validated');
+  insert into assessment_items values
+    ('${id(22)}','${id(21)}',1,'{"prompt":"Choose A","options":["a","b","c","d"]}','objective','{"correctAnswer":"a"}',3);
+  update assessment_items set content = '{"prompt":"Choose B","options":["a","b","c","d"]}',
+    answer_key = '{"correctAnswer":"b"}' where id = '${id(22)}';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122210000_learning_cbt_schedule.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const source = id(21);
+const [listed] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
+assert.equal(listed.id, source);
+assert.equal(listed.assigned, false);
+const scheduled = await scalar("select schedule_learning_cbt($1, now()+interval '1 hour', now()+interval '2 hours') as value", [source]);
+const [entry] = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Generated Test']);
+assert.equal(entry.assigned, true);
+await assert.rejects(scalar("select schedule_learning_cbt($1, now()+interval '3 hours', now()+interval '4 hours') as value", [source]), /already assigned/);
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.deepEqual(await scalar('select get_learning_cbts($1) as value',[scheduled]), []);
+assert.deepEqual(await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), '']), []);
+await assert.rejects(scalar('select get_learning_cbt_item_insights($1) as value', [source]), /unavailable/);
+await db.exec(`set app.uid = '${id(2)}'`);
+const [upcoming] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(upcoming.availability, 'scheduled');
+assert.equal(upcoming.questions, null);
+await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has not opened/);
+await db.exec(`reset role; update private.learning_cbts set opens_at = now()-interval '1 minute'
+  where assessment_id = '${source}'; set role authenticated;`);
+const [running] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(running.availability, 'open');
+assert(!Object.hasOwn(running.questions[0], 'correct'));
+const result = await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, JSON.stringify({[running.questions[0].id]: 'b'})]);
+assert.equal(result.earned, 3);
+assert(!Object.hasOwn(result, 'review'));
+assert.deepEqual(await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, '{}']), result);
+const [inWindow] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert(!Object.hasOwn(inWindow.feedback, 'review'));
+await db.exec(`set app.uid = '${id(1)}'`);
+assert.equal((await readScoreSheet(source)).roster[0].objective, 3);
+assert.deepEqual(await scalar('select get_learning_cbt_item_insights($1) as value', [source]),
+  [{ position: 1, prompt: 'Choose B', submitted: 1, correct: 1, blank: 0 }]);
+await db.exec(`reset role; update private.learning_cbts set opens_at = now()-interval '2 minutes',
+  closes_at = now()-interval '1 minute' where assessment_id = '${source}'; set role authenticated; set app.uid = '${id(2)}'`);
+const [closed] = await scalar('select get_learning_cbts($1) as value', [scheduled]);
+assert.equal(closed.availability, 'closed');
+assert.equal(closed.feedback.review[0].correct, 'b');
+await db.exec(`reset role; delete from private.learning_cbt_submissions where cbt_id = '${scheduled}'; set role authenticated;`);
+await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has closed/);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
