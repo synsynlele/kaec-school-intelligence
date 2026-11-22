@@ -159,5 +159,36 @@ await db.exec(`set app.uid = '${id(3)}'`);
 assert.deepEqual(await publishedResults(), []);
 await db.exec(`set app.uid = '${id(1)}'`);
 await assert.rejects(saveScores(id(6), 5, 0, 4, 5), /Scores are locked/);
+await db.exec(`reset role;
+  alter table workspaces add column name text default 'School A', add column logo_url text;
+  alter table classes add column name text default 'JSS1', add column workspace_id uuid, add column academic_session text;
+  alter table assessments add column blueprint jsonb default '{"term":"First Term","academicSession":"2026/2027"}';
+  create table diagnoses (
+    id uuid primary key, workspace_id uuid, student_id uuid, assessment_id uuid, status text,
+    term text, academic_session text, reviewed_at timestamptz, finalised_at timestamptz,
+    diagnosis_mode text, concise_diagnosis text, builder_growth_direction text, encouragement_note text,
+    academic_strengths jsonb default '[]', academic_challenges jsonb default '[]',
+    character_strengths jsonb default '[]', character_challenges jsonb default '[]',
+    school_academic_actions jsonb default '[]', parent_academic_actions jsonb default '[]',
+    school_character_actions jsonb default '[]', parent_character_actions jsonb default '[]'
+  );
+  insert into diagnoses (id,workspace_id,student_id,assessment_id,status,term,academic_session,
+    reviewed_at,finalised_at,diagnosis_mode,concise_diagnosis,academic_strengths)
+  values ('${id(30)}','${id(4)}','${id(6)}','${id(12)}','draft','First Term','2026/2027',
+    now(),now(),'assessment_based','Private draft','[{"statement":"Approved strength","evidenceIds":["internal"]}]');
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122150000_learning_result_report.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+const resultReport = () => scalar('select get_my_learning_result_report($1) as value', [midterm]);
+assert.equal((await resultReport()).diagnosis, null);
+await db.exec("reset role; update diagnoses set status='final', concise_diagnosis='Approved finding'; set role authenticated;");
+const report = await resultReport();
+assert.equal(report.school_name, 'School A');
+assert.equal(report.administrative_comment, 'Practise the next project task.');
+assert.equal(report.diagnosis.conciseDiagnosis, 'Approved finding');
+assert.deepEqual(report.diagnosis.academicSkillStrengths, [{ statement: 'Approved strength' }]);
+assert(!Object.hasOwn(report.diagnosis, 'observedEvidence'));
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.equal(await resultReport(), null);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');

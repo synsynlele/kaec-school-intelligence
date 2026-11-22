@@ -2,26 +2,101 @@
 
 import { useState } from "react";
 
+import { resultScores, type PublishedResult, type ReportDiagnosis, type ResultReport } from "@/lib/learning/result-report";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
-const sections = [
-  ["objective", "CBT"],
-  ["subjective", "Subjective"],
-  ["critical_thinking", "Critical Thinking"],
-  ["project", "Project"],
-] as const;
-type Section = (typeof sections)[number][0];
-type Result = {
-  id: string;
-  title: string;
-  published_at: string;
-  administrative_comment?: string | null;
-  maxima: Record<Section, number>;
-  scores: Record<Section, number | null>;
-};
+function DiagnosisTables({ diagnosis }: { diagnosis: ReportDiagnosis }) {
+  const findingRows = [
+    ["Academics / Skills", diagnosis.academicSkillStrengths, diagnosis.academicSkillChallenges],
+    ["Character", diagnosis.characterStrengths, diagnosis.characterChallenges],
+  ] as const;
+  const actionRows = [
+    ["Academics / Skills", diagnosis.schoolAcademicActions, diagnosis.parentAcademicActions],
+    ["Character", diagnosis.schoolCharacterActions, diagnosis.parentCharacterActions],
+  ] as const;
+  return (
+    <section className="space-y-4">
+      <h3 className="text-lg font-semibold">Approved diagnosis</h3>
+      {diagnosis.conciseDiagnosis && <p>{diagnosis.conciseDiagnosis}</p>}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Diagnosis findings</caption>
+          <thead className="bg-stone-100"><tr>{["Area", "Strengths", "Challenges"].map((label) =>
+            <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
+          <tbody>{findingRows.map(([label, strengths, challenges]) => (
+            <tr key={label} className="border-b border-stone-200 align-top">
+              <th scope="row" className="p-2">{label}</th>
+              {[strengths, challenges].map((items, column) => (
+                <td key={column} className="whitespace-pre-wrap p-2">{items.map(({ statement }) => statement).join("\n") || "—"}</td>
+              ))}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Diagnosis action plan</caption>
+          <thead className="bg-stone-100"><tr>{["Action plan", "School", "Parents"].map((label) =>
+            <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
+          <tbody>{actionRows.map(([label, school, parent]) => (
+            <tr key={label} className="border-b border-stone-200 align-top">
+              <th scope="row" className="p-2">{label}</th>
+              {[school, parent].map((items, column) => (
+                <td key={column} className="whitespace-pre-wrap p-2">
+                  {items.map(({ action, timeframe }) => timeframe ? `${action} (${timeframe})` : action).join("\n") || "—"}
+                </td>
+              ))}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {diagnosis.builderGrowthDirection && <p><strong>Builder Growth Direction</strong><br />{diagnosis.builderGrowthDirection}</p>}
+      {diagnosis.encouragementNote && <p><strong>Encouragement</strong><br />{diagnosis.encouragementNote}</p>}
+    </section>
+  );
+}
+
+function ReportCard({ report }: { report: ResultReport }) {
+  const { rows, total, maximum } = resultScores(report);
+  const logo = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(report.school_logo ?? "") ? report.school_logo : null;
+  return (
+    <article className="space-y-5 rounded-xl border border-stone-200 bg-white p-4 sm:p-6">
+      <header className="flex items-start justify-between gap-4 border-t-4 border-emerald-900 pt-4">
+        <div className="min-w-0 space-y-2">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- School logos are uploaded JPEG data URLs. */}
+            {logo && <img src={logo} alt="" className="h-12 w-12 shrink-0 object-contain" />}
+            <p className="break-words font-semibold text-emerald-950">{report.school_name}</p>
+          </div>
+          <h2 className="text-xl font-bold">{report.title}</h2>
+          <p className="font-semibold">{report.learner_name}</p>
+          <p className="text-sm text-zinc-600">{[report.class_name, report.academic_session, report.term].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-zinc-600">Published {new Date(report.published_at).toLocaleDateString()}</p>
+        </div>
+        <div className="grid h-24 w-20 shrink-0 place-items-center rounded border border-dashed border-zinc-400 px-2 text-center text-xs text-zinc-600">
+          Passport photo
+        </div>
+      </header>
+      <table className="w-full overflow-hidden rounded-lg text-left text-sm">
+        <caption className="sr-only">Official scores</caption>
+        <thead className="bg-emerald-900 text-white"><tr><th scope="col" className="p-3">Assessment component</th><th scope="col" className="p-3 text-right">Score</th></tr></thead>
+        <tbody>{rows.map(({ label, score, maximum }) => (
+          <tr key={label} className="border-b border-stone-200"><th scope="row" className="p-3 font-medium">{label}</th><td className="p-3 text-right">{score} / {maximum}</td></tr>
+        ))}</tbody>
+        <tfoot className="bg-emerald-50 font-bold text-emerald-950"><tr><th scope="row" className="p-3">Total</th><td className="p-3 text-right">{total} / {maximum}</td></tr></tfoot>
+      </table>
+      {report.administrative_comment && <div className="rounded-lg bg-stone-100 p-3">
+        <h3 className="font-semibold">Administrative comment</h3>
+        <p className="whitespace-pre-wrap break-words">{report.administrative_comment}</p>
+      </div>}
+      {report.diagnosis && <DiagnosisTables diagnosis={report.diagnosis} />}
+    </article>
+  );
+}
 
 export function LearningPublishedResults() {
-  const [results, setResults] = useState<Result[] | null>(null);
+  const [results, setResults] = useState<PublishedResult[] | null>(null);
+  const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,7 +106,7 @@ export function LearningPublishedResults() {
     try {
       const { data, error } = await getBrowserSupabaseClient().rpc("get_my_published_learning_results");
       if (error) throw new Error(error.message);
-      setResults(data as unknown as Result[]);
+      setResults(data as unknown as PublishedResult[]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load published results.");
     } finally {
@@ -39,37 +114,79 @@ export function LearningPublishedResults() {
     }
   }
 
+  async function openReport(assignmentId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_learning_result_report", { assignment_id: assignmentId });
+      if (error || !data) throw new Error("Published result unavailable.");
+      setReport(data as unknown as ResultReport);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not open the report.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadReport(assignmentId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
+      if (!session) throw new Error("Sign in again to download your result.");
+      const response = await fetch(`/api/learning/result/pdf?assignment=${encodeURIComponent(assignmentId)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) throw new Error((await response.json()).error ?? "Could not download the result.");
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "ksi-assessment-result.pdf";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not download the result.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <section aria-label="Official results" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4">
-      <button type="button" disabled={busy} onClick={() => void loadResults()}
-        className="font-semibold text-emerald-900 underline">
-        {busy ? "Loading results…" : results ? "Refresh published results" : "View published results"}
-      </button>
+    <section aria-label="Official results" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4">
       {error && <p role="alert" className="text-red-900">{error}</p>}
-      {results?.length === 0 && <p>No official results have been published for you yet.</p>}
-      {results?.map((result) => {
-        const included = sections.filter(([key]) => result.maxima[key] > 0);
-        const total = included.reduce((sum, [key]) => sum + (result.scores[key] ?? 0), 0);
-        const maximum = included.reduce((sum, [key]) => sum + result.maxima[key], 0);
-        return (
-          <article key={result.id} className="space-y-2 border-t border-zinc-200 pt-3">
-            <h2 className="font-semibold">{result.title}</h2>
-            <p className="text-sm text-zinc-600">Published {new Date(result.published_at).toLocaleDateString()}</p>
-            <dl className="grid grid-cols-2 gap-2">
-              {included.map(([key, label]) => (
-                <div key={key}><dt>{label}</dt><dd>{result.scores[key]} / {result.maxima[key]}</dd></div>
-              ))}
-            </dl>
-            <p className="font-semibold">Total {total} / {maximum}</p>
-            {result.administrative_comment && (
-              <div className="rounded-lg bg-stone-100 p-3">
-                <h3 className="font-semibold">Administrative comment</h3>
-                <p className="whitespace-pre-wrap break-words">{result.administrative_comment}</p>
-              </div>
-            )}
-          </article>
-        );
-      })}
+      {report ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="button" disabled={busy} onClick={() => { setReport(null); setError(""); }}
+              className="font-semibold text-emerald-900 underline">Back to results</button>
+            <button type="button" disabled={busy} onClick={() => void downloadReport(report.id)}
+              className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
+              {busy ? "Preparing PDF…" : "Download PDF"}
+            </button>
+          </div>
+          <ReportCard report={report} />
+        </>
+      ) : (
+        <>
+          <button type="button" disabled={busy} onClick={() => void loadResults()}
+            className="font-semibold text-emerald-900 underline">
+            {busy ? "Loading…" : results ? "Refresh published results" : "View published results"}
+          </button>
+          {results?.length === 0 && <p>No official results have been published for you yet.</p>}
+          {results?.map((result) => {
+            const { total, maximum } = resultScores(result);
+            return (
+              <button key={result.id} type="button" disabled={busy} onClick={() => void openReport(result.id)}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200 p-3 text-left">
+                <span className="font-semibold">{result.title}</span>
+                <span className="shrink-0 text-emerald-900">{total} / {maximum}</span>
+              </button>
+            );
+          })}
+        </>
+      )}
     </section>
   );
 }

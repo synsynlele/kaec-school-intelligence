@@ -132,6 +132,7 @@ type FinalStageFunctions = Omit<
     Args: { source_id: string; expected_revision: number; comments: Json };
     Returns: undefined;
   };
+  get_my_learning_result_report: { Args: { assignment_id: string }; Returns: Json };
   get_my_published_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   get_learning_score_sheet: { Args: { source_id: string }; Returns: Json };
   save_learning_paper_scores: {
