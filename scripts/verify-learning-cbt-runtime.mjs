@@ -305,5 +305,55 @@ assert.equal(closed.availability, 'closed');
 assert.equal(closed.feedback.review[0].correct, 'b');
 await db.exec(`reset role; delete from private.learning_cbt_submissions where cbt_id = '${scheduled}'; set role authenticated;`);
 await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has closed/);
+await db.exec(`reset role;
+  alter table assessments add column subject_id uuid;
+  create table subjects(id uuid primary key, workspace_id uuid, name text);
+  insert into subjects values ('${id(40)}','${id(4)}','Mathematics');
+  insert into assessments(id,workspace_id,class_id,title,status,subject_id) values
+    ('${id(41)}','${id(4)}','${id(5)}','Early mark entry','validated','${id(40)}'),
+    ('${id(42)}','${id(4)}','${id(5)}','Paper only','validated','${id(40)}');
+  insert into assessment_items values
+    ('${id(43)}','${id(41)}',1,'{"prompt":"Choose B","options":["a","b"]}','objective','{"correctAnswer":"b"}',3),
+    ('${id(44)}','${id(41)}',2,'{"prompt":"Explain"}','subjective',null,4),
+    ('${id(45)}','${id(42)}',1,'{"prompt":"Build"}','project',null,5);
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122223000_independent_learning_mark_entry.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const openMarks = (n) => scalar('select open_learning_score_sheet($1) as value', [id(n)]);
+const early = await openMarks(41);
+assert.equal(await openMarks(41), early);
+const writeMarks = (n, subjective, project) => scalar(
+  'select save_learning_paper_scores($1,$2,0,$3,null,$4) as value', [id(n),id(6),subjective,project]);
+assert.equal(await writeMarks(41, 0, null), 1);
+const earlySheet = await readScoreSheet(id(41));
+assert.equal(earlySheet.cbt_enabled, false);
+assert.equal(earlySheet.roster[0].subjective, 0);
+assert.equal(earlySheet.roster[0].objective, null);
+const earlyCards = await scalar('select list_learning_assessments($1,$2,0) as value', [id(4), 'Mathematics']);
+assert.equal(earlyCards.length, 2);
+const earlyCard = earlyCards.find(row => row.id === id(41));
+assert.equal(earlyCard.assigned, false);
+assert.equal(earlyCard.marked, 1);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.deepEqual(await scalar('select get_learning_cbts($1) as value', [early]), []);
+await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[early, '{}']), /CBT unavailable/);
+await assert.rejects(openMarks(42), /Assessment unavailable/);
+await db.exec(`set app.uid = '${id(1)}'`);
+assert.equal(await scalar("select schedule_learning_cbt($1,now()+interval '1 hour',now()+interval '2 hours') as value",[id(41)]), early);
+assert.equal((await readScoreSheet(id(41))).roster[0].subjective, 0);
+await db.exec(`reset role; update private.learning_cbts set opens_at=now()-interval '1 minute' where id='${early}';
+  set role authenticated; set app.uid = '${id(2)}'`);
+await scalar('select submit_learning_cbt($1,$2) as value',[early, JSON.stringify({[id(43)]: 'b'})]);
+await db.exec(`set app.uid = '${id(1)}'`);
+const combinedMarks = (await readScoreSheet(id(41))).roster[0];
+assert.deepEqual([combinedMarks.objective, combinedMarks.subjective], [3, 0]);
+await openMarks(42);
+assert.equal(await writeMarks(42, null, 5), 1);
+await db.query("select change_learning_result_review($1,0,'submitted',null)", [id(42)]);
+await db.exec(`set app.uid = '${id(17)}'`);
+await db.query("select publish_learning_result_with_comments($1,1,'{}')", [id(42)]);
+await db.exec(`set app.uid = '${id(2)}'`);
+const paperResult = (await publishedResults()).find(row => row.title === 'Paper only');
+assert.equal(paperResult.scores.project, 5);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
