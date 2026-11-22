@@ -14,7 +14,7 @@ await db.exec(`
   create table assessments(id uuid primary key, workspace_id uuid, class_id uuid, title text, status text);
   create table assessment_items(id uuid primary key, assessment_id uuid, position integer, content jsonb,
     item_type text, answer_key jsonb, marks numeric);
-  create table students(id uuid primary key, workspace_id uuid, class_id uuid, active boolean);
+  create table students(id uuid primary key, workspace_id uuid, class_id uuid, active boolean, display_name text);
   create table student_accounts(user_id uuid, student_id uuid, workspace_id uuid, active boolean);
   create table workspace_members(user_id uuid, workspace_id uuid, status text, role text);
   create function private.can_view_teacher_artifact(uuid,text,uuid) returns boolean language sql as
@@ -61,5 +61,54 @@ assert.deepEqual(saved.feedback, submitted);
 assert.equal(saved.questions, null);
 await db.exec("reset role; update workspace_members set status='inactive' where role='student'; set role authenticated;");
 await assert.rejects(scalar('select get_learning_cbts() as value'), /active learner account/);
+// Existing mixed CBT submissions remain available after the score-sheet migration.
+await db.exec('reset role;');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261121220000_learning_score_sheet.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const readScoreSheet = (sourceId) => scalar('select get_learning_score_sheet($1) as value', [sourceId]);
+const oldSheet = await readScoreSheet(id(7));
+assert.equal(oldSheet.roster[0].objective, 2);
+assert.equal(oldSheet.maxima.critical_thinking, 4);
+assert.equal(oldSheet.roster[0].critical_thinking, null);
+
+await db.exec(`reset role;
+  insert into assessments values ('${id(12)}','${id(4)}','${id(5)}','Midterm','validated');
+  insert into assessment_items values
+    ('${id(13)}','${id(12)}',1,'{"prompt":"First","options":["a","b"]}','objective','{"correctAnswer":"b"}',2),
+    ('${id(14)}','${id(12)}',2,'{"prompt":"Write"}','subjective',null,3),
+    ('${id(15)}','${id(12)}',3,'{"prompt":"Explain"}','critical_thinking',null,4),
+    ('${id(16)}','${id(12)}',4,'{"prompt":"Build"}','project',null,5);
+  update workspace_members set status = 'active';
+  set role authenticated;
+`);
+const midterm = await scalar('select assign_learning_cbt($1) as value', [id(12)]);
+const saveScores = (learner, revision, subjective, criticalThinking, project) =>
+  scalar('select save_learning_paper_scores($1,$2,$3,$4,$5,$6) as value',
+    [id(12), learner, revision, subjective, criticalThinking, project]);
+const firstSheet = await readScoreSheet(id(12));
+assert.deepEqual(firstSheet.maxima, { objective: 2, subjective: 3, critical_thinking: 4, project: 5 });
+assert.equal(firstSheet.roster.length, 1);
+assert.equal(firstSheet.roster[0].objective, null);
+await assert.rejects(saveScores(id(10), 0, 1, 2, 3), /Learner unavailable/);
+await assert.rejects(saveScores(id(6), 0, 4, 2, 3), /section maximums/);
+assert.equal(await saveScores(id(6), 0, 0, null, 5), 1);
+await assert.rejects(saveScores(id(6), 0, 1, 2, 3), /Scores changed/);
+assert.equal(await saveScores(id(6), 1, 0, 4, 5), 2);
+
+await db.exec(`set app.uid = '${id(2)}'`);
+await assert.rejects(readScoreSheet(id(12)), /Score sheet unavailable/);
+await assert.rejects(saveScores(id(6), 2, 1, 2, 3), /Score sheet unavailable/);
+const [midtermOpen] = await scalar('select get_learning_cbts($1) as value', [midterm]);
+assert.equal(midtermOpen.questions.length, 1);
+assert.equal(midtermOpen.questions[0].type, 'objective');
+const graded = await scalar('select submit_learning_cbt($1,$2) as value',
+  [midterm, JSON.stringify({ [id(13)]: 'b' })]);
+assert.equal(graded.earned, 2);
+assert.equal(graded.awaitingMarking, 0);
+assert(!Object.hasOwn(graded, 'project'));
+
+await db.exec(`set app.uid = '${id(1)}'`);
+const updated = (await readScoreSheet(id(12))).roster[0];
+assert.deepEqual([updated.objective, updated.subjective, updated.critical_thinking, updated.project], [2, 0, 4, 5]);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');

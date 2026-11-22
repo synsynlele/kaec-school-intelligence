@@ -183,7 +183,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   }
 
   async function assignCbt() {
-    if (!state || !window.confirm("Assign this assessment to the class now? Learners will see the correct answers after submitting.")) return;
+    if (!state || !window.confirm("Assign the objective questions as CBT? Learners will see the correct answers after submitting.")) return;
     setAssigning(true);
     setError(null);
     try {
@@ -228,6 +228,12 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
                 className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
                 {assigned ? "CBT assigned" : assigning ? "Assigning…" : "Assign as CBT"}
               </button>
+            )}
+            {state.assessment.status === "validated" && state.assessment.class_id && (
+              <Link href={`/assessment/score-sheet?assessment=${encodeURIComponent(state.assessment.id)}`}
+                className="rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">
+                Class score sheet
+              </Link>
             )}
             {state.assessment.source_lesson_id ? (
               <Link href={`/hqls/result?lesson=${encodeURIComponent(state.assessment.source_lesson_id)}`} className="min-h-11 rounded-xl border border-emerald-900/20 bg-emerald-50 px-4 py-2.5 text-center text-sm font-semibold text-emerald-950">Open Source HQLS Lesson</Link>
