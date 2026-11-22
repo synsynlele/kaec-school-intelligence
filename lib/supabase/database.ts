@@ -123,6 +123,12 @@ type FinalStageFunctions = Omit<
   GeneratedDatabase["public"]["Functions"],
   "review_diagnosis" | "finalise_diagnosis"
 > & {
+  get_learning_result_review: { Args: { source_id: string }; Returns: Json };
+  change_learning_result_review: {
+    Args: { source_id: string; expected_revision: number; next_action: string; correction_note?: string };
+    Returns: undefined;
+  };
+  get_my_published_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   get_learning_score_sheet: { Args: { source_id: string }; Returns: Json };
   save_learning_paper_scores: {
     Args: {

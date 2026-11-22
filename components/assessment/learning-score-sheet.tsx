@@ -24,9 +24,15 @@ type ScoreSheet = {
   maxima: Record<PaperSection | "objective", number>;
   writable: boolean;
   roster: ScoreRow[];
+  status: "draft" | "submitted" | "returned" | "published";
+  revision: number;
+  note: string | null;
+  recorded_at: string | null;
+  can_review: boolean;
 };
 
-function LearnerScores({ row, maxima, writable, assessmentId }: {
+function LearnerScores({ row, maxima, writable, assessmentId, onDirty }: {
+  onDirty: (id: string, dirty: boolean) => void;
   assessmentId: string;
   row: ScoreRow;
   maxima: ScoreSheet["maxima"];
@@ -67,6 +73,7 @@ function LearnerScores({ row, maxima, writable, assessmentId }: {
       if (error) throw new Error(error.message);
       setRevision(data);
       setDirty(false);
+      onDirty(row.id, false);
       setMessage("Saved");
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Could not save scores.");
@@ -97,6 +104,7 @@ function LearnerScores({ row, maxima, writable, assessmentId }: {
                 const input = event.currentTarget;
                 setScores((previous) => ({ ...previous, [key]: input.value === "" ? null : input.valueAsNumber }));
                 setDirty(true);
+                onDirty(row.id, true);
                 setMessage("");
               }}
             />
@@ -125,12 +133,49 @@ function LearnerScores({ row, maxima, writable, assessmentId }: {
 export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   const [sheet, setSheet] = useState<ScoreSheet | null>(null);
   const [error, setError] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
+  const [refresh, setRefresh] = useState(0);
+
+  function trackDirty(id: string, dirty: boolean) {
+    setDirtyRows((previous) => {
+      const next = new Set(previous);
+      if (dirty) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function changeReview(action: "submitted" | "returned" | "published") {
+    if (!sheet || reviewBusy || dirtyRows.size) return;
+    if (action === "published" && !window.confirm("Publish these official results to the learners?")) return;
+    setReviewBusy(true);
+    setReviewError("");
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("change_learning_result_review", {
+        source_id: assessmentId,
+        expected_revision: sheet.revision,
+        next_action: action,
+        correction_note: note,
+      });
+      if (error) throw new Error(error.message);
+      setSheet(null);
+      setNote("");
+      setRefresh((previous) => previous + 1);
+    } catch (caught) {
+      setReviewError(caught instanceof Error ? caught.message : "Could not update the review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const { data, error } = await getBrowserSupabaseClient().rpc("get_learning_score_sheet", {
+        const { data, error } = await getBrowserSupabaseClient().rpc("get_learning_result_review", {
           source_id: assessmentId,
         });
         if (error) throw new Error(error.message);
@@ -141,18 +186,46 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
     }
     void load();
     return () => { cancelled = true; };
-  }, [assessmentId]);
+  }, [assessmentId, refresh]);
 
   if (error) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-900">{error}</p>;
   if (!sheet) return <p role="status">Loading scores…</p>;
 
   const { maxima } = sheet;
+  const statusLabel = { draft: "Draft", submitted: "Awaiting review", returned: "Returned for correction", published: "Published" }[sheet.status];
   const totalMaximum = maxima.objective + paperSections.reduce((sum, { key }) => sum + maxima[key], 0);
 
   return (
     <>
       <h2 className="text-xl font-semibold">{sheet.title}</h2>
-      <p className="text-sm text-zinc-700">CBT scores appear after submission. Enter the marked totals for Subjective, Critical Thinking and Project. These scores are internal.</p>
+      <p className="text-sm text-zinc-700">CBT scores appear after submission. Enter the marked totals for Subjective, Critical Thinking and Project. Official results appear for learners after school approval.</p>
+      <section aria-label="Result publication" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4">
+        <p role="status" className="font-semibold">{statusLabel}
+          {sheet.recorded_at && <span className="ml-2 text-sm font-normal">{new Date(sheet.recorded_at).toLocaleString()}</span>}
+        </p>
+        {sheet.note && <p className="whitespace-pre-wrap text-sm">{sheet.note}</p>}
+        {sheet.writable && sheet.roster.length > 0 && (
+          <button type="button" disabled={reviewBusy || dirtyRows.size > 0} onClick={() => void changeReview("submitted")}
+            className="rounded-lg bg-emerald-900 px-3 py-2 font-semibold text-white disabled:opacity-50">
+            Submit for review
+          </button>
+        )}
+        {dirtyRows.size > 0 && <p className="text-sm">Save all edited rows before submitting.</p>}
+        {sheet.status === "submitted" && sheet.can_review && (
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold" htmlFor="result-correction-note">Correction note</label>
+            <textarea id="result-correction-note" rows={2} maxLength={1000} value={note}
+              onChange={(event) => setNote(event.target.value)} className="w-full rounded-lg border border-zinc-300 p-2" />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={reviewBusy || !note.trim()} onClick={() => void changeReview("returned")}
+                className="rounded-lg border border-zinc-300 px-3 py-2 font-semibold disabled:opacity-50">Return for correction</button>
+              <button type="button" disabled={reviewBusy} onClick={() => void changeReview("published")}
+                className="rounded-lg bg-emerald-900 px-3 py-2 font-semibold text-white disabled:opacity-50">Approve and publish</button>
+            </div>
+          </div>
+        )}
+        {reviewError && <p role="alert" className="text-sm text-red-900">{reviewError}</p>}
+      </section>
       {sheet.roster.length === 0 ? <p>No learners are listed for this class.</p> : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
           <table className="w-full border-collapse text-sm">
@@ -170,7 +243,7 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
             <tbody>
               {sheet.roster.map((row) => (
                 <tr key={row.id} className="border-t border-zinc-200 align-top">
-                  <LearnerScores row={row} maxima={maxima} writable={sheet.writable} assessmentId={assessmentId} />
+                  <LearnerScores row={row} maxima={maxima} writable={sheet.writable && !reviewBusy} assessmentId={assessmentId} onDirty={trackDirty} />
                 </tr>
               ))}
             </tbody>
