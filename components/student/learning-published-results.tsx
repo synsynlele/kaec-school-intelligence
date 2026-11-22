@@ -15,6 +15,7 @@ type Result = {
   id: string;
   title: string;
   published_at: string;
+  administrative_comment?: string | null;
   maxima: Record<Section, number>;
   scores: Record<Section, number | null>;
 };
@@ -60,6 +61,12 @@ export function LearningPublishedResults() {
               ))}
             </dl>
             <p className="font-semibold">Total {total} / {maximum}</p>
+            {result.administrative_comment && (
+              <div className="rounded-lg bg-stone-100 p-3">
+                <h3 className="font-semibold">Administrative comment</h3>
+                <p className="whitespace-pre-wrap break-words">{result.administrative_comment}</p>
+              </div>
+            )}
           </article>
         );
       })}
