@@ -13,8 +13,11 @@ export async function GET(request: Request) {
   if (!authorization.startsWith("Bearer ")) {
     return Response.json({ error: "Sign in to download your result." }, { status: 401 });
   }
-  const assignmentId = new URL(request.url).searchParams.get("assignment") ?? "";
-  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(assignmentId)) {
+  const params = new URL(request.url).searchParams;
+  const assignmentId = params.get("assignment") ?? "";
+  const learnerId = params.get("learner");
+  const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+  if (!uuid.test(assignmentId) || (learnerId !== null && !uuid.test(learnerId))) {
     return Response.json({ error: "Choose a published result." }, { status: 400 });
   }
 
@@ -23,7 +26,9 @@ export async function GET(request: Request) {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  const { data, error } = await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
+  const { data, error } = learnerId
+    ? await client.rpc("get_my_parent_learning_report", { assignment_id: assignmentId, target_learner: learnerId })
+    : await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
   if (error || !data) {
     return Response.json({ error: "Published result unavailable." }, { status: 404 });
   }

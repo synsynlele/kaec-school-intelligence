@@ -9,6 +9,8 @@ type Section = (typeof resultSections)[number][0];
 export type PublishedResult = {
   id: string;
   title: string;
+  learner_id?: string;
+  learner_name?: string;
   published_at: string;
   administrative_comment?: string | null;
   maxima: Record<Section, number>;
@@ -30,6 +32,7 @@ export type ReportDiagnosis = {
 export type ResultReport = PublishedResult & {
   school_name: string;
   school_logo: string | null;
+  passport_photo?: string | null;
   learner_name: string;
   class_name: string | null;
   academic_session: string | null;

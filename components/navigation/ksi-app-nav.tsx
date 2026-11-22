@@ -19,6 +19,7 @@ type LiveWorkspaceAccess = {
 
 const HIDDEN_PREFIXES = [
   "/sign-in",
+  "/parent",
   "/privacy",
   "/delete-account",
   "/auth",

@@ -494,10 +494,31 @@ class FlowPage {
   }
 }
 
+function passportImage(base64: string | null | undefined) {
+  if (!base64 || base64.length > 220000) return null;
+  const bytes = Buffer.from(base64, "base64");
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 <= bytes.length && bytes[offset] === 0xff) {
+    const marker = bytes[offset + 1];
+    const length = bytes.readUInt16BE(offset + 2);
+    if (length < 2 || offset + 2 + length > bytes.length) return null;
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      const height = bytes.readUInt16BE(offset + 5);
+      const width = bytes.readUInt16BE(offset + 7);
+      if (width !== 320 || height !== 400 || bytes[offset + 9] !== 3) return null;
+      return { bytes, width, height };
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
 function buildPdfObjects(
   pageCommands: string[][],
   input: Pick<DiagnosisPdfInput, "brandLogoJpegBase64" | "hasSchoolLogo">,
   documentLabel = "Diagnosis",
+  photo: ReturnType<typeof passportImage> = null,
 ) {
   const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
@@ -522,6 +543,15 @@ function buildPdfObjects(
     Buffer.from("\nendstream"),
   ]);
 
+  const photoRef = 6 + pageCount * 2;
+  if (photo) {
+    objects[photoRef] = Buffer.concat([
+      Buffer.from(`<< /Type /XObject /Subtype /Image /Width ${photo.width} /Height ${photo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${photo.bytes.length} >>\nstream\n`),
+      photo.bytes,
+      Buffer.from("\nendstream"),
+    ]);
+  }
+
   for (let index = 0; index < pageCount; index += 1) {
     const contentRef = 6 + index * 2;
     const pageRef = 7 + index * 2;
@@ -537,7 +567,7 @@ function buildPdfObjects(
       Buffer.from("\nendstream"),
     ]);
     objects[pageRef] = Buffer.from(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentRef} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R${photo && index === 0 ? ` /Im2 ${photoRef} 0 R` : ""} >> >> /Contents ${contentRef} 0 R >>`,
     );
   }
 
@@ -607,8 +637,14 @@ export function createLearningResultPdf(report: ResultReport) {
   rectTop(cover, left, 28, width, 4, FOREST, null);
   if (branding.hasSchoolLogo) cover.push(`q 42 0 0 42 ${left} ${PAGE_HEIGHT - 88} cm /Im1 Do Q`);
   brandName(cover, report.school_name, branding.hasSchoolLogo ? left + 54 : left, 43, 430, 48, 13);
-  rectTop(cover, PAGE_WIDTH - left - 85, 45, 85, 105, null);
-  textAtTop(cover, "Passport photo", PAGE_WIDTH - left - 73, 94, 8, false, MUTED);
+  const photo = passportImage(report.passport_photo);
+  const photoX = PAGE_WIDTH - left - 84;
+  if (photo) {
+    cover.push(`q 84 0 0 105 ${photoX} ${PAGE_HEIGHT - 150} cm /Im2 Do Q`);
+  } else {
+    rectTop(cover, photoX, 45, 84, 105, null);
+    textAtTop(cover, "Passport photo", photoX + 12, 94, 8, false, MUTED);
+  }
   let top = 105;
   top += write("Official assessment result", top, 19, true, width - 105);
   top += write(report.title, top + 3, 13, true, width - 105, 2) + 3;
@@ -648,7 +684,7 @@ export function createLearningResultPdf(report: ResultReport) {
     }).build()
     : [];
 
-  return serializePdf(buildPdfObjects([cover, ...diagnosisPages], logoInput, "Assessment result"));
+  return serializePdf(buildPdfObjects([cover, ...diagnosisPages], logoInput, "Assessment result", photo));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {

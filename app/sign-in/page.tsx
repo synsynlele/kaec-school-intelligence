@@ -39,6 +39,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </div>
             ) : null}
             <AuthForm />
+            <Link href="/parent" className="mt-4 font-semibold text-emerald-900 underline">Parent sign-in</Link>
           </div>
         </div>
         <footer className="flex flex-wrap gap-5 border-t border-zinc-200 pt-5 text-xs font-medium text-zinc-600">

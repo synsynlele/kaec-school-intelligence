@@ -59,6 +59,7 @@ function DiagnosisTables({ diagnosis }: { diagnosis: ReportDiagnosis }) {
 function ReportCard({ report }: { report: ResultReport }) {
   const { rows, total, maximum } = resultScores(report);
   const logo = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(report.school_logo ?? "") ? report.school_logo : null;
+  const photo = /^[A-Za-z0-9+/]+={0,2}$/.test(report.passport_photo ?? "") ? report.passport_photo : null;
   return (
     <article className="space-y-5 rounded-xl border border-stone-200 bg-white p-4 sm:p-6">
       <header className="flex items-start justify-between gap-4 border-t-4 border-emerald-900 pt-4">
@@ -73,9 +74,14 @@ function ReportCard({ report }: { report: ResultReport }) {
           <p className="text-sm text-zinc-600">{[report.class_name, report.academic_session, report.term].filter(Boolean).join(" · ")}</p>
           <p className="text-sm text-zinc-600">Published {new Date(report.published_at).toLocaleDateString()}</p>
         </div>
-        <div className="grid h-24 w-20 shrink-0 place-items-center rounded border border-dashed border-zinc-400 px-2 text-center text-xs text-zinc-600">
-          Passport photo
-        </div>
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- The authenticated report provides a private JPEG.
+          <img src={`data:image/jpeg;base64,${photo}`} alt="Learner passport photo" className="h-24 w-20 shrink-0 rounded border object-cover" />
+        ) : (
+          <div className="grid h-24 w-20 shrink-0 place-items-center rounded border border-dashed border-zinc-400 px-2 text-center text-xs text-zinc-600">
+            Passport photo
+          </div>
+        )}
       </header>
       <table className="w-full overflow-hidden rounded-lg text-left text-sm">
         <caption className="sr-only">Official scores</caption>
@@ -94,8 +100,9 @@ function ReportCard({ report }: { report: ResultReport }) {
   );
 }
 
-export function LearningPublishedResults() {
+export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "learner" | "parent" }) {
   const [results, setResults] = useState<PublishedResult[] | null>(null);
+  const [learnerId, setLearnerId] = useState<string | undefined>();
   const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -104,7 +111,7 @@ export function LearningPublishedResults() {
     setBusy(true);
     setError("");
     try {
-      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_published_learning_results");
+      const { data, error } = await getBrowserSupabaseClient().rpc(viewer === "parent" ? "get_my_parent_learning_results" : "get_my_published_learning_results");
       if (error) throw new Error(error.message);
       setResults(data as unknown as PublishedResult[]);
     } catch (caught) {
@@ -114,13 +121,17 @@ export function LearningPublishedResults() {
     }
   }
 
-  async function openReport(assignmentId: string) {
+  async function openReport(assignmentId: string, targetLearner?: string) {
     setBusy(true);
     setError("");
     try {
-      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_learning_result_report", { assignment_id: assignmentId });
+      const client = getBrowserSupabaseClient();
+      const { data, error } = targetLearner
+        ? await client.rpc("get_my_parent_learning_report", { assignment_id: assignmentId, target_learner: targetLearner })
+        : await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
       if (error || !data) throw new Error("Published result unavailable.");
       setReport(data as unknown as ResultReport);
+      setLearnerId(targetLearner);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not open the report.");
     } finally {
@@ -134,7 +145,9 @@ export function LearningPublishedResults() {
     try {
       const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
       if (!session) throw new Error("Sign in again to download your result.");
-      const response = await fetch(`/api/learning/result/pdf?assignment=${encodeURIComponent(assignmentId)}`, {
+      const query = new URLSearchParams({ assignment: assignmentId });
+      if (learnerId) query.set("learner", learnerId);
+      const response = await fetch(`/api/learning/result/pdf?${query}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!response.ok) throw new Error((await response.json()).error ?? "Could not download the result.");
@@ -178,9 +191,9 @@ export function LearningPublishedResults() {
           {results?.map((result) => {
             const { total, maximum } = resultScores(result);
             return (
-              <button key={result.id} type="button" disabled={busy} onClick={() => void openReport(result.id)}
+              <button key={`${result.id}:${result.learner_id ?? ""}`} type="button" disabled={busy} onClick={() => void openReport(result.id, result.learner_id)}
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200 p-3 text-left">
-                <span className="font-semibold">{result.title}</span>
+                <span className="font-semibold">{result.title}{result.learner_name && <small className="block font-normal">{result.learner_name}</small>}</span>
                 <span className="shrink-0 text-emerald-900">{total} / {maximum}</span>
               </button>
             );
