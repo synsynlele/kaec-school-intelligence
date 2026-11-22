@@ -24,6 +24,7 @@ type ScoreSheet = {
   title: string;
   maxima: Record<PaperSection | "objective", number>;
   writable: boolean;
+  cbt_enabled?: boolean;
   roster: ScoreRow[];
   status: "draft" | "submitted" | "returned" | "published";
   revision: number;
@@ -52,7 +53,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
   const [dirty, setDirty] = useState(false);
 
   const sections = paperSections.filter(({ key }) => maxima[key] > 0);
-  const complete = row.objective !== null && sections.every(({ key }) => scores[key] !== null);
+  const complete = (maxima.objective === 0 || row.objective !== null) && sections.every(({ key }) => scores[key] !== null);
   const total = complete
     ? sections.reduce((sum, { key }) => sum + (scores[key] ?? 0), row.objective ?? 0)
     : null;
@@ -89,7 +90,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
   return (
     <>
       <th scope="row" className="px-3 py-3 text-left font-semibold">{row.name}</th>
-      <td className="px-3 py-3">{row.objective ?? "Pending"}</td>
+      <td className="px-3 py-3">{maxima.objective === 0 ? "—" : row.objective ?? "Pending"}</td>
       {paperSections.map(({ key, label }) => (
         <td key={key} className="px-3 py-3">
           {maxima[key] === 0 ? "—" : writable && row.editable ? (
@@ -137,6 +138,8 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
 export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   const [insights, setInsights] = useState<ItemInsight[]>([]);
   const [insightsError, setInsightsError] = useState(false);
+  const [needsOpening, setNeedsOpening] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [sheet, setSheet] = useState<ScoreSheet | null>(null);
   const [error, setError] = useState("");
   const [reviewError, setReviewError] = useState("");
@@ -219,6 +222,10 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
           client.rpc("get_learning_result_review", { source_id: assessmentId }),
           client.rpc("get_learning_cbt_item_insights", { source_id: assessmentId }),
         ]);
+        if (result.error?.message === "Score sheet has not been opened.") {
+          if (!cancelled) setNeedsOpening(true);
+          return;
+        }
         if (result.error) throw new Error(result.error.message);
         if (!cancelled) {
           setSheet(result.data as unknown as ScoreSheet);
@@ -233,6 +240,31 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
     return () => { cancelled = true; };
   }, [assessmentId, refresh]);
 
+  async function openSheet() {
+    setOpening(true);
+    setError("");
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("open_learning_score_sheet", { source_id: assessmentId });
+      if (error) throw new Error(error.message);
+      setNeedsOpening(false);
+      setRefresh((previous) => previous + 1);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to open the score sheet.");
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  if (needsOpening) return (
+    <section className="space-y-3 rounded-xl border bg-white p-4">
+      <p>Enter Subjective, Critical Thinking, and Project marks as soon as they are ready.</p>
+      <button type="button" onClick={() => void openSheet()} disabled={opening}
+        className="rounded-xl bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">
+        {opening ? "Opening…" : "Start mark entry"}
+      </button>
+      {error && <p role="alert" className="text-red-900">{error}</p>}
+    </section>
+  );
   if (error) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-900">{error}</p>;
   if (!sheet) return <p role="status">Loading scores…</p>;
 
@@ -252,7 +284,8 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   return (
     <>
       <h2 className="text-xl font-semibold">{sheet.title}</h2>
-      <p className="text-sm text-zinc-700">CBT scores appear after submission. Enter the marked totals for Subjective, Critical Thinking and Project. Official results appear for learners after school approval.</p>
+      <p className="text-sm text-zinc-700">Save Subjective, Critical Thinking, and Project marks as they are ready. CBT scores fill in after learners submit. School approval publishes the saved marks to results.</p>
+      {maxima.objective > 0 && sheet.cbt_enabled === false && <p className="text-sm font-semibold">CBT has not been scheduled. You can save paper marks now.</p>}
       <section aria-label="Assessment insights" className="space-y-3">
         <h3 className="font-semibold">Assessment insights</h3>
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">

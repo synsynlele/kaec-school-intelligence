@@ -59,7 +59,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   const router = useRouter();
   const [state, setState] = useState<ResultState | null>(null);
   const [assigning, setAssigning] = useState(false);
-  const [assignment, setAssignment] = useState<{ opensAt: string | null; closesAt: string | null } | null>(null);
+  const [assignment, setAssignment] = useState<{ enabled: boolean; opensAt: string | null; closesAt: string | null } | null>(null);
   const [opensAt, setOpensAt] = useState("");
   const [closesAt, setClosesAt] = useState("");
   const [scheduleError, setScheduleError] = useState("");
@@ -206,7 +206,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
         source_id: state.assessment.id, opens_at: window.opensAt, closes_at: window.closesAt,
       });
       if (error) throw new Error(error.message);
-      setAssignment(window);
+      setAssignment({ ...window, enabled: true });
     } catch (caught) {
       setScheduleError(caught instanceof Error ? caught.message : "The CBT could not be scheduled.");
     } finally {
@@ -271,18 +271,20 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
         </div>
         <section className="mt-6 space-y-3 rounded-2xl border border-emerald-900/15 bg-emerald-50/60 p-4">
           <h2 className="font-semibold">CBT &amp; score sheet</h2>
-          {assignment ? (
+          {state.assessment.status === "validated" && state.assessment.class_id && (
+            <Link href={`/assessment/score-sheet?assessment=${encodeURIComponent(state.assessment.id)}`}
+              className="inline-block rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">Enter marks</Link>
+          )}
+          {assignment?.enabled ? (
             <>
               <p className="text-sm">{assignment.opensAt && assignment.closesAt
                 ? `${formatCbtTime(assignment.opensAt)} to ${formatCbtTime(assignment.closesAt)} (WAT)`
                 : "CBT assigned without a time window."}</p>
-              <Link href={`/assessment/score-sheet?assessment=${encodeURIComponent(state.assessment.id)}`}
-                className="inline-block rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">Open class score sheet</Link>
             </>
           ) : state.assessment.status !== "validated" || !state.assessment.class_id ? (
-            <p className="text-sm">Select a class and validate this assessment to schedule a CBT.</p>
+            <p className="text-sm">Select a class and validate this assessment to enter marks or schedule a CBT.</p>
           ) : !state.items.some((item) => item.item_type === "objective") ? (
-            <p className="text-sm">Add objective questions with answer keys to schedule a CBT.</p>
+            <p className="text-sm">This assessment has no objective questions for CBT.</p>
           ) : (
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void assignCbt(); }}>
               <p className="text-sm">
