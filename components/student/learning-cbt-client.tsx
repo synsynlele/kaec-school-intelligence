@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { LearningPublishedResults } from "@/components/student/learning-published-results";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Question = {
@@ -106,6 +107,7 @@ export function LearningCbtClient() {
       {needsCode && <Link className={button} href="/learning/join">Enter your school access code</Link>}
       {busy && <p role="status">Please wait…</p>}
       {!current && !busy && !needsCode && !error && list.length === 0 && <p>No assessments assigned yet.</p>}
+      {!current && !busy && !needsCode && !error && <LearningPublishedResults />}
       {!current && list.map((item) => (
         <button key={item.id} disabled={busy} onClick={() => void open(item.id)}
           className="flex w-full justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left">

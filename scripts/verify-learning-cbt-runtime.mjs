@@ -110,5 +110,48 @@ assert(!Object.hasOwn(graded, 'project'));
 await db.exec(`set app.uid = '${id(1)}'`);
 const updated = (await readScoreSheet(id(12))).roster[0];
 assert.deepEqual([updated.objective, updated.subjective, updated.critical_thinking, updated.project], [2, 0, 4, 5]);
+await db.exec(`reset role; insert into auth.users values ('${id(17)}');
+  create or replace function private.can_view_teacher_artifact(uuid,text,uuid) returns boolean language sql
+  as 'select auth.uid() in (''${id(1)}''::uuid, ''${id(17)}''::uuid)';
+  create or replace function private.has_workspace_role(uuid,text[]) returns boolean language sql
+  as 'select case auth.uid() when ''${id(1)}''::uuid then ''teacher'' = any($2)
+    when ''${id(17)}''::uuid then ''leader'' = any($2) else false end';
+  set role authenticated;`);
+const publication = readFileSync(new URL('../supabase/migrations/20261122120000_learning_result_publication.sql', import.meta.url), 'utf8');
+await db.exec('reset role;');
+await db.exec(publication);
+await db.exec('set role authenticated;');
+const review = (revision, action, note = null) => db.query(
+  'select change_learning_result_review($1,$2,$3,$4)', [id(12), revision, action, note]);
+const reviewSheet = () => scalar('select get_learning_result_review($1) as value', [id(12)]);
+const publishedResults = () => scalar('select get_my_published_learning_results() as value');
+assert.equal((await reviewSheet()).status, 'draft');
+assert.equal(await saveScores(id(6), 2, 0, null, 5), 3);
+await assert.rejects(review(0, 'submitted'), /all required marks/);
+assert.equal(await saveScores(id(6), 3, 0, 4, 5), 4);
+await review(0, 'submitted');
+assert.equal((await reviewSheet()).writable, false);
+await assert.rejects(saveScores(id(6), 4, 1, 4, 5), /Scores are locked/);
+await assert.rejects(review(1, 'published'), /leadership approval/);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.deepEqual(await publishedResults(), []);
+await assert.rejects(reviewSheet(), /Score sheet unavailable/);
+await db.exec(`set app.uid = '${id(17)}'`);
+await assert.rejects(review(0, 'published'), /review changed/);
+await review(1, 'returned', 'Check the project score');
+assert.equal((await reviewSheet()).note, 'Check the project score');
+await db.exec(`set app.uid = '${id(1)}'`);
+assert.equal(await saveScores(id(6), 4, 0, 4, 3), 5);
+await review(2, 'submitted');
+await db.exec(`set app.uid = '${id(17)}'`);
+await review(3, 'published');
+assert.equal((await reviewSheet()).status, 'published');
+await db.exec(`set app.uid = '${id(2)}'`);
+const [official] = await publishedResults();
+assert.deepEqual(official.scores, { objective: 2, subjective: 0, critical_thinking: 4, project: 3 });
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.deepEqual(await publishedResults(), []);
+await db.exec(`set app.uid = '${id(1)}'`);
+await assert.rejects(saveScores(id(6), 5, 0, 4, 5), /Scores are locked/);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
