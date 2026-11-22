@@ -120,6 +120,7 @@ await db.exec(`reset role; insert into auth.users values ('${id(17)}');
 const publication = readFileSync(new URL('../supabase/migrations/20261122120000_learning_result_publication.sql', import.meta.url), 'utf8');
 await db.exec('reset role;');
 await db.exec(publication);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261122130000_learning_result_comments.sql', import.meta.url), 'utf8'));
 await db.exec('set role authenticated;');
 const review = (revision, action, note = null) => db.query(
   'select change_learning_result_review($1,$2,$3,$4)', [id(12), revision, action, note]);
@@ -144,10 +145,15 @@ await db.exec(`set app.uid = '${id(1)}'`);
 assert.equal(await saveScores(id(6), 4, 0, 4, 3), 5);
 await review(2, 'submitted');
 await db.exec(`set app.uid = '${id(17)}'`);
-await review(3, 'published');
+const publishWithComments = (comments) => db.query(
+  'select publish_learning_result_with_comments($1,$2,$3)', [id(12), 3, JSON.stringify(comments)]);
+await assert.rejects(publishWithComments({ [id(10)]: 'Other learner' }), /learners on this sheet/);
+assert.equal((await reviewSheet()).status, 'submitted');
+await publishWithComments({ [id(6)]: 'Practise the next project task.' });
 assert.equal((await reviewSheet()).status, 'published');
 await db.exec(`set app.uid = '${id(2)}'`);
 const [official] = await publishedResults();
+assert.equal(official.administrative_comment, 'Practise the next project task.');
 assert.deepEqual(official.scores, { objective: 2, subjective: 0, critical_thinking: 4, project: 3 });
 await db.exec(`set app.uid = '${id(3)}'`);
 assert.deepEqual(await publishedResults(), []);

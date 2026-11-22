@@ -29,6 +29,7 @@ type ScoreSheet = {
   note: string | null;
   recorded_at: string | null;
   can_review: boolean;
+  administrative_comments?: Record<string, string>;
 };
 
 function LearnerScores({ row, maxima, writable, assessmentId, onDirty }: {
@@ -136,6 +137,32 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   const [reviewError, setReviewError] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [drafting, setDrafting] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState("");
+
+  async function draftComment(learnerId: string) {
+    if (drafting || reviewBusy) return;
+    setDrafting(learnerId);
+    setDraftStatus("");
+    try {
+      const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
+      if (!session) throw new Error("Sign in again to draft a comment.");
+      const response = await fetch("/api/assessment/result-comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ assessmentId, learnerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Could not draft a comment.");
+      setComments((previous) => ({ ...previous, [learnerId]: result.comment }));
+      setDraftStatus(result.generatedBy === "ai" ? "AI draft ready for review." : "Score-based suggestion ready for review.");
+    } catch (caught) {
+      setDraftStatus(caught instanceof Error ? caught.message : "Could not draft a comment.");
+    } finally {
+      setDrafting(null);
+    }
+  }
   const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
   const [refresh, setRefresh] = useState(0);
 
@@ -149,20 +176,27 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   }
 
   async function changeReview(action: "submitted" | "returned" | "published") {
-    if (!sheet || reviewBusy || dirtyRows.size) return;
+    if (!sheet || reviewBusy || drafting || dirtyRows.size) return;
     if (action === "published" && !window.confirm("Publish these official results to the learners?")) return;
     setReviewBusy(true);
     setReviewError("");
     try {
-      const { error } = await getBrowserSupabaseClient().rpc("change_learning_result_review", {
-        source_id: assessmentId,
-        expected_revision: sheet.revision,
-        next_action: action,
-        correction_note: note,
-      });
+      const client = getBrowserSupabaseClient();
+      const request = { source_id: assessmentId, expected_revision: sheet.revision };
+      const { error } = action === "published"
+        ? await client.rpc("publish_learning_result_with_comments", {
+          ...request,
+          comments: Object.fromEntries(Object.entries(comments)
+            .map(([id, comment]) => [id, comment.trim()]).filter(([, comment]) => comment)),
+        })
+        : await client.rpc("change_learning_result_review", {
+          ...request, next_action: action, correction_note: note,
+        });
       if (error) throw new Error(error.message);
       setSheet(null);
       setNote("");
+      setComments({});
+      setDraftStatus("");
       setRefresh((previous) => previous + 1);
     } catch (caught) {
       setReviewError(caught instanceof Error ? caught.message : "Could not update the review.");
@@ -217,15 +251,38 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
             <textarea id="result-correction-note" rows={2} maxLength={1000} value={note}
               onChange={(event) => setNote(event.target.value)} className="w-full rounded-lg border border-zinc-300 p-2" />
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={reviewBusy || !note.trim()} onClick={() => void changeReview("returned")}
+              <button type="button" disabled={reviewBusy || Boolean(drafting) || !note.trim()} onClick={() => void changeReview("returned")}
                 className="rounded-lg border border-zinc-300 px-3 py-2 font-semibold disabled:opacity-50">Return for correction</button>
-              <button type="button" disabled={reviewBusy} onClick={() => void changeReview("published")}
+              <button type="button" disabled={reviewBusy || Boolean(drafting)} onClick={() => void changeReview("published")}
                 className="rounded-lg bg-emerald-900 px-3 py-2 font-semibold text-white disabled:opacity-50">Approve and publish</button>
             </div>
           </div>
         )}
         {reviewError && <p role="alert" className="text-sm text-red-900">{reviewError}</p>}
       </section>
+      {sheet.status === "submitted" && sheet.can_review && (
+        <details className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4">
+          <summary className="cursor-pointer font-semibold">Administrative comments</summary>
+          <p className="text-sm">Optional. Review each comment before publishing it with the learner’s result.</p>
+          <p role="status" className="text-sm">{draftStatus}</p>
+          {sheet.roster.map((row) => (
+            <div key={row.id} className="space-y-2">
+              <label className="block text-sm font-semibold" htmlFor={`comment-${row.id}`}>{row.name}</label>
+              <textarea id={`comment-${row.id}`} maxLength={500} rows={2}
+                value={comments[row.id] ?? ""} disabled={reviewBusy || drafting === row.id}
+                onChange={(event) => {
+                  const comment = event.target.value;
+                  setComments((previous) => ({ ...previous, [row.id]: comment }));
+                }}
+                className="w-full rounded-lg border border-zinc-300 p-2" />
+              <button type="button" disabled={reviewBusy || Boolean(drafting) || Boolean(comments[row.id]?.trim())}
+                onClick={() => void draftComment(row.id)} className="text-sm font-semibold text-emerald-900 underline disabled:opacity-50">
+                {drafting === row.id ? "Drafting…" : "Suggest a comment"}
+              </button>
+            </div>
+          ))}
+        </details>
+      )}
       {sheet.roster.length === 0 ? <p>No learners are listed for this class.</p> : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
           <table className="w-full border-collapse text-sm">
