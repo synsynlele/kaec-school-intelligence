@@ -622,8 +622,11 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
   return serializePdf(buildPdfObjects(pages, input));
 }
 
+type DiagnosisReport = Pick<ResultReport, "school_logo" | "school_name" | "learner_name" | "class_name"
+  | "academic_session" | "term" | "diagnosis_mode" | "diagnosis" | "diagnosis_reviewed_at" | "diagnosis_finalised_at" | "title">;
+
 function approvedReportDiagnosis(
-  report: ResultReport,
+  report: DiagnosisReport,
   branding: Pick<DiagnosisPdfInput, "brandLogoJpegBase64" | "hasSchoolLogo">,
 ): DiagnosisLayoutInput | null {
   if (!report.diagnosis || !report.diagnosis_reviewed_at || !report.diagnosis_finalised_at
@@ -644,7 +647,7 @@ function approvedReportDiagnosis(
   };
 }
 
-export function createLearningDiagnosisPdf(report: ResultReport) {
+export function createLearningDiagnosisPdf(report: DiagnosisReport) {
   const branding = resolvePdfBranding(report.school_logo);
   const logoInput = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
   const diagnosis = approvedReportDiagnosis(report, logoInput);

@@ -242,12 +242,28 @@ await db.exec(`reset role;
 assert.equal((await parentReports()).length, 1);
 assert.equal((await parentReport(id(6))).passport_photo, photo);
 assert.equal(await parentReport(id(10)), null);
+await db.exec(`reset role;
+  insert into diagnoses (id,workspace_id,student_id,status,term,academic_session,reviewed_at,finalised_at,academic_strengths) values
+    ('${id(51)}','${id(4)}','${id(6)}','final','First Term','2026/2027',now(),now(),'[{"statement":"Standalone finding","evidenceIds":["internal"]}]'),
+    ('${id(52)}','${id(4)}','${id(6)}','draft','First Term','2026/2027',now(),now(),'[]'),
+    ('${id(53)}','${id(11)}','${id(10)}','final','First Term','2026/2027',now(),now(),'[]');
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123090000_learning_parent_diagnoses.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(31)}'`);
+const parentDiagnoses = (diagnosisId) => scalar('select get_my_parent_learning_diagnoses($1) as value', [diagnosisId ?? null]);
+const diagnosisList = await parentDiagnoses();
+assert.deepEqual(diagnosisList.map(row => row.id).sort(), [id(30), id(51)]);
+assert.equal(diagnosisList[0].diagnosis, undefined);
+assert.deepEqual((await parentDiagnoses(id(51)))[0].diagnosis.academicSkillStrengths, [{ statement: 'Standalone finding' }]);
+assert.deepEqual(await parentDiagnoses(id(52)), []);
+assert.deepEqual(await parentDiagnoses(id(53)), []);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await resultReport()).passport_photo, photo);
 await db.exec(`set app.uid = '${id(33)}'`);
 await db.query('select revoke_learning_parent($1,$2)', [id(4), id(31)]);
 await savePhoto(id(6), null);
 await db.exec(`set app.uid = '${id(31)}'`);
+assert.deepEqual(await parentDiagnoses(), []);
 assert.deepEqual(await parentReports(), []);
 assert.equal(await parentReport(id(6)), null);
 await db.exec(`set app.uid = '${id(2)}'`);

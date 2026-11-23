@@ -102,6 +102,7 @@ function ReportCard({ report }: { report: ResultReport }) {
 
 export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "learner" | "parent" }) {
   const [results, setResults] = useState<PublishedResult[] | null>(null);
+  const [diagnoses, setDiagnoses] = useState<Pick<ResultReport, "id" | "title" | "learner_name" | "term" | "academic_session">[] | null>(null);
   const [learnerId, setLearnerId] = useState<string | undefined>();
   const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
@@ -116,6 +117,20 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
       setResults(data as unknown as PublishedResult[]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load published results.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadDiagnoses() {
+    setBusy(true);
+    setError("");
+    try {
+      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_parent_learning_diagnoses", {});
+      if (error) throw new Error("Could not load approved diagnoses.");
+      setDiagnoses(data as unknown as NonNullable<typeof diagnoses>);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load approved diagnoses.");
     } finally {
       setBusy(false);
     }
@@ -139,14 +154,12 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
-  async function downloadReport(assignmentId: string, diagnosisOnly = false) {
+  async function downloadReport(query: URLSearchParams, diagnosisOnly = false) {
     setBusy(true);
     setError("");
     try {
       const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
       if (!session) throw new Error("Sign in again to download your result.");
-      const query = new URLSearchParams({ assignment: assignmentId });
-      if (learnerId) query.set("learner", learnerId);
       if (diagnosisOnly) query.set("format", "diagnosis");
       const response = await fetch(`/api/learning/result/pdf?${query}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -167,6 +180,12 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
+  function downloadAssessment(assignmentId: string, diagnosisOnly = false) {
+    const query = new URLSearchParams({ assignment: assignmentId });
+    if (learnerId) query.set("learner", learnerId);
+    return downloadReport(query, diagnosisOnly);
+  }
+
   return (
     <section aria-label="Official results" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4">
       {error && <p role="alert" className="text-red-900">{error}</p>}
@@ -175,13 +194,13 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button type="button" disabled={busy} onClick={() => { setReport(null); setError(""); }}
               className="font-semibold text-emerald-900 underline">Back to results</button>
-            <button type="button" disabled={busy} onClick={() => void downloadReport(report.id)}
+            <button type="button" disabled={busy} onClick={() => void downloadAssessment(report.id)}
               className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
               {busy ? "Preparing PDF…" : "Download PDF"}
             </button>
           </div>
           {report.diagnosis && (
-            <button type="button" disabled={busy} onClick={() => void downloadReport(report.id, true)}
+            <button type="button" disabled={busy} onClick={() => void downloadAssessment(report.id, true)}
               className="rounded-lg border border-emerald-900 px-4 py-2 font-semibold text-emerald-900 disabled:opacity-60">
               Download diagnosis PDF
             </button>
@@ -194,6 +213,29 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
             className="font-semibold text-emerald-900 underline">
             {busy ? "Loading…" : results ? "Refresh published results" : "View published results"}
           </button>
+          {viewer === "parent" && (
+            <section aria-label="Approved learner diagnoses" className="space-y-3 border-t border-stone-200 pt-3">
+              <button type="button" disabled={busy} onClick={() => void loadDiagnoses()}
+                className="font-semibold text-emerald-900 underline">
+                {diagnoses ? "Refresh approved diagnoses" : "View approved diagnoses"}
+              </button>
+              {diagnoses?.length === 0 && <p>No approved diagnoses are available yet.</p>}
+              {diagnoses?.map((diagnosis) => (
+                <div key={diagnosis.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-stone-200 p-3">
+                  <div>
+                    <p className="font-semibold">{diagnosis.learner_name} · {diagnosis.title}</p>
+                    <p className="text-sm text-zinc-600">{[diagnosis.academic_session, diagnosis.term].filter(Boolean).join(" · ")}</p>
+                  </div>
+                  <button type="button" disabled={busy}
+                    aria-label={`Download diagnosis PDF for ${diagnosis.learner_name}: ${diagnosis.title}`}
+                    className="font-semibold text-emerald-900 underline"
+                    onClick={() => void downloadReport(new URLSearchParams({ diagnosis: diagnosis.id }), true)}>
+                    Download PDF
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
           {results?.length === 0 && <p>No official results have been published for you yet.</p>}
           {results?.map((result) => {
             const { total, maximum } = resultScores(result);

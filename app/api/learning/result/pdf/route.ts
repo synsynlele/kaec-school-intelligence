@@ -16,9 +16,10 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const assignmentId = params.get("assignment") ?? "";
   const learnerId = params.get("learner");
-  const diagnosisOnly = params.get("format") === "diagnosis";
+  const diagnosisId = params.get("diagnosis");
+  const diagnosisOnly = diagnosisId !== null || params.get("format") === "diagnosis";
   const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-  if (!uuid.test(assignmentId) || (learnerId !== null && !uuid.test(learnerId))) {
+  if (diagnosisId !== null ? !uuid.test(diagnosisId) : !uuid.test(assignmentId) || (learnerId !== null && !uuid.test(learnerId))) {
     return Response.json({ error: "Choose a published result." }, { status: 400 });
   }
 
@@ -27,15 +28,17 @@ export async function GET(request: Request) {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  const { data, error } = learnerId
-    ? await client.rpc("get_my_parent_learning_report", { assignment_id: assignmentId, target_learner: learnerId })
+  const { data, error } = diagnosisId
+    ? await client.rpc("get_my_parent_learning_diagnoses", { diagnosis_id: diagnosisId })
+    : learnerId ? await client.rpc("get_my_parent_learning_report", { assignment_id: assignmentId, target_learner: learnerId })
     : await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
-  if (error || !data) {
+  const payload = diagnosisId && Array.isArray(data) ? data[0] : data;
+  if (error || !payload) {
     return Response.json({ error: "Published result unavailable." }, { status: 404 });
   }
 
   try {
-    const report = pdfSafeValue(data as unknown as ResultReport);
+    const report = pdfSafeValue(payload as unknown as ResultReport);
     const bytes = diagnosisOnly ? createLearningDiagnosisPdf(report) : createLearningResultPdf(report);
     if (!bytes) return Response.json({ error: "Approved diagnosis unavailable." }, {
       status: 404, headers: { "Cache-Control": "private, no-store" },
