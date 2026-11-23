@@ -1,5 +1,7 @@
 "use client";
 
+import { parentLoginDomain, resolveParentLogin } from "@/lib/learning/school-login";
+
 import { useEffect, useState, type FormEvent } from "react";
 
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
@@ -48,8 +50,8 @@ export function ParentPortal() {
         return;
       }
 
-      if (!login.endsWith("@parents.ksi.name.ng")) throw new Error("Enter the full username issued by your school.");
-      const { error } = await client.auth.signInWithPassword({ email: login, password });
+      if (!resolveParentLogin(login).endsWith(`@${parentLoginDomain}`)) throw new Error("Enter the full username issued by your school.");
+      const { error } = await client.auth.signInWithPassword({ email: resolveParentLogin(login), password });
       if (error) throw new Error("The username or password was not accepted.");
       const status = await client.rpc("get_my_learning_parent_status");
       if (status.data === "active" && !status.error) {

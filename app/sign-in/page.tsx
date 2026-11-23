@@ -39,7 +39,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </div>
             ) : null}
             <AuthForm />
-            <Link href="/parent" className="mt-4 font-semibold text-emerald-900 underline">Parent sign-in</Link>
+            <nav aria-label="Learner and parent sign-in" className="mt-4 grid w-full max-w-xl gap-3 sm:grid-cols-2">
+              <Link href="/learner-sign-in" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-950">Learner sign-in</Link>
+              <Link href="/parent" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-950">Parent sign-in</Link>
+            </nav>
           </div>
         </div>
         <footer className="flex flex-wrap gap-5 border-t border-zinc-200 pt-5 text-xs font-medium text-zinc-600">

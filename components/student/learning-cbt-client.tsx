@@ -49,7 +49,7 @@ export function LearningCbtClient() {
         if (authError) throw new Error(authError.message);
         if (!active) return;
         if (!session) {
-          window.location.replace("/sign-in");
+          window.location.replace("/learner-sign-in");
           return;
         }
         const { data, error: failure } = await client.rpc("get_learning_cbts");

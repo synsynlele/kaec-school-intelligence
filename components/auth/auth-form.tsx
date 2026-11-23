@@ -83,8 +83,8 @@ function safePath(path: string) {
   return path.startsWith("/") && !path.startsWith("//") ? path : "/auth/resolve";
 }
 
-export function AuthForm() {
-  const [role, setRole] = useState<EntryRole | null>(null);
+export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
+  const [role, setRole] = useState<EntryRole | null>(learnerOnly ? "learner" : null);
   const [mode, setMode] = useState<Mode>("sign_in");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -157,14 +157,20 @@ export function AuthForm() {
       storeEntryIntent();
 
       if (mode === "sign_in") {
-        const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({
-          email: role === "learner" ? resolveLearnerLogin(email) : email.trim(),
-          password,
-        });
-        if (signInError) throw signInError;
-        if (signedIn.user?.email?.endsWith(`@${learnerLoginDomain}`) && signedIn.user.app_metadata.ksi_school_learner) {
+        const enteredEmail = email.trim();
+        const loginEmail = role === "learner" ? resolveLearnerLogin(enteredEmail) : enteredEmail;
+        let signIn = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+        if (role === "learner" && signIn.error?.code === "invalid_credentials" &&
+          enteredEmail.includes("@") && enteredEmail !== loginEmail) {
+          signIn = await supabase.auth.signInWithPassword({ email: enteredEmail, password });
+        }
+        if (signIn.error) throw signIn.error;
+        const signedIn = signIn.data;
+        const schoolLearnerId = signedIn.user?.app_metadata.ksi_school_learner;
+        if (signedIn.user?.email?.endsWith(`@${learnerLoginDomain}`) && typeof schoolLearnerId === "string") {
           const { data: account, error: accountError } = await supabase.from("student_accounts")
-            .select("password_change_pending,active").eq("user_id", signedIn.user.id).maybeSingle();
+            .select("password_change_pending,active").eq("user_id", signedIn.user.id)
+            .eq("student_id", schoolLearnerId).maybeSingle();
           if (accountError || !account?.active || account.password_change_pending) {
             await supabase.auth.signOut({ scope: "local" });
             if (account?.password_change_pending) {
@@ -301,13 +307,13 @@ export function AuthForm() {
     <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Enter KSI</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">Choose your workspace</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">{learnerOnly ? "Learner sign-in" : "Choose your workspace"}</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          Choose your role to get started. Your school controls access to its workspace and assessments.
+          {learnerOnly ? "Use the username and password issued by your school." : "Choose your role to get started. Your school controls access to its workspace and assessments."}
         </p>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+      {!learnerOnly && <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {(Object.keys(ROLE_CONFIG) as EntryRole[]).map((entryRole) => {
           const config = ROLE_CONFIG[entryRole];
           const selected = role === entryRole;
@@ -328,7 +334,7 @@ export function AuthForm() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {roleConfig ? (
         <div className="mt-7 border-t border-zinc-200 pt-7">
