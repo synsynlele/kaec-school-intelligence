@@ -121,12 +121,12 @@ export function LearningTermReports({ schoolId, classes }: { schoolId: string; c
             <fieldset disabled={busy} className="space-y-2">
               <legend className="mb-2 text-sm">Select the assessments to include.</legend>
               {report.assessments.map((item) => {
-                const { total, maximum } = resultScores(item);
+                const { summary } = resultScores(item);
                 return <label key={item.id} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
                   <input type="checkbox" checked={selection.includes(item.id)}
                     onChange={(event) => setSelection(event.target.checked ? [...selection, item.id] : selection.filter((id) => id !== item.id))} />
                   <span className="flex-1">{[item.subject, item.title].filter(Boolean).join(" · ")}</span>
-                  <span>{total} / {maximum}</span>
+                  <span>{summary}</span>
                 </label>;
               })}
               <button type="button" disabled={selection.length === 0} onClick={() => void publish()}

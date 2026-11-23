@@ -57,7 +57,7 @@ function DiagnosisTables({ diagnosis }: { diagnosis: ReportDiagnosis }) {
 }
 
 function ReportCard({ report }: { report: ResultReport }) {
-  const { rows, total, maximum } = resultScores(report);
+  const { rows, summary } = resultScores(report);
   const logo = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(report.school_logo ?? "") ? report.school_logo : null;
   const photo = /^[A-Za-z0-9+/]+={0,2}$/.test(report.passport_photo ?? "") ? report.passport_photo : null;
   return (
@@ -86,10 +86,10 @@ function ReportCard({ report }: { report: ResultReport }) {
       <table className="w-full overflow-hidden rounded-lg text-left text-sm">
         <caption className="sr-only">Official scores</caption>
         <thead className="bg-emerald-900 text-white"><tr><th scope="col" className="p-3">Assessment component</th><th scope="col" className="p-3 text-right">Score</th></tr></thead>
-        <tbody>{rows.map(({ label, score, maximum }) => (
-          <tr key={label} className="border-b border-stone-200"><th scope="row" className="p-3 font-medium">{label}</th><td className="p-3 text-right">{score} / {maximum}</td></tr>
+        <tbody>{rows.map(({ label, score, maximum, excused }) => (
+          <tr key={label} className="border-b border-stone-200"><th scope="row" className="p-3 font-medium">{label}</th><td className="p-3 text-right">{excused ? "Excused" : score == null ? "Pending" : `${score} / ${maximum}`}</td></tr>
         ))}</tbody>
-        <tfoot className="bg-emerald-50 font-bold text-emerald-950"><tr><th scope="row" className="p-3">Total</th><td className="p-3 text-right">{total} / {maximum}</td></tr></tfoot>
+        <tfoot className="bg-emerald-50 font-bold text-emerald-950"><tr><th scope="row" className="p-3">Total</th><td className="p-3 text-right">{summary}</td></tr></tfoot>
       </table>
       {report.administrative_comment && <div className="rounded-lg bg-stone-100 p-3">
         <h3 className="font-semibold">Administrative comment</h3>
@@ -273,12 +273,12 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
           )}
           {results?.length === 0 && <p>No official results have been published for you yet.</p>}
           {results?.map((result) => {
-            const { total, maximum } = resultScores(result);
+            const { summary } = resultScores(result);
             return (
               <button key={`${result.id}:${result.learner_id ?? ""}`} type="button" disabled={busy} onClick={() => void openReport(result.id, result.learner_id)}
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200 p-3 text-left">
                 <span className="font-semibold">{result.title}{result.learner_name && <small className="block font-normal">{result.learner_name}</small>}</span>
-                <span className="shrink-0 text-emerald-900">{total} / {maximum}</span>
+                <span className="shrink-0 text-emerald-900">{summary}</span>
               </button>
             );
           })}

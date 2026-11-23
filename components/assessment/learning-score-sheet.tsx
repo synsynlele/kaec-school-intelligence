@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
+import { resultScores } from "@/lib/learning/result-report";
+
 const paperSections = [
   { key: "subjective", label: "Subjective" },
   { key: "critical_thinking", label: "Critical Thinking" },
@@ -11,6 +13,7 @@ const paperSections = [
 ] as const;
 
 type PaperSection = (typeof paperSections)[number]["key"];
+type Section = PaperSection | "objective";
 type PaperScores = Record<PaperSection, number | null>;
 type ScoreRow = PaperScores & {
   id: string;
@@ -18,6 +21,7 @@ type ScoreRow = PaperScores & {
   objective: number | null;
   revision: number;
   editable: boolean;
+  excused?: Section[];
 };
 type ItemInsight = { position: number; prompt: string; submitted: number; correct: number; blank: number };
 type ScoreSheet = {
@@ -35,7 +39,7 @@ type ScoreSheet = {
 };
 
 function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }: {
-  onSaved: (id: string, scores: PaperScores, revision: number) => void;
+  onSaved: (id: string, scores: PaperScores, revision: number, excused: Section[]) => void;
   onDirty: (id: string, dirty: boolean) => void;
   assessmentId: string;
   row: ScoreRow;
@@ -47,16 +51,30 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
     critical_thinking: row.critical_thinking,
     project: row.project,
   });
+  const [excused, setExcused] = useState<Section[]>(row.excused ?? []);
   const [revision, setRevision] = useState(row.revision);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const sections = paperSections.filter(({ key }) => maxima[key] > 0);
-  const complete = (maxima.objective === 0 || row.objective !== null) && sections.every(({ key }) => scores[key] !== null);
-  const total = complete
-    ? sections.reduce((sum, { key }) => sum + (scores[key] ?? 0), row.objective ?? 0)
-    : null;
+  const { summary } = resultScores({ maxima, scores: { ...scores, objective: row.objective, excused } });
+  function excuseControl(key: Section, label: string) {
+    if (!writable || !row.editable || maxima[key] <= 0) return null;
+    return (
+      <label className="mt-1 flex items-center gap-1 text-xs text-zinc-700">
+        <input type="checkbox" checked={excused.includes(key)} disabled={busy}
+          aria-label={`Excuse ${label} for ${row.name}`}
+          onChange={(event) => {
+            setExcused(event.target.checked ? [...excused, key] : excused.filter((section) => section !== key));
+            setDirty(true);
+            onDirty(row.id, true);
+            setMessage("");
+          }} />
+        Excused
+      </label>
+    );
+  }
   const valid = sections.every(({ key }) => {
     const score = scores[key];
     return score === null || (Number.isFinite(score) && score >= 0 && score <= maxima[key]);
@@ -66,17 +84,18 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
     setBusy(true);
     setMessage("");
     try {
-      const { data, error } = await getBrowserSupabaseClient().rpc("save_learning_paper_scores", {
+      const { data, error } = await getBrowserSupabaseClient().rpc("save_learning_marks", {
         source_id: assessmentId,
         learner_id: row.id,
         expected_revision: revision,
         subjective_score: scores.subjective,
         critical_thinking_score: scores.critical_thinking,
         project_score: scores.project,
+        excused_sections: excused,
       });
       if (error) throw new Error(error.message);
       setRevision(data);
-      onSaved(row.id, scores, data);
+      onSaved(row.id, scores, data, excused);
       setDirty(false);
       onDirty(row.id, false);
       setMessage("Saved");
@@ -90,7 +109,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
   return (
     <>
       <th scope="row" className="col-span-2 px-3 pb-1 pt-3 text-left font-semibold sm:py-3">{row.name}</th>
-      <td className="min-w-0 px-3 py-2 sm:py-3"><span className="block text-xs text-zinc-600 sm:hidden">CBT / {maxima.objective}</span>{maxima.objective === 0 ? "—" : row.objective ?? "Pending"}</td>
+      <td className="min-w-0 px-3 py-2 sm:py-3"><span className="block text-xs text-zinc-600 sm:hidden">CBT / {maxima.objective}</span>{maxima.objective === 0 ? "—" : excused.includes("objective") ? "Excused" : row.objective ?? "Pending"}{excuseControl("objective", "CBT")}</td>
       {paperSections.map(({ key, label }) => (
         <td key={key} className={maxima[key] === 0 ? "hidden px-3 py-3 sm:table-cell" : "min-w-0 px-3 py-2 sm:py-3"}>
           <span className="mb-1 block text-xs text-zinc-600 sm:hidden">{label} / {maxima[key]}</span>
@@ -119,7 +138,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
               max={maxima[key]}
               step="any"
               value={scores[key] ?? ""}
-              disabled={busy}
+              disabled={busy || excused.includes(key)}
               onChange={(event) => {
                 const input = event.currentTarget;
                 setScores((previous) => ({ ...previous, [key]: input.value === "" ? null : input.valueAsNumber }));
@@ -128,12 +147,13 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
                 setMessage("");
               }}
             />
-          ) : scores[key] ?? "Pending"}
+          ) : excused.includes(key) ? "Excused" : scores[key] ?? "Pending"}
+          {excuseControl(key, label)}
         </td>
       ))}
-      <td className="px-3 py-2 font-semibold sm:py-3"><span className="block text-xs font-normal text-zinc-600 sm:hidden">Total</span>{valid ? total ?? "Pending" : "—"}</td>
+      <td className="px-3 py-2 font-semibold sm:py-3"><span className="block text-xs font-normal text-zinc-600 sm:hidden">Total</span>{valid ? summary : "—"}</td>
       {writable && <td className="px-3 py-3">
-        {row.editable && sections.length > 0 && (
+        {row.editable && (sections.length > 0 || maxima.objective > 0) && (
           <button
             type="button"
             onClick={() => void save()}
@@ -291,9 +311,10 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
   const totalMaximum = maxima.objective + paperSections.reduce((sum, { key }) => sum + maxima[key], 0);
 
   const currentLearners = sheet.roster.filter((row) => row.editable);
-  const submitted = currentLearners.filter((row) => row.objective !== null);
+  const expectedCbt = currentLearners.filter((row) => !row.excused?.includes("objective"));
+  const submitted = expectedCbt.filter((row) => row.objective !== null);
   const missingPaper = currentLearners.filter((row) =>
-    paperSections.some(({ key }) => maxima[key] > 0 && row[key] === null));
+    paperSections.some(({ key }) => maxima[key] > 0 && row[key] === null && !row.excused?.includes(key)));
   const average = submitted.length && maxima.objective > 0
     ? Math.round(submitted.reduce((total, row) => total + (row.objective ?? 0), 0)
       / (submitted.length * maxima.objective) * 100)
@@ -308,8 +329,8 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
         <h3 className="font-semibold">Assessment insights</h3>
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {([
-            ["CBT submitted", `${submitted.length} / ${currentLearners.length}`],
-            ["CBT pending", currentLearners.length - submitted.length],
+            ["CBT submitted", `${submitted.length} / ${expectedCbt.length}`],
+            ["CBT pending", expectedCbt.length - submitted.length],
             ["Average CBT score", average === null ? "—" : `${average}%`],
             ["Paper marks pending", missingPaper.length],
           ] as const).map(([label, value]) => (
@@ -403,9 +424,9 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
               {sheet.roster.map((row) => (
                 <tr key={row.id} role="row" className="grid grid-cols-2 border-b border-zinc-200 pb-2 align-top last:border-b-0 sm:table-row sm:border-b-0 sm:border-t sm:pb-0">
                   <LearnerScores row={row} maxima={maxima} writable={sheet.writable && !reviewBusy} assessmentId={assessmentId} onDirty={trackDirty}
-                    onSaved={(id, scores, revision) => setSheet((previous) => previous && ({
+                    onSaved={(id, scores, revision, excused) => setSheet((previous) => previous && ({
                       ...previous,
-                      roster: previous.roster.map((learner) => learner.id === id ? { ...learner, ...scores, revision } : learner),
+                      roster: previous.roster.map((learner) => learner.id === id ? { ...learner, ...scores, revision, excused } : learner),
                     }))} />
                 </tr>
               ))}

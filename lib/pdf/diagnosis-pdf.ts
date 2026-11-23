@@ -657,7 +657,7 @@ export function createLearningDiagnosisPdf(report: DiagnosisReport) {
 export function createLearningResultPdf(report: ResultReport) {
   const branding = resolvePdfBranding(report.school_logo);
   const logoInput = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
-  const { rows, total, maximum } = resultScores(report);
+  const { rows, summary } = resultScores(report);
   const cover: string[] = [];
   const left = 48;
   const width = PAGE_WIDTH - left * 2;
@@ -689,12 +689,12 @@ export function createLearningResultPdf(report: ResultReport) {
   for (const row of rows) {
     rectTop(cover, left, top, width, 26, null);
     textAtTop(cover, row.label, left + 12, top + 8, 10);
-    textAtTop(cover, `${row.score} / ${row.maximum}`, left + width - 110, top + 8, 10);
+    textAtTop(cover, row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score} / ${row.maximum}`, left + width - 110, top + 8, 10);
     top += 26;
   }
   rectTop(cover, left, top, width, 30, CREAM);
   textAtTop(cover, "Total", left + 12, top + 9, 11, true, FOREST);
-  textAtTop(cover, `${total} / ${maximum}`, left + width - 110, top + 9, 11, true, FOREST);
+  textAtTop(cover, summary, left + width - 110, top + 9, 11, true, FOREST);
   if (report.administrative_comment) {
     top += write("Administrative comment", top + 46, 11, true) + 46;
     write(report.administrative_comment, top + 4, 10);
@@ -723,10 +723,10 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
       textAtTop(page, "Published marks", 430, 157, 10, true, CREAM);
       report.assessments.slice(offset, offset + 15).forEach((assessment, index) => {
         const top = 185 + index * 35;
-        const { total, maximum } = resultScores(assessment);
+        const { summary } = resultScores(assessment);
         textAtTop(page, assessment.subject ?? "General", 58, top, 9, true);
         textAtTop(page, assessment.title.length > 65 ? assessment.title.slice(0, 62) + "…" : assessment.title, 58, top + 13, 9);
-        textAtTop(page, `${total} / ${maximum}`, 430, top + 6, 10);
+        textAtTop(page, summary, 430, top + 6, 10);
       });
       output.push(page);
     }

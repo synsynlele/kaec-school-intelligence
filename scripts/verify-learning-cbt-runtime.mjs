@@ -422,5 +422,25 @@ await db.exec(`set app.uid = '${id(17)}'`);
 await db.query("select publish_learning_result_with_comments($1,1,'{}')", [manualProject]);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await publishedResults()).find(row => row.title === 'Build a model').scores.project, 0);
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123110000_learning_excused_marks.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const excusedProject = await createProject();
+const saveExcused = (revision, keys) => scalar(
+  'select save_learning_marks($1,$2,$3,null,null,null,$4) as value', [excusedProject, id(6), revision, keys],
+);
+const submitExcused = () => db.query("select change_learning_result_review($1,0,'submitted',null)", [excusedProject]);
+await assert.rejects(submitExcused(), /Save all required marks/);
+await assert.rejects(saveExcused(0, ['objective']), /applicable sections/);
+assert.equal(await saveExcused(0, ['project']), 1);
+await assert.rejects(saveExcused(0, []), /Scores changed/);
+assert.deepEqual((await readScoreSheet(excusedProject)).roster[0].excused, ['project']);
+await submitExcused();
+await assert.rejects(saveExcused(1, []), /locked/);
+await db.exec(`set app.uid = '${id(17)}'`);
+await db.query("select publish_learning_result_with_comments($1,1,'{}')", [excusedProject]);
+await db.exec(`set app.uid = '${id(2)}'`);
+const reportWithExcusal = (await publishedResults()).find(row => row.scores.excused?.includes('project'));
+assert.equal(reportWithExcusal.scores.project, null);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');

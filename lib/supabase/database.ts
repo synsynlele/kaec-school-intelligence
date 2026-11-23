@@ -171,6 +171,14 @@ type FinalStageFunctions = Omit<
     };
     Returns: string;
   };
+  save_learning_marks: {
+    Args: {
+      source_id: string; learner_id: string; expected_revision: number;
+      subjective_score: number | null; critical_thinking_score: number | null; project_score: number | null;
+      excused_sections: string[];
+    };
+    Returns: number;
+  };
   open_learning_score_sheet: { Args: { source_id: string }; Returns: string };
   get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
   get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };
