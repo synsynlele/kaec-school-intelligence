@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+
 import { parentLoginDomain, resolveParentLogin } from "@/lib/learning/school-login";
 
 import { useEffect, useState, type FormEvent } from "react";
 
+import { LearningPortalHeader } from "@/components/student/learning-portal-header";
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -70,44 +73,48 @@ export function ParentPortal() {
   }
 
   if (active) return (
-    <div className="space-y-4">
-      <button type="button" className="font-semibold text-emerald-900 underline" onClick={async () => {
+    <main className="mx-auto min-h-screen max-w-5xl space-y-6 bg-slate-50 px-4 py-6 sm:px-8">
+      <LearningPortalHeader viewer="parent" onSignOut={async () => {
         await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
         setActive(false);
-      }}>Sign out</button>
+      }} />
       <LearningPublishedResults viewer="parent" />
-    </div>
+    </main>
   );
 
   return (
-    <form onSubmit={submit} className="max-w-md space-y-4 rounded-xl border border-stone-200 bg-white p-4">
-      <p className="text-sm">Use the username and password issued by your school.</p>
-      {error && <p role="alert" className="text-red-900">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      <label className="block font-medium">School-issued username
-        <input required type="email" autoComplete="username" value={username} readOnly={temporary}
-          onChange={(e) => setUsername(e.target.value)} className="block w-full rounded border p-2" />
-      </label>
-      {temporary ? (
-        <label className="block font-medium">Choose a new password
-          <input required type="password" autoComplete="new-password" minLength={12} maxLength={72}
-            value={replacement} onChange={(e) => setReplacement(e.target.value)} className="block w-full rounded border p-2" />
+    <main className="mx-auto max-w-lg space-y-5 px-4 py-8 sm:px-8">
+      <Link href="/sign-in" className="text-sm font-semibold text-emerald-900 underline">Back to KSI sign-in</Link>
+      <h1 className="text-3xl font-bold tracking-tight">Parent sign-in</h1>
+      <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        <p className="text-sm">Use the username and password issued by your school.</p>
+        {error && <p role="alert" className="text-red-900">{error}</p>}
+        {message && <p role="status">{message}</p>}
+        <label className="block font-medium">School-issued username
+          <input required type="email" autoComplete="username" value={username} readOnly={temporary}
+            onChange={(e) => setUsername(e.target.value)} className="block w-full rounded border p-2" />
         </label>
-      ) : (
-        <label className="block font-medium">Password
-          <input required type="password" autoComplete="current-password" value={password}
-            onChange={(e) => setPassword(e.target.value)} className="block w-full rounded border p-2" />
-        </label>
-      )}
-      <button type="submit" disabled={busy} className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
-        {busy ? "Please wait…" : temporary ? "Set new password" : "Sign in"}
-      </button>
-      {temporary && <button type="button" disabled={busy} className="ml-3 underline" onClick={() => {
-        setTemporary(false);
-        setPassword("");
-        setReplacement("");
-        setError("");
-      }}>Use a different login</button>}
-    </form>
+        {temporary ? (
+          <label className="block font-medium">Choose a new password
+            <input required type="password" autoComplete="new-password" minLength={12} maxLength={72}
+              value={replacement} onChange={(e) => setReplacement(e.target.value)} className="block w-full rounded border p-2" />
+          </label>
+        ) : (
+          <label className="block font-medium">Password
+            <input required type="password" autoComplete="current-password" value={password}
+              onChange={(e) => setPassword(e.target.value)} className="block w-full rounded border p-2" />
+          </label>
+        )}
+        <button type="submit" disabled={busy} className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {busy ? "Please wait…" : temporary ? "Set new password" : "Sign in"}
+        </button>
+        {temporary && <button type="button" disabled={busy} className="ml-3 underline" onClick={() => {
+          setTemporary(false);
+          setPassword("");
+          setReplacement("");
+          setError("");
+        }}>Use a different login</button>}
+      </form>
+    </main>
   );
 }

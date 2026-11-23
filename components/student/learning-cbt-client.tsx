@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { LearningPortalHeader } from "@/components/student/learning-portal-header";
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -33,6 +34,9 @@ type Cbt = {
 };
 
 export function LearningCbtClient() {
+  const focusAssessmentHeading = useCallback((heading: HTMLHeadingElement | null) => {
+    heading?.focus();
+  }, []);
   const [list, setList] = useState<Cbt[]>([]);
   const [current, setCurrent] = useState<Cbt | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -109,21 +113,46 @@ export function LearningCbtClient() {
   }
 
   const button = "rounded-xl bg-emerald-900 px-4 py-3 font-semibold text-white disabled:opacity-60";
+  const available = list.filter((item) => item.availability === "open" && !item.feedback).length;
+  const submitted = list.filter((item) => item.feedback !== null).length;
   return (
-    <main className="mx-auto max-w-3xl space-y-5 px-5 py-8 text-zinc-950">
-      <h1 className="text-3xl font-bold">{current?.title ?? "My assessments"}</h1>
+    <main className="mx-auto min-h-screen max-w-5xl space-y-6 bg-slate-50 px-4 py-6 text-slate-950 sm:px-8">
+      {!current && <LearningPortalHeader viewer="learner" onSignOut={async () => {
+        await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
+        window.location.replace("/learner-sign-in");
+      }} />}
+      {current && <h1 tabIndex={-1} ref={focusAssessmentHeading} className="text-3xl font-bold tracking-tight">{current.title}</h1>}
       {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-900">{error}</p>}
       {needsCode && <Link className={button} href="/learning/join">Enter your school access code</Link>}
-      {busy && <p role="status">Please wait…</p>}
-      {!current && !busy && !needsCode && !error && list.length === 0 && <p>No assessments assigned yet.</p>}
-      {!current && !busy && !needsCode && !error && <LearningPublishedResults />}
-      {!current && list.map((item) => (
-        <button key={item.id} disabled={busy} onClick={() => void open(item.id)}
-          className="flex w-full justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-left">
-          <span className="font-semibold">{item.title}</span>
-          <span className="text-emerald-900">{item.feedback ? "View feedback" : item.availability === "scheduled" ? "Scheduled" : item.availability === "closed" ? "Closed" : "Open CBT"}</span>
-        </button>
-      ))}
+      {busy && <p role="status" className="text-sm font-medium text-slate-600">Loading…</p>}
+      {!current && !needsCode && (!busy || list.length > 0) && (!error || list.length > 0) && (
+        <>
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-indigo-100 bg-white p-4 sm:p-5">
+              <dt className="text-sm font-semibold text-slate-600">Open to take</dt>
+              <dd className="mt-1 text-3xl font-bold text-indigo-900">{available}</dd>
+            </div>
+            <div className="rounded-2xl border border-indigo-100 bg-white p-4 sm:p-5">
+              <dt className="text-sm font-semibold text-slate-600">Submitted</dt>
+              <dd className="mt-1 text-3xl font-bold text-indigo-900">{submitted}</dd>
+            </div>
+          </dl>
+          <section id="assessments" className="scroll-mt-5 space-y-3 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
+            <h2 className="text-xl font-bold tracking-tight">Assessments</h2>
+            {list.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">No assessments assigned yet.</p>}
+            {list.map((item) => (
+              <button key={item.id} disabled={busy} onClick={() => void open(item.id)}
+                className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-4 text-left hover:bg-indigo-50 disabled:opacity-60">
+                <span className="min-w-0 break-words font-semibold">{item.title}</span>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-950">
+                  {item.feedback ? "View feedback" : item.availability === "scheduled" ? "Scheduled" : item.availability === "closed" ? "Closed" : "Open assessment"}
+                </span>
+              </button>
+            ))}
+          </section>
+          <LearningPublishedResults />
+        </>
+      )}
       {current && <button type="button" disabled={busy} onClick={() => {
         if (Object.keys(answers).length > 0 && !window.confirm("Leave this assessment? Your unsubmitted answers will be cleared.")) return;
         setCurrent(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FiActivity, FiClipboard, FiFileText } from "react-icons/fi";
 
 import { resultScores, termReportTitle, type TermReport, type PublishedResult, type ReportDiagnosis, type ResultReport } from "@/lib/learning/result-report";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -101,6 +102,7 @@ function ReportCard({ report }: { report: ResultReport }) {
 }
 
 export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "learner" | "parent" }) {
+  const [category, setCategory] = useState<"results" | "diagnoses" | "reports">("results");
   const [results, setResults] = useState<PublishedResult[] | null>(null);
   const [diagnoses, setDiagnoses] = useState<Pick<ResultReport, "id" | "title" | "learner_name" | "term" | "academic_session">[] | null>(null);
   const [termReports, setTermReports] = useState<TermReport[] | null>(null);
@@ -202,7 +204,10 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
   }
 
   return (
-    <section aria-label="Official results" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4">
+    <section id="published-results" aria-labelledby="published-results-heading" className="scroll-mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
+      <h2 id="published-results-heading" className="text-xl font-bold tracking-tight text-slate-950">
+        {viewer === "parent" ? "Reports and results" : "Published results"}
+      </h2>
       {error && <p role="alert" className="text-red-900">{error}</p>}
       {report ? (
         <>
@@ -224,16 +229,32 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
         </>
       ) : (
         <>
-          <button type="button" disabled={busy} onClick={() => void loadResults()}
-            className="font-semibold text-emerald-900 underline">
-            {busy ? "Loading…" : results ? "Refresh published results" : "View published results"}
-          </button>
           {viewer === "parent" && (
-            <section aria-label="Approved learner diagnoses" className="space-y-3 border-t border-stone-200 pt-3">
-              <button type="button" disabled={busy} onClick={() => void loadDiagnoses()}
-                className="font-semibold text-emerald-900 underline">
-                {diagnoses ? "Refresh approved diagnoses" : "View approved diagnoses"}
-              </button>
+            <div role="group" aria-label="Report category" className="grid gap-2 sm:grid-cols-3">
+              {([
+                { id: "results", label: "Assessment results", icon: FiClipboard, loaded: results !== null, load: loadResults },
+                { id: "reports", label: "Term reports", icon: FiFileText, loaded: termReports !== null, load: loadTermReports },
+                { id: "diagnoses", label: "Approved diagnoses", icon: FiActivity, loaded: diagnoses !== null, load: loadDiagnoses },
+              ] as const).map(({ id, label, icon: Icon, loaded, load }) => (
+                <button key={id} type="button" aria-pressed={category === id} disabled={busy}
+                  onClick={() => { setCategory(id); setError(""); if (!loaded || category === id) void load(); }}
+                  className={`inline-flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold disabled:opacity-60 ${category === id ? "border-teal-800 bg-teal-50 text-teal-950" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
+                  <Icon aria-hidden="true" className="shrink-0" /> {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {category === "results" && viewer === "learner" && (
+            <button type="button" disabled={busy} onClick={() => void loadResults()}
+              className="rounded-xl bg-indigo-900 px-4 py-2.5 font-semibold text-white disabled:opacity-60">
+              {busy ? "Loading…" : results ? "Refresh results" : "View published results"}
+            </button>
+          )}
+          {viewer === "parent" && category === "results" && !results && !busy && !error &&
+            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Select a category to load your learners’ published records.</p>}
+          {viewer === "parent" && busy && <p role="status" className="text-sm text-slate-600">Working…</p>}
+          {viewer === "parent" && category === "diagnoses" && (
+            <section aria-label="Approved learner diagnoses" className="space-y-3">
               {diagnoses?.length === 0 && <p>No approved diagnoses are available yet.</p>}
               {diagnoses?.map((diagnosis) => (
                 <div key={diagnosis.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-stone-200 p-3">
@@ -251,11 +272,8 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
               ))}
             </section>
           )}
-          {viewer === "parent" && (
-            <section aria-label="Term reports" className="space-y-3 border-t border-stone-200 pt-3">
-              <button type="button" disabled={busy} onClick={() => void loadTermReports()} className="font-semibold text-emerald-900 underline">
-                {termReports ? "Refresh term reports" : "View term reports"}
-              </button>
+          {viewer === "parent" && category === "reports" && (
+            <section aria-label="Term reports" className="space-y-3">
               {termReports?.length === 0 && <p>No term reports have been published yet.</p>}
               {termReports?.map((item) => (
                 <div key={item.id} className="space-y-2 rounded-lg border border-stone-200 p-3">
@@ -271,14 +289,14 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
               ))}
             </section>
           )}
-          {results?.length === 0 && <p>No official results have been published for you yet.</p>}
-          {results?.map((result) => {
+          {category === "results" && results?.length === 0 && <p>No official results have been published for you yet.</p>}
+          {category === "results" && results?.map((result) => {
             const { summary } = resultScores(result);
             return (
               <button key={`${result.id}:${result.learner_id ?? ""}`} type="button" disabled={busy} onClick={() => void openReport(result.id, result.learner_id)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200 p-3 text-left">
+                className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
                 <span className="font-semibold">{result.title}{result.learner_name && <small className="block font-normal">{result.learner_name}</small>}</span>
-                <span className="shrink-0 text-emerald-900">{summary}</span>
+                <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-950">{summary}</span>
               </button>
             );
           })}
