@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "@/lib/env";
 import type { ResultReport } from "@/lib/learning/result-report";
-import { createLearningResultPdf } from "@/lib/pdf/diagnosis-pdf";
+import { createLearningDiagnosisPdf, createLearningResultPdf } from "@/lib/pdf/diagnosis-pdf";
 import { pdfSafeValue } from "@/lib/pdf/layout-safety";
 import type { Database } from "@/lib/supabase/database";
 
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const assignmentId = params.get("assignment") ?? "";
   const learnerId = params.get("learner");
+  const diagnosisOnly = params.get("format") === "diagnosis";
   const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
   if (!uuid.test(assignmentId) || (learnerId !== null && !uuid.test(learnerId))) {
     return Response.json({ error: "Choose a published result." }, { status: 400 });
@@ -34,12 +35,16 @@ export async function GET(request: Request) {
   }
 
   try {
-    const report = data as unknown as ResultReport;
-    const bytes = createLearningResultPdf(pdfSafeValue(report));
+    const report = pdfSafeValue(data as unknown as ResultReport);
+    const bytes = diagnosisOnly ? createLearningDiagnosisPdf(report) : createLearningResultPdf(report);
+    if (!bytes) return Response.json({ error: "Approved diagnosis unavailable." }, {
+      status: 404, headers: { "Cache-Control": "private, no-store" },
+    });
+    const filename = diagnosisOnly ? "ksi-learner-diagnosis.pdf" : "ksi-assessment-result.pdf";
     return new Response(bytes as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="ksi-assessment-result.pdf"',
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-store",
       },
     });

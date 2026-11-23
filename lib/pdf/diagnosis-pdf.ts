@@ -622,6 +622,35 @@ export function createDiagnosisPdf(input: DiagnosisPdfInput) {
   return serializePdf(buildPdfObjects(pages, input));
 }
 
+function approvedReportDiagnosis(
+  report: ResultReport,
+  branding: Pick<DiagnosisPdfInput, "brandLogoJpegBase64" | "hasSchoolLogo">,
+): DiagnosisLayoutInput | null {
+  if (!report.diagnosis || !report.diagnosis_reviewed_at || !report.diagnosis_finalised_at
+    || !report.academic_session || !report.term) return null;
+
+  return {
+    ...branding,
+    workspaceName: report.school_name,
+    studentName: report.learner_name,
+    className: report.class_name ?? "",
+    academicSession: report.academic_session,
+    term: report.term,
+    diagnosisMode: report.diagnosis_mode ?? "",
+    assessmentTitle: report.title,
+    diagnosis: report.diagnosis,
+    reviewedAt: report.diagnosis_reviewed_at,
+    finalisedAt: report.diagnosis_finalised_at,
+  };
+}
+
+export function createLearningDiagnosisPdf(report: ResultReport) {
+  const branding = resolvePdfBranding(report.school_logo);
+  const logoInput = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
+  const diagnosis = approvedReportDiagnosis(report, logoInput);
+  return diagnosis ? serializePdf(buildPdfObjects(new FlowPage(diagnosis).build(), logoInput)) : null;
+}
+
 export function createLearningResultPdf(report: ResultReport) {
   const branding = resolvePdfBranding(report.school_logo);
   const logoInput = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
@@ -668,21 +697,8 @@ export function createLearningResultPdf(report: ResultReport) {
     write(report.administrative_comment, top + 4, 10);
   }
 
-  const diagnosisPages = report.diagnosis && report.diagnosis_reviewed_at && report.diagnosis_finalised_at
-    ? new FlowPage({
-      ...logoInput,
-      workspaceName: report.school_name,
-      studentName: report.learner_name,
-      className: report.class_name ?? "",
-      academicSession: report.academic_session ?? "",
-      term: report.term ?? "",
-      diagnosisMode: report.diagnosis_mode ?? "",
-      assessmentTitle: report.title,
-      diagnosis: report.diagnosis,
-      reviewedAt: report.diagnosis_reviewed_at,
-      finalisedAt: report.diagnosis_finalised_at,
-    }).build()
-    : [];
+  const diagnosis = approvedReportDiagnosis(report, logoInput);
+  const diagnosisPages = diagnosis ? new FlowPage(diagnosis).build() : [];
 
   return serializePdf(buildPdfObjects([cover, ...diagnosisPages], logoInput, "Assessment result", photo));
 }

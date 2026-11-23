@@ -139,7 +139,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
-  async function downloadReport(assignmentId: string) {
+  async function downloadReport(assignmentId: string, diagnosisOnly = false) {
     setBusy(true);
     setError("");
     try {
@@ -147,6 +147,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
       if (!session) throw new Error("Sign in again to download your result.");
       const query = new URLSearchParams({ assignment: assignmentId });
       if (learnerId) query.set("learner", learnerId);
+      if (diagnosisOnly) query.set("format", "diagnosis");
       const response = await fetch(`/api/learning/result/pdf?${query}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -154,7 +155,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = "ksi-assessment-result.pdf";
+      link.download = diagnosisOnly ? "ksi-learner-diagnosis.pdf" : "ksi-assessment-result.pdf";
       document.body.append(link);
       link.click();
       link.remove();
@@ -179,6 +180,12 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
               {busy ? "Preparing PDF…" : "Download PDF"}
             </button>
           </div>
+          {report.diagnosis && (
+            <button type="button" disabled={busy} onClick={() => void downloadReport(report.id, true)}
+              className="rounded-lg border border-emerald-900 px-4 py-2 font-semibold text-emerald-900 disabled:opacity-60">
+              Download diagnosis PDF
+            </button>
+          )}
           <ReportCard report={report} />
         </>
       ) : (
