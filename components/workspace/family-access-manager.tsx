@@ -216,20 +216,20 @@ export function FamilyAccessManager() {
           <button type="button" onClick={() => setCredentials(null)} className="font-semibold underline">Hide credentials</button>
         </section>
       )}
-      <section className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Parent accounts</h2>
+      <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
+        <h2 className="text-lg font-bold text-zinc-950">Parent accounts</h2>
         {setup.parents.length === 0 && <p>No school-issued parent accounts yet.</p>}
         <label className="block text-sm font-semibold">Search parents
           <input type="search" value={parentSearch} onChange={(event) => setParentSearch(event.target.value)}
-            placeholder="Parent name, username or learner" className="mt-1 block w-full rounded-lg border border-zinc-300 p-2 font-normal" />
+            placeholder="Name, username or learner" className="mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 px-3 py-2 font-normal" />
         </label>
         {setup.parents.length > 0 && visibleParents.length === 0 && <p>No parents match your search.</p>}
         {visibleParents.map((parent) => (
-          <div key={parent.id} className="border-t py-3">
+          <div key={parent.id} className="border-t border-zinc-200 py-3">
             <p className="font-semibold">{parent.name}</p>
             <p className="text-sm text-zinc-600">{parent.status} · {parent.learners.length} linked</p>
             <details className="mt-2 text-sm">
-              <summary className="w-fit cursor-pointer py-2 font-semibold text-emerald-900">Details and actions</summary>
+              <summary className="min-h-11 w-fit cursor-pointer py-3 font-semibold text-emerald-900">Details and actions</summary>
               <p className="break-all">Username {schoolLoginUsername(parent.username, parentLoginDomain)}</p>
               <p className="mb-2">Linked learners {parent.learners.join(", ") || "None"}</p>
               {parent.status !== "Revoked" && parent.learner_ids && (
