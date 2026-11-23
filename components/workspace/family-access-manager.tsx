@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
+import { groupAccessLearners, LearnerAccessFilters } from "@/components/workspace/learner-access-filters";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 
@@ -33,6 +34,8 @@ async function passportJpeg(file: File) {
 }
 
 export function FamilyAccessManager() {
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [setup, setSetup] = useState<Setup | null>(null);
   const [name, setName] = useState("");
@@ -113,6 +116,12 @@ export function FamilyAccessManager() {
 
   if (!setup) return <p role={error ? "alert" : "status"}>{error || "Loading family access…"}</p>;
 
+  const groups = groupAccessLearners(setup.learners, (learner) => learner.class_name || "No class assigned");
+  const query = search.trim().toLowerCase();
+  const visibleGroups = groups.filter(([name]) => !classFilter || classFilter === name)
+    .map(([name, learners]) => [name, learners.filter((learner) => learner.name.toLowerCase().includes(query))] as const)
+    .filter(([, learners]) => learners.length);
+
   return (
     <div className="space-y-6">
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-900">{error}</p>}
@@ -137,7 +146,13 @@ export function FamilyAccessManager() {
         </label>
         <fieldset className="space-y-1">
           <legend className="font-semibold">Learners verified by the school</legend>
-          <div className="max-h-48 overflow-auto">{setup.learners.map((learner) => (
+          <LearnerAccessFilters search={search} className={classFilter} classes={groups.map(([name]) => name)}
+            onSearch={setSearch} onClass={setClassFilter} />
+          <p className="text-sm text-zinc-600">{selected.length} selected</p>
+          {visibleGroups.length === 0 && <p className="py-2 text-sm text-zinc-600">No learners match these filters.</p>}
+          <div className="max-h-64 overflow-auto">{visibleGroups.map(([name, learners]) => <section key={name}>
+            <h3 className="bg-stone-100 px-2 py-1 text-sm font-semibold">{name}</h3>
+            {learners.map((learner) => (
             <label key={learner.id} className="flex items-center gap-2 p-1">
               <input type="checkbox" checked={selected.includes(learner.id)} onChange={(event) => {
                 const checked = event.target.checked;
@@ -145,7 +160,7 @@ export function FamilyAccessManager() {
               }} />
               {learner.name} {learner.class_name && `· ${learner.class_name}`}
             </label>
-          ))}</div>
+          ))}</section>)}</div>
         </fieldset>
         <button type="submit" disabled={busy || selected.length === 0 || Boolean(credentials)}
           className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">Issue login</button>

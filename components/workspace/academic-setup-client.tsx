@@ -693,6 +693,13 @@ export function AcademicSetupClient() {
         {error ? <Message tone="error">{error}</Message> : null}
         {success ? <Message tone="success">{success}</Message> : null}
 
+        {["owner", "admin"].includes(context.role) && (
+          <nav aria-label="Account access" className="mt-5 flex flex-wrap gap-3">
+            <Link href="/setup/learner-access" className="rounded-xl border border-emerald-900 px-4 py-2 font-semibold text-emerald-950">Learner Access</Link>
+            <Link href="/setup/family-access" className="rounded-xl border border-emerald-900 px-4 py-2 font-semibold text-emerald-950">Family Access</Link>
+          </nav>
+        )}
+
         <AcademicRecordsDirectory
           classes={context.classes}
           students={context.students}
