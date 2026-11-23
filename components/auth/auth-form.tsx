@@ -1,11 +1,12 @@
 "use client";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useMemo, useState } from "react";
 
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Mode = "sign_in" | "sign_up";
-import { resolveLearnerLogin } from "@/lib/learning/learner-login";
+import { learnerLoginDomain, resolveLearnerLogin } from "@/lib/learning/learner-login";
 
 type EntryRole = "owner" | "teacher" | "learner";
 
@@ -88,6 +89,8 @@ export function AuthForm() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [activation, setActivation] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -150,15 +153,29 @@ export function AuthForm() {
     setPendingConfirmation(null);
 
     try {
-      const supabase = getBrowserSupabaseClient();
+      const supabase: SupabaseClient = getBrowserSupabaseClient();
       storeEntryIntent();
 
       if (mode === "sign_in") {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({
           email: role === "learner" ? resolveLearnerLogin(email) : email.trim(),
           password,
         });
         if (signInError) throw signInError;
+        if (signedIn.user?.email?.endsWith(`@${learnerLoginDomain}`) && signedIn.user.app_metadata.ksi_school_learner) {
+          const { data: account, error: accountError } = await supabase.from("student_accounts")
+            .select("password_change_pending,active").eq("user_id", signedIn.user.id).maybeSingle();
+          if (accountError || !account?.active || account.password_change_pending) {
+            await supabase.auth.signOut({ scope: "local" });
+            if (account?.password_change_pending) {
+              setActivation(true);
+              return;
+            }
+            throw new Error("Your school login is unavailable. Contact your school.");
+          }
+          window.location.replace("/learning");
+          return;
+        }
 
         window.location.replace(destination);
         return;
@@ -234,6 +251,51 @@ export function AuthForm() {
     setMessage(null);
     setPendingConfirmation(null);
   }
+
+  async function activateLearner(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/learning/student-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "activate", username: email, temporaryPassword: password, newPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Could not change the password.");
+      setActivation(false);
+      setPassword("");
+      setNewPassword("");
+      setMessage("Password changed. Sign in with your new password.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not change the password.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (activation) return (
+    <form onSubmit={activateLearner} className="mx-auto max-w-md space-y-4 rounded-2xl border border-zinc-200 bg-white p-6">
+      <h2 className="text-xl font-bold">Change your temporary password</h2>
+      <p className="text-sm text-zinc-700">Choose a new password with at least 12 characters before opening KSI Learning.</p>
+      <label className="block text-sm font-semibold">New password
+        <input autoComplete="new-password" required type="password" minLength={12} maxLength={72}
+          value={newPassword} onChange={(event) => setNewPassword(event.target.value)}
+          className="mt-1 block w-full rounded-xl border border-zinc-300 p-3" />
+      </label>
+      {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+      <button type="submit" disabled={busy} className="rounded-xl bg-emerald-900 px-4 py-3 font-semibold text-white disabled:opacity-60">
+        {busy ? "Changing password…" : "Change password"}
+      </button>
+      <button type="button" disabled={busy} onClick={() => {
+        setActivation(false);
+        setPassword("");
+        setNewPassword("");
+        setError(null);
+      }} className="ml-3 text-sm font-semibold underline">Back to sign in</button>
+    </form>
+  );
 
   return (
     <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">

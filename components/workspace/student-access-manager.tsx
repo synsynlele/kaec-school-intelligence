@@ -15,7 +15,7 @@ type StudentRow = {
 };
 
 type ClassRow = { id: string; name: string };
-type StudentAccountRow = { student_id: string; active: boolean };
+type StudentAccountRow = { student_id: string; active: boolean; password_change_pending?: boolean };
 
 type AccessContext = {
   workspaceId: string;
@@ -71,7 +71,7 @@ async function loadAccessContext(
       supabase.from("classes").select("id,name").eq("workspace_id", workspaceId).order("name"),
       supabase
         .from("student_accounts")
-        .select("student_id,active")
+        .select("student_id,active,password_change_pending")
         .eq("workspace_id", workspaceId),
     ]);
 
@@ -144,7 +144,7 @@ export function StudentAccessManager() {
   }, [router]);
 
   const linkedStudentIds = useMemo(
-    () => new Set(context?.accounts.filter((item) => item.active).map((item) => item.student_id) ?? []),
+    () => new Set(context?.accounts.filter((item) => item.active || item.password_change_pending).map((item) => item.student_id) ?? []),
     [context?.accounts],
   );
   const classNames = useMemo(
@@ -250,7 +250,7 @@ export function StudentAccessManager() {
       {issuedLogin && (
         <section aria-label="Issued learner login" className="mt-6 space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <h2 className="font-bold text-emerald-950">Login for {issuedLogin.studentName}</h2>
-          <p className="text-sm text-emerald-900">Give these credentials privately to the learner. The password is shown only here.</p>
+          <p className="text-sm text-emerald-900">Share these credentials privately. The learner must change the temporary password before opening KSI Learning.</p>
           <dl className="space-y-2 text-sm">
             <div><dt className="font-semibold">Username</dt><dd className="break-all font-mono">{issuedLogin.username}</dd></div>
             <div><dt className="font-semibold">Password</dt><dd className="break-all font-mono">{issuedLogin.password}</dd></div>

@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "@/lib/env";
-import { learnerLoginDomain } from "@/lib/learning/learner-login";
+import { learnerLoginDomain, resolveLearnerLogin } from "@/lib/learning/learner-login";
 
 export const runtime = "nodejs";
 
@@ -19,25 +19,54 @@ function failure(error: string, status: number) {
 }
 
 export async function POST(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return failure("Sign in as a school administrator.", 401);
-
   const input = await request.json().catch(() => null);
-  if (typeof input?.studentId !== "string" || !uuid.test(input.studentId)) {
-    return failure("Select an active learner.", 400);
-  }
-
   const key = process.env.KSI_SUPABASE_ADMIN_KEY?.trim();
   if (!key) return failure("School-issued accounts are unavailable on this deployment.", 503);
 
   const { url, publishableKey } = getSupabasePublicEnv();
-  const staff = createClient(url, publishableKey, { auth, global: { headers: { Authorization: authorization } } });
   const admin = createClient(url, key, { auth });
   const learner = createClient(url, publishableKey, { auth });
 
+  if (input?.action === "activate") {
+    const { username, temporaryPassword, newPassword } = input;
+    if (typeof username !== "string" || username.length > 80 || typeof temporaryPassword !== "string"
+      || Buffer.byteLength(temporaryPassword) > 72 || typeof newPassword !== "string"
+      || newPassword === temporaryPassword || newPassword.length < 12 || Buffer.byteLength(newPassword) > 72) {
+      return failure("Choose a different password with at least 12 characters and at most 72 bytes.", 400);
+    }
+    const email = resolveLearnerLogin(username);
+    if (!email.endsWith(`@${learnerLoginDomain}`)) return failure("Enter your school username.", 400);
+    const { data, error } = await learner.auth.signInWithPassword({ email, password: temporaryPassword });
+    const studentId = data.user?.app_metadata.ksi_school_learner;
+    if (error || !data.user || typeof studentId !== "string" || !uuid.test(studentId)) {
+      return failure("The school credentials were not accepted.", 401);
+    }
+    try {
+      const { data: account } = await learner.from("student_accounts")
+        .select("password_change_pending").eq("user_id", data.user.id).eq("student_id", studentId).maybeSingle();
+      if (!account?.password_change_pending) return failure("This login does not need activation.", 409);
+      const updated = await learner.auth.updateUser({ password: newPassword });
+      if (updated.error) return failure("Could not change your password. Check that it meets the password requirements.", 400);
+      const enabled = await admin.rpc("set_learner_password_pending", {
+        target_user: data.user.id, target_student: studentId, pending: false,
+      });
+      if (enabled.error || !enabled.data) return failure("Could not finish activation. Ask your school to reset the login.", 409);
+      return Response.json({ activated: true }, { headers });
+    } finally {
+      await learner.auth.signOut();
+    }
+  }
+
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return failure("Sign in as a school administrator.", 401);
+  if (typeof input?.studentId !== "string" || !uuid.test(input.studentId)) {
+    return failure("Select an active learner.", 400);
+  }
+  const staff = createClient(url, publishableKey, { auth, global: { headers: { Authorization: authorization } } });
+
   if (input.action === "reset") {
     const { data: account, error } = await staff.from("student_accounts")
-      .select("user_id,workspace_id").eq("student_id", input.studentId).eq("active", true).maybeSingle();
+      .select("user_id,workspace_id").eq("student_id", input.studentId).or("active.eq.true,password_change_pending.eq.true").maybeSingle();
     const { data: { user } } = await staff.auth.getUser(authorization.slice(7));
     if (!account || error || !user) return failure("Learner account unavailable.", 403);
 
@@ -60,6 +89,10 @@ export async function POST(request: Request) {
       return failure("This learner uses an existing email or Google account.", 409);
     }
 
+    const pending = await admin.rpc("set_learner_password_pending", {
+      target_user: account.user_id, target_student: input.studentId, pending: true,
+    });
+    if (pending.error || !pending.data) return failure("Could not prepare the learner login for reset.", 409);
     const password = createPassword();
     const updated = await admin.auth.admin.updateUserById(account.user_id, { password });
     if (updated.error) return failure("Could not reset the learner password.", 409);
@@ -94,5 +127,12 @@ export async function POST(request: Request) {
     return failure("Could not link the learner login. Try again.", 409);
   }
 
+  const pending = await admin.rpc("set_learner_password_pending", {
+    target_user: created.data.user.id, target_student: input.studentId, pending: true,
+  });
+  if (pending.error || !pending.data) {
+    await admin.auth.admin.deleteUser(created.data.user.id);
+    return failure("Could not prepare the temporary login. Try again.", 409);
+  }
   return Response.json({ username, password }, { headers });
 }
