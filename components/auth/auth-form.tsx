@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useMemo, useState } from "react";
 
@@ -314,7 +315,7 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
       </div>
 
       {!learnerOnly && <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        {(Object.keys(ROLE_CONFIG) as EntryRole[]).map((entryRole) => {
+        {(["owner", "teacher"] as const).map((entryRole) => {
           const config = ROLE_CONFIG[entryRole];
           const selected = role === entryRole;
           return (
@@ -334,6 +335,16 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
             </button>
           );
         })}
+        {[
+          { href: "/learner-sign-in", icon: ROLE_CONFIG.learner.icon, label: ROLE_CONFIG.learner.label, description: ROLE_CONFIG.learner.description },
+          { href: "/parent", icon: "👪", label: "Parent", description: "View your learner’s school reports." },
+        ].map(({ href, icon, label, description }) => (
+          <Link key={href} href={href} className="rounded-2xl border border-zinc-200 bg-white p-5 text-left transition hover:border-zinc-300 hover:bg-zinc-50">
+            <span className="text-2xl" aria-hidden="true">{icon}</span>
+            <span className="mt-3 block text-base font-bold text-zinc-950">{label}</span>
+            <span className="mt-1 block text-xs leading-5 text-zinc-500">{description}</span>
+          </Link>
+        ))}
       </div>}
 
       {roleConfig ? (
@@ -480,11 +491,7 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
             </button>
           </form>
         </div>
-      ) : (
-        <div className="mt-7 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-6 text-center">
-          <p className="text-sm font-semibold text-zinc-700">Choose School Owner or Teacher / Staff to continue.</p>
-        </div>
-      )}
+      ) : null}
 
       <p className="mt-6 text-xs leading-5 text-zinc-500">
         Choosing an entry path never grants authority. Owner access requires KAEC approval. Teacher, Leader and Admin access is granted only through a school-issued, email-bound Staff Access Code.
