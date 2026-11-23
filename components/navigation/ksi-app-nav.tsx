@@ -182,14 +182,14 @@ export function KsiAppNav() {
               items: leadership.filter((item) => item.href !== "/teacher/resources"),
             },
             {
-              label: "School administration",
+              label: "People",
               items: [
-                { href: "/setup", label: "Setup" },
+                { href: "/setup/learner-access", label: "Students" },
+                { href: "/setup/family-access", label: "Parents" },
                 { href: "/setup/staff-access", label: "Staff" },
-                { href: "/setup/learner-access", label: "Learner Access" },
-                { href: "/setup/family-access", label: "Family Access" },
               ],
             },
+            { label: "School administration", items: [{ href: "/setup", label: "Setup" }] },
           );
         }
       }

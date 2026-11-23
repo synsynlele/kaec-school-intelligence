@@ -222,6 +222,49 @@ await db.exec(`set app.uid = '${id(33)}'`);
 await assert.rejects(registerParent(id(31), id(10)), /this school/);
 await assert.rejects(registerParent(id(32), id(6)), /identity could not be verified/);
 await registerParent(id(31), id(6));
+await db.exec('reset role; create table public.profiles (id uuid primary key, display_name text);');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123130000_learning_parent_management.sql', import.meta.url), 'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123131000_school_staff_directory.sql', import.meta.url), 'utf8'));
+await db.exec(`
+  insert into public.profiles values ('${id(17)}', 'Test Leader'), ('${id(32)}', 'Other-school Staff');
+  insert into public.students (id, workspace_id, class_id, active, display_name)
+    values ('${id(93)}','${id(4)}','${id(5)}',true,'Alternate learner');
+  insert into public.workspace_members (user_id, workspace_id, role, status) values
+    ('${id(17)}','${id(4)}','leader','active'), ('${id(32)}','${id(11)}','teacher','active'),
+    ('${id(33)}','${id(4)}','owner','active');
+  grant usage on schema auth to authenticated;
+  grant select on public.workspace_members, public.workspaces to authenticated;
+  grant update on public.workspace_members to authenticated;
+  set role authenticated;
+`);
+const updateParent = (school, learner) => db.query(
+  'select update_learning_parent($1,$2,$3,$4)', [school, id(31), 'Updated Parent', [learner]]);
+await assert.rejects(updateParent(id(11), id(10)), /administrator access/);
+await assert.rejects(updateParent(id(4), id(10)), /this school/);
+await updateParent(id(4), id(93));
+const familySetup = await scalar('select get_learning_family_setup($1) as value', [id(4)]);
+assert.equal(familySetup.parents[0].name, 'Updated Parent');
+assert.deepEqual(familySetup.parents[0].learner_ids, [id(93)]);
+assert.deepEqual(familySetup.parents[0].learners, ["Alternate learner"]);
+await updateParent(id(4), id(6));
+const staffDirectory = (school) => db.query('select * from get_school_staff_directory($1)', [school]);
+const directory = (await staffDirectory(id(4))).rows;
+assert(directory.some(({ display_name, role }) => display_name === 'Test Leader' && role === 'leader'));
+assert(directory.every(({ role }) => role !== 'student'));
+assert(directory.every(({ display_name }) => display_name !== 'Other-school Staff'));
+await assert.rejects(staffDirectory(id(11)), /administrator access/);
+const changeStaffStatus = (school, staff, previous, next) => db.query(
+  'select set_school_staff_status($1,$2,$3,$4)', [school, staff, previous, next]);
+await assert.rejects(changeStaffStatus(id(4), id(33), 'active', 'suspended'), /Invalid staff status/);
+await assert.rejects(changeStaffStatus(id(11), id(32), 'active', 'suspended'), /could not be changed/);
+await changeStaffStatus(id(4), id(17), 'active', 'suspended');
+assert.equal((await staffDirectory(id(4))).rows.find(({ user_id }) => user_id === id(17)).status, 'suspended');
+await assert.rejects(changeStaffStatus(id(4), id(17), 'active', 'suspended'), /could not be changed/);
+await changeStaffStatus(id(4), id(17), 'suspended', 'active');
+await db.exec(`set app.uid = '${id(17)}'`);
+await assert.rejects(updateParent(id(4), id(6)), /administrator access/);
+await assert.rejects(staffDirectory(id(4)), /administrator access/);
+await db.exec(`reset role; delete from public.students where id = '${id(93)}'; set role authenticated; set app.uid = '${id(33)}'`);
 await assert.rejects(savePhoto(id(10), null), /Learner unavailable/);
 await assert.rejects(savePhoto(id(6), 'bm90YWpwZWc='), /valid JPEG/);
 const photo = '/9j/AAECA//Z';

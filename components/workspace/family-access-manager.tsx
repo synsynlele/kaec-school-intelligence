@@ -7,7 +7,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 
 type Learner = { id: string; name: string; class_name: string | null; has_photo: boolean };
-type Parent = { id: string; name: string; username: string; status: string; learners: string[] };
+type Parent = { id: string; name: string; username: string; status: string; learners: string[]; learner_ids?: string[] };
 type Setup = { learners: Learner[]; parents: Parent[] };
 
 async function passportJpeg(file: File) {
@@ -34,10 +34,12 @@ async function passportJpeg(file: File) {
 }
 
 export function FamilyAccessManager() {
+  const [parentSearch, setParentSearch] = useState("");
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [setup, setSetup] = useState<Setup | null>(null);
+  const [editingParent, setEditingParent] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -82,9 +84,27 @@ export function FamilyAccessManager() {
     }
   }
 
-  function issue(event: FormEvent<HTMLFormElement>) {
+  function resetParentForm() {
+    setEditingParent(null);
+    setName("");
+    setHandle("");
+    setSelected([]);
+    setSearch("");
+    setClassFilter("");
+  }
+
+  function saveParent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void run(async () => {
+      if (editingParent) {
+        const { error } = await getBrowserSupabaseClient().rpc("update_learning_parent", {
+          school_id: schoolId, account_id: editingParent, parent_name: name, learner_ids: selected,
+        });
+        if (error) throw new Error(error.message);
+        resetParentForm();
+        setMessage("Parent details and learner links updated.");
+        return;
+      }
       const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
       if (!session) throw new Error("Sign in again to issue an account.");
       const response = await fetch("/api/learning/parent-account", {
@@ -95,9 +115,7 @@ export function FamilyAccessManager() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setCredentials(result);
-      setName("");
-      setHandle("");
-      setSelected([]);
+      resetParentForm();
     });
   }
 
@@ -122,6 +140,44 @@ export function FamilyAccessManager() {
     .map(([name, learners]) => [name, learners.filter((learner) => learner.name.toLowerCase().includes(query))] as const)
     .filter(([, learners]) => learners.length);
 
+  const parentQuery = parentSearch.trim().toLowerCase();
+  const visibleParents = setup.parents.filter((parent) =>
+    [parent.name, parent.username, ...parent.learners].some((value) => value.toLowerCase().includes(parentQuery))
+  );
+
+  const parentForm = (
+        <form onSubmit={saveParent} className="space-y-3 p-4">
+          <label className="block">Parent or guardian name
+            <input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className="block w-full rounded border p-2" />
+          </label>
+          {!editingParent && <label className="block">Username
+            <input required minLength={2} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9.\-]{1,23}" value={handle}
+              onChange={(e) => setHandle(e.target.value)} placeholder="parent0042" className="block w-full rounded border p-2" />
+          </label>}
+          <fieldset className="space-y-1">
+            <legend className="font-semibold">Learners verified by the school</legend>
+            <LearnerAccessFilters search={search} className={classFilter} classes={groups.map(([name]) => name)}
+              onSearch={setSearch} onClass={setClassFilter} />
+            <p className="text-sm text-zinc-600">{selected.length} selected</p>
+            {visibleGroups.length === 0 && <p className="py-2 text-sm text-zinc-600">No learners match these filters.</p>}
+            <div className="max-h-64 overflow-auto">{visibleGroups.map(([name, learners]) => <section key={name}>
+              <h3 className="bg-stone-100 px-2 py-1 text-sm font-semibold">{name}</h3>
+              {learners.map((learner) => (
+              <label key={learner.id} className="flex items-center gap-2 p-1">
+                <input type="checkbox" checked={selected.includes(learner.id)} onChange={(event) => {
+                  const checked = event.target.checked;
+                  setSelected((previous) => checked ? [...previous, learner.id] : previous.filter((id) => id !== learner.id));
+                }} />
+                {learner.name} {learner.class_name && `· ${learner.class_name}`}
+              </label>
+            ))}</section>)}</div>
+          </fieldset>
+          <button type="submit" disabled={busy || selected.length === 0 || selected.length > 30 || (!editingParent && Boolean(credentials))}
+            className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">{editingParent ? "Save parent details" : "Issue login"}</button>
+          {editingParent && <button type="button" disabled={busy} onClick={resetParentForm} className="ml-3 py-2 font-semibold underline">Cancel</button>}
+        </form>
+  );
+
   return (
     <div className="space-y-6">
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-900">{error}</p>}
@@ -135,63 +191,56 @@ export function FamilyAccessManager() {
           <button type="button" onClick={() => setCredentials(null)} className="font-semibold underline">Hide credentials</button>
         </section>
       )}
-      <form onSubmit={issue} className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Issue a parent login</h2>
-        <label className="block">Parent or guardian name
-          <input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className="block w-full rounded border p-2" />
-        </label>
-        <label className="block">Username
-          <input required minLength={2} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9.\-]{1,23}" value={handle}
-            onChange={(e) => setHandle(e.target.value)} placeholder="parent0042" className="block w-full rounded border p-2" />
-        </label>
-        <fieldset className="space-y-1">
-          <legend className="font-semibold">Learners verified by the school</legend>
-          <LearnerAccessFilters search={search} className={classFilter} classes={groups.map(([name]) => name)}
-            onSearch={setSearch} onClass={setClassFilter} />
-          <p className="text-sm text-zinc-600">{selected.length} selected</p>
-          {visibleGroups.length === 0 && <p className="py-2 text-sm text-zinc-600">No learners match these filters.</p>}
-          <div className="max-h-64 overflow-auto">{visibleGroups.map(([name, learners]) => <section key={name}>
-            <h3 className="bg-stone-100 px-2 py-1 text-sm font-semibold">{name}</h3>
-            {learners.map((learner) => (
-            <label key={learner.id} className="flex items-center gap-2 p-1">
-              <input type="checkbox" checked={selected.includes(learner.id)} onChange={(event) => {
-                const checked = event.target.checked;
-                setSelected((previous) => checked ? [...previous, learner.id] : previous.filter((id) => id !== learner.id));
-              }} />
-              {learner.name} {learner.class_name && `· ${learner.class_name}`}
-            </label>
-          ))}</section>)}</div>
-        </fieldset>
-        <button type="submit" disabled={busy || selected.length === 0 || Boolean(credentials)}
-          className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">Issue login</button>
-      </form>
-
       <section className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
         <h2 className="text-lg font-semibold">Parent accounts</h2>
         {setup.parents.length === 0 && <p>No school-issued parent accounts yet.</p>}
-        {setup.parents.map((parent) => (
-          <div key={parent.id} className="flex flex-wrap items-start justify-between gap-2 border-t pt-3">
-            <div><p className="font-semibold">{parent.name} · {parent.status}</p>
-              <p className="break-all text-sm">{parent.username}</p>
-              <p className="text-sm">{parent.learners.join(", ")}</p>
-            </div>
-            {parent.status !== "Revoked" && <button type="button" disabled={busy}
-              className="font-semibold text-red-800 underline" onClick={() => {
-                if (!window.confirm(`Revoke access for ${parent.name}?`)) return;
-                void run(async () => {
-                  const { error } = await getBrowserSupabaseClient().rpc("revoke_learning_parent", {
-                    school_id: schoolId, account_id: parent.id,
+        <label className="block text-sm font-semibold">Search parents
+          <input type="search" value={parentSearch} onChange={(event) => setParentSearch(event.target.value)}
+            placeholder="Parent name, username or learner" className="mt-1 block w-full rounded-lg border border-zinc-300 p-2 font-normal" />
+        </label>
+        {setup.parents.length > 0 && visibleParents.length === 0 && <p>No parents match your search.</p>}
+        {visibleParents.map((parent) => (
+          <div key={parent.id} className="border-t py-3">
+            <p className="font-semibold">{parent.name}</p>
+            <p className="text-sm text-zinc-600">{parent.status} · {parent.learners.length} linked</p>
+            <details className="mt-2 text-sm">
+              <summary className="w-fit cursor-pointer py-2 font-semibold text-emerald-900">Details and actions</summary>
+              <p className="break-all">Username {parent.username}</p>
+              <p className="mb-2">Linked learners {parent.learners.join(", ") || "None"}</p>
+              {parent.status !== "Revoked" && parent.learner_ids && (
+                <button type="button" disabled={busy} className="mb-2 mr-4 py-2 font-semibold text-emerald-900 underline"
+                  onClick={() => {
+                    resetParentForm();
+                    setEditingParent(parent.id);
+                    setName(parent.name);
+                    setSelected(parent.learner_ids ?? []);
+                  }}>Edit name and active learner links</button>
+              )}
+              {editingParent === parent.id && parentForm}
+              {parent.status !== "Revoked" && <button type="button" disabled={busy}
+                className="font-semibold text-red-800 underline" onClick={() => {
+                  if (!window.confirm(`Revoke access for ${parent.name}?`)) return;
+                  void run(async () => {
+                    const { error } = await getBrowserSupabaseClient().rpc("revoke_learning_parent", {
+                      school_id: schoolId, account_id: parent.id,
+                    });
+                    if (error) throw new Error(error.message);
+                    if (editingParent === parent.id) resetParentForm();
+                    setMessage("Parent access revoked.");
                   });
-                  if (error) throw new Error(error.message);
-                  setMessage("Parent access revoked.");
-                });
-              }}>Revoke access</button>}
+                }}>Revoke access</button>}
+            </details>
           </div>
         ))}
       </section>
 
-      <section className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Learner passport photo</h2>
+      {!editingParent && <details className="rounded-xl border border-stone-200 bg-white">
+        <summary className="cursor-pointer p-4 font-semibold text-emerald-900">Issue a parent login</summary>
+        {parentForm}
+      </details>}
+
+      <details className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
+        <summary className="cursor-pointer font-semibold text-emerald-900">Learner passport photo</summary>
         <label className="block">Learner
           <select value={learnerId} onChange={(e) => { setLearnerId(e.target.value); setPhoto(null); }}
             className="block w-full rounded border p-2">
@@ -212,7 +261,7 @@ export function FamilyAccessManager() {
             <button type="button" disabled={busy} onClick={() => updatePhoto(true)} className="font-semibold text-red-800 underline">Remove photo</button>
           )}
         </div>
-      </section>
+      </details>
     </div>
   );
 }

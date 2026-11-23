@@ -166,7 +166,19 @@ async function loadSetupContext(): Promise<SetupContext | null> {
   };
 }
 
-export function AcademicSetupClient() {
+function studentEditRecord(item: Student): EditingRecord {
+  return {
+    kind: "student",
+    id: item.id,
+    name: item.display_name,
+    classId: item.class_id ?? "",
+    reference: item.external_reference ?? "",
+    gender: item.gender ?? "",
+    pronounPreference: studentPronounPreference(item.pronoun_preference),
+  };
+}
+
+export function AcademicSetupClient({ initialStudentId }: { initialStudentId?: string } = {}) {
   const router = useRouter();
   const [context, setContext] = useState<SetupContext | null>(null);
   const [loading, setLoading] = useState(true);
@@ -210,6 +222,11 @@ export function AcademicSetupClient() {
           return;
         }
         setContext(next);
+        if (initialStudentId && ["owner", "admin"].includes(next.role)) {
+          const student = next.students.find(({ id }) => id === initialStudentId);
+          if (student) setEditing(studentEditRecord(student));
+          else setError("This student is unavailable in the current workspace.");
+        }
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -227,7 +244,7 @@ export function AcademicSetupClient() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [initialStudentId, router]);
 
   async function addSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -401,15 +418,7 @@ export function AcademicSetupClient() {
   }
 
   function beginStudentEdit(item: Student) {
-    setEditing({
-      kind: "student",
-      id: item.id,
-      name: item.display_name,
-      classId: item.class_id ?? "",
-      reference: item.external_reference ?? "",
-      gender: item.gender ?? "",
-      pronounPreference: studentPronounPreference(item.pronoun_preference),
-    });
+    setEditing(studentEditRecord(item));
     setError(null);
     setSuccess(null);
     revealEditor();
@@ -716,6 +725,9 @@ export function AcademicSetupClient() {
         {canManage && editing ? (
           <form
             id="academic-record-editor"
+            ref={(node) => {
+              if (node && initialStudentId === editing.id) node.scrollIntoView({ block: "start" });
+            }}
             onSubmit={saveEdit}
             className="mb-8 scroll-mt-6 rounded-3xl border border-emerald-900/10 bg-emerald-50/70 p-6"
           >
