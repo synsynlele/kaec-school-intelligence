@@ -114,6 +114,9 @@ export async function POST(request: Request) {
   const created = await admin.auth.admin.createUser({
     email, password, email_confirm: true, app_metadata: { ksi_school_learner: input.studentId },
   });
+  if (created.error && [401, 403].includes(created.error.status ?? 0)) {
+    return failure("School login setup is unavailable. KSI could not authenticate with its account service.", 503);
+  }
   if (created.error || !created.data.user) return failure("Could not create the learner login. Try again.", 409);
 
   const signedIn = await learner.auth.signInWithPassword({ email, password });

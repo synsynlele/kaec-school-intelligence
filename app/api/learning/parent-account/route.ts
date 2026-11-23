@@ -76,8 +76,14 @@ export async function POST(request: Request) {
     email_confirm: true,
     app_metadata: { ksi_parent_school: schoolId },
   });
+  if (created.error && [401, 403].includes(created.error.status ?? 0)) {
+    return failure("School login setup is unavailable. KSI could not authenticate with its account service.", 503);
+  }
   if (created.error || !created.data.user) {
-    return failure("Could not issue this login. Check whether the username is already taken.", 409);
+    if (created.error?.code === "email_exists" || created.error?.code === "user_already_exists") {
+      return failure("That parent username is already taken. Choose a different username.", 409);
+    }
+    return failure("Could not issue this parent login. Try again or contact KSI support.", 502);
   }
 
   const registered = await staff.rpc("register_learning_parent", {

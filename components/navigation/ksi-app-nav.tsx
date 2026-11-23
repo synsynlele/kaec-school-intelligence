@@ -186,6 +186,8 @@ export function KsiAppNav() {
               items: [
                 { href: "/setup", label: "Setup" },
                 { href: "/setup/staff-access", label: "Staff" },
+                { href: "/setup/learner-access", label: "Learner Access" },
+                { href: "/setup/family-access", label: "Family Access" },
               ],
             },
           );

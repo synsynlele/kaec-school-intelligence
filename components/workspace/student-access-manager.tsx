@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { groupAccessLearners, LearnerAccessFilters } from "@/components/workspace/learner-access-filters";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type StudentRow = {
@@ -107,6 +108,8 @@ async function loadAccessContext(
 }
 
 export function StudentAccessManager() {
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const router = useRouter();
   const [context, setContext] = useState<AccessContext | null>(null);
   const [issuedLogin, setIssuedLogin] = useState<{ studentName: string; username: string; password: string } | null>(null);
@@ -228,6 +231,13 @@ export function StudentAccessManager() {
   }
 
   if (!context) return null;
+  const groups = groupAccessLearners(context.students, (student) =>
+    (student.class_id && classNames.get(student.class_id)) || "No class assigned");
+  const query = search.trim().toLowerCase();
+  const visibleGroups = groups.filter(([name]) => !classFilter || classFilter === name)
+    .map(([name, students]) => [name, students.filter((student) => student.display_name.toLowerCase().includes(query))] as const)
+    .filter(([, students]) => students.length);
+
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
@@ -279,8 +289,12 @@ export function StudentAccessManager() {
           <h2 className="text-lg font-bold text-zinc-950">Learners</h2>
           <p className="mt-1 text-sm text-zinc-500">{linkedStudentIds.size} of {context.students.filter((item) => item.active).length} active learners linked.</p>
         </div>
-        <div className="divide-y divide-zinc-100">
-          {context.students.map((student) => {
+        <div className="px-6 py-4"><LearnerAccessFilters search={search} className={classFilter}
+          classes={groups.map(([name]) => name)} onSearch={setSearch} onClass={setClassFilter} /></div>
+        {visibleGroups.length === 0 && <p className="px-6 pb-5 text-sm text-zinc-600">No learners match these filters.</p>}
+        {visibleGroups.map(([name, students]) => <section key={name} className="divide-y divide-zinc-100">
+          <h3 className="bg-stone-100 px-6 py-2 font-semibold">{name}</h3>
+          {students.map((student) => {
             const linked = linkedStudentIds.has(student.id);
             return (
               <div key={student.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -319,7 +333,7 @@ export function StudentAccessManager() {
               </div>
             );
           })}
-        </div>
+        </section>)}
       </section>
     </main>
   );
