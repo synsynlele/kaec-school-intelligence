@@ -355,5 +355,32 @@ await db.query("select publish_learning_result_with_comments($1,1,'{}')", [id(42
 await db.exec(`set app.uid = '${id(2)}'`);
 const paperResult = (await publishedResults()).find(row => row.title === 'Paper only');
 assert.equal(paperResult.scores.project, 5);
+await db.exec(`reset role;
+  alter table assessments alter column id set default gen_random_uuid(),
+    add column created_by uuid, add column assessment_mode text;
+  alter table assessment_items alter column id set default gen_random_uuid();
+  update classes set workspace_id = '${id(4)}' where id = '${id(5)}';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123080000_learning_manual_project.sql', import.meta.url), 'utf8'));
+const createProject = (school = id(4), maximum = 20) => scalar(
+  "select create_learning_project($1,$2,$3,'Build a model','2026/2027','First Term',$4) as value",
+  [school, id(5), id(40), maximum],
+);
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+await assert.rejects(createProject(), /Choose a class and subject/);
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+await assert.rejects(createProject(id(11)), /Choose a class and subject/);
+await assert.rejects(createProject(id(4), 0), /valid maximum mark/);
+const manualProject = await createProject();
+const projectSheet = await readScoreSheet(manualProject);
+assert.equal(projectSheet.maxima.project, 20);
+assert.equal(projectSheet.cbt_enabled, false);
+assert.equal(projectSheet.roster[0].project, null);
+await scalar('select save_learning_paper_scores($1,$2,0,null,null,0) as value', [manualProject, id(6)]);
+await db.query("select change_learning_result_review($1,0,'submitted',null)", [manualProject]);
+await db.exec(`set app.uid = '${id(17)}'`);
+await db.query("select publish_learning_result_with_comments($1,1,'{}')", [manualProject]);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await publishedResults()).find(row => row.title === 'Build a model').scores.project, 0);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');

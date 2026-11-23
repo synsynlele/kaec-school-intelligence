@@ -109,6 +109,7 @@ async function loadAccessContext(
 export function StudentAccessManager() {
   const router = useRouter();
   const [context, setContext] = useState<AccessContext | null>(null);
+  const [issuedLogin, setIssuedLogin] = useState<{ studentName: string; username: string; password: string } | null>(null);
   const [issued, setIssued] = useState<IssuedCode | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,6 +156,7 @@ export function StudentAccessManager() {
     setBusyId(student.id);
     setError(null);
     setIssued(null);
+    setIssuedLogin(null);
     setCopied(false);
 
     try {
@@ -176,6 +178,35 @@ export function StudentAccessManager() {
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Student Access Code could not be issued.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function issueLogin(student: StudentRow) {
+    setBusyId(student.id);
+    setError(null);
+    setIssued(null);
+    setIssuedLogin(null);
+
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sign in as a school administrator.");
+      const response = await fetch("/api/learning/student-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ studentId: student.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not issue a learner login.");
+      setIssuedLogin({ studentName: student.display_name, username: data.username, password: data.password });
+      setContext((current) => current && {
+        ...current,
+        accounts: [...current.accounts, { student_id: student.id, active: true }],
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not issue a learner login.");
     } finally {
       setBusyId(null);
     }
@@ -205,7 +236,7 @@ export function StudentAccessManager() {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Student Access</p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-950">{context.workspaceName}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-            Issue one-time access codes that connect a learner&apos;s own Google or email account to the correct existing KSI student record.
+            Issue school usernames and passwords for learners. You can also issue an access code for a learner who already has a Google or email account.
           </p>
         </div>
         <Link href="/student/join" className="w-fit rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700">
@@ -214,6 +245,18 @@ export function StudentAccessManager() {
       </div>
 
       {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
+
+      {issuedLogin && (
+        <section aria-label="Issued learner login" className="mt-6 space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <h2 className="font-bold text-emerald-950">Login for {issuedLogin.studentName}</h2>
+          <p className="text-sm text-emerald-900">Give these credentials privately to the learner. The password is shown only here.</p>
+          <dl className="space-y-2 text-sm">
+            <div><dt className="font-semibold">Username</dt><dd className="break-all font-mono">{issuedLogin.username}</dd></div>
+            <div><dt className="font-semibold">Password</dt><dd className="break-all font-mono">{issuedLogin.password}</dd></div>
+          </dl>
+          <button type="button" className="rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold" onClick={() => setIssuedLogin(null)}>Hide credentials</button>
+        </section>
+      )}
 
       {issued ? (
         <section className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-6">
@@ -252,14 +295,20 @@ export function StudentAccessManager() {
                     {student.class_id ? classNames.get(student.class_id) ?? "Assigned class" : "No class assigned"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={linked || !student.active || busyId !== null}
-                  onClick={() => void issueCode(student)}
-                  className="w-fit rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-500"
-                >
-                  {linked ? "Account linked" : busyId === student.id ? "Generating…" : "Generate access code"}
-                </button>
+                {linked ? null : (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={!student.active || busyId !== null}
+                      onClick={() => void issueLogin(student)}
+                      className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+                      Issue school login
+                    </button>
+                    <button type="button" disabled={!student.active || busyId !== null}
+                      onClick={() => void issueCode(student)}
+                      className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
+                      {busyId === student.id ? "Please wait…" : "Generate access code"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

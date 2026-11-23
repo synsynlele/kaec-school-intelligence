@@ -155,6 +155,18 @@ type FinalStageFunctions = Omit<
     Returns: number;
   };
   schedule_learning_cbt: { Args: { source_id: string; opens_at: string; closes_at: string }; Returns: string };
+  create_learning_project: {
+    Args: {
+      school_id: string;
+      target_class: string;
+      target_subject: string;
+      project_title: string;
+      academic_session: string;
+      school_term: string;
+      maximum: number;
+    };
+    Returns: string;
+  };
   open_learning_score_sheet: { Args: { source_id: string }; Returns: string };
   get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
   get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };

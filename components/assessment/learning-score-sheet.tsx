@@ -89,15 +89,16 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
 
   return (
     <>
-      <th scope="row" className="px-3 py-3 text-left font-semibold">{row.name}</th>
-      <td className="px-3 py-3">{maxima.objective === 0 ? "—" : row.objective ?? "Pending"}</td>
+      <th scope="row" className="col-span-2 px-3 pb-1 pt-3 text-left font-semibold sm:py-3">{row.name}</th>
+      <td className="min-w-0 px-3 py-2 sm:py-3"><span className="block text-xs text-zinc-600 sm:hidden">CBT / {maxima.objective}</span>{maxima.objective === 0 ? "—" : row.objective ?? "Pending"}</td>
       {paperSections.map(({ key, label }) => (
-        <td key={key} className="px-3 py-3">
+        <td key={key} className={maxima[key] === 0 ? "hidden px-3 py-3 sm:table-cell" : "min-w-0 px-3 py-2 sm:py-3"}>
+          <span className="mb-1 block text-xs text-zinc-600 sm:hidden">{label} / {maxima[key]}</span>
           {maxima[key] === 0 ? "—" : writable && row.editable ? (
             <input
               aria-label={`${label} score for ${row.name}`}
               aria-invalid={scores[key] !== null && (scores[key] < 0 || scores[key] > maxima[key])}
-              className="w-24 rounded-lg border border-zinc-300 px-2 py-2"
+              className="w-full rounded-lg border border-zinc-300 px-2 py-2 focus-visible:outline-2 focus-visible:outline-emerald-800 sm:w-24"
               type="number"
               inputMode="decimal"
               min={0}
@@ -116,7 +117,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
           ) : scores[key] ?? "Pending"}
         </td>
       ))}
-      <td className="px-3 py-3 font-semibold">{valid ? total ?? "Pending" : "—"}</td>
+      <td className="px-3 py-2 font-semibold sm:py-3"><span className="block text-xs font-normal text-zinc-600 sm:hidden">Total</span>{valid ? total ?? "Pending" : "—"}</td>
       {writable && <td className="px-3 py-3">
         {row.editable && sections.length > 0 && (
           <button
@@ -366,8 +367,8 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
       )}
       {sheet.roster.length === 0 ? <p>No learners are listed for this class.</p> : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-stone-100 text-left">
+          <table className="block w-full border-collapse text-sm sm:table" role="table">
+            <thead className="sr-only bg-stone-100 text-left sm:not-sr-only" role="rowgroup">
               <tr>
                 <th scope="col" className="p-3">Learner</th>
                 <th scope="col" className="p-3">CBT / {maxima.objective}</th>
@@ -378,9 +379,9 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
                 {sheet.writable && <th scope="col" className="p-3">Actions</th>}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block sm:table-row-group" role="rowgroup">
               {sheet.roster.map((row) => (
-                <tr key={row.id} className="border-t border-zinc-200 align-top">
+                <tr key={row.id} role="row" className="grid grid-cols-2 border-b border-zinc-200 pb-2 align-top last:border-b-0 sm:table-row sm:border-b-0 sm:border-t sm:pb-0">
                   <LearnerScores row={row} maxima={maxima} writable={sheet.writable && !reviewBusy} assessmentId={assessmentId} onDirty={trackDirty}
                     onSaved={(id, scores, revision) => setSheet((previous) => previous && ({
                       ...previous,
