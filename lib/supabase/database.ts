@@ -138,6 +138,10 @@ type FinalStageFunctions = Omit<
   activate_learning_parent: { Args: { account_id: string }; Returns: boolean };
   get_my_learning_parent_status: { Args: Record<PropertyKey, never>; Returns: string | null };
   get_my_parent_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
+  learning_term_report_preview: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string }; Returns: Json };
+  publish_learning_term_report: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string; report_kind: string; selected_ids: string[] }; Returns: string };
+  get_my_parent_term_reports: { Args: { report_id?: string }; Returns: Json };
+  get_my_parent_learning_diagnoses: { Args: { diagnosis_id?: string }; Returns: Json };
   get_my_parent_learning_report: { Args: { assignment_id: string; target_learner: string }; Returns: Json };
   save_learning_passport_photo: { Args: { school_id: string; target_learner: string; photo_jpeg: string | null }; Returns: undefined };
   get_my_learning_result_report: { Args: { assignment_id: string }; Returns: Json };
@@ -155,6 +159,26 @@ type FinalStageFunctions = Omit<
     Returns: number;
   };
   schedule_learning_cbt: { Args: { source_id: string; opens_at: string; closes_at: string }; Returns: string };
+  create_learning_project: {
+    Args: {
+      school_id: string;
+      target_class: string;
+      target_subject: string;
+      project_title: string;
+      academic_session: string;
+      school_term: string;
+      maximum: number;
+    };
+    Returns: string;
+  };
+  save_learning_marks: {
+    Args: {
+      source_id: string; learner_id: string; expected_revision: number;
+      subjective_score: number | null; critical_thinking_score: number | null; project_score: number | null;
+      excused_sections: string[];
+    };
+    Returns: number;
+  };
   open_learning_score_sheet: { Args: { source_id: string }; Returns: string };
   get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
   get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };

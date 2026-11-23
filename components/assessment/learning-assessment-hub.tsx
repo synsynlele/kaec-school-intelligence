@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { LearningTermReports } from "@/components/assessment/learning-term-reports";
+import { ManualProjectForm } from "@/components/assessment/manual-project-form";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -24,6 +26,12 @@ type Assessment = {
 const pageSize = 20;
 
 export function LearningAssessmentHub() {
+  const [projectSetup, setProjectSetup] = useState<{
+    schoolId: string;
+    classes: { id: string; name: string }[];
+    subjects: { id: string; name: string }[];
+  } | null>(null);
+  const [reportSetup, setReportSetup] = useState<{ schoolId: string; classes: { id: string; name: string }[] } | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ search: "", page: 0 });
   const [rows, setRows] = useState<Assessment[]>([]);
@@ -44,11 +52,27 @@ export function LearningAssessmentHub() {
         .select("default_workspace_id").eq("id", user.id).single();
       if (profileError) throw new Error(profileError.message);
       if (!profile.default_workspace_id) throw new Error("Choose your school workspace to open CBT & Score Sheets.");
-      const { data, error } = await client.rpc("list_learning_assessments", {
-        school_id: profile.default_workspace_id, search_text: filters.search, page_offset: filters.page * pageSize,
-      });
+      const schoolId = profile.default_workspace_id;
+      const [{ data, error }, membership, classes, subjects] = await Promise.all([
+        client.rpc("list_learning_assessments", {
+          school_id: schoolId, search_text: filters.search, page_offset: filters.page * pageSize,
+        }),
+        client.from("workspace_members").select("role").eq("workspace_id", schoolId)
+          .eq("user_id", user.id).eq("status", "active").maybeSingle(),
+        client.from("classes").select("id,name").eq("workspace_id", schoolId).order("name"),
+        client.from("subjects").select("id,name").eq("workspace_id", schoolId).order("name"),
+      ]);
       if (error) throw new Error(error.message);
-      if (active) setRows(data as unknown as Assessment[]);
+      if (!active) return;
+      setRows(data as unknown as Assessment[]);
+      setReportSetup(membership.data && ["owner", "admin", "leader"].includes(membership.data.role) && !classes.error
+        ? { schoolId, classes: classes.data ?? [] } : null);
+      if (membership.data && ["owner", "admin", "teacher"].includes(membership.data.role)
+        && !classes.error && !subjects.error) {
+        setProjectSetup({ schoolId, classes: classes.data ?? [], subjects: subjects.data ?? [] });
+      } else {
+        setProjectSetup(null);
+      }
     }
     void load().catch((caught) => {
       if (active) setError(caught instanceof Error ? caught.message : "Unable to load assessments.");
@@ -71,6 +95,8 @@ export function LearningAssessmentHub() {
         <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>
       <p className="text-sm text-zinc-700">Open a class assessment to enter marks or schedule its CBT.</p>
+      {reportSetup && <LearningTermReports {...reportSetup} />}
+      {projectSetup && <ManualProjectForm {...projectSetup} />}
       <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
         event.preventDefault();
         showPage(query.trim(), 0);

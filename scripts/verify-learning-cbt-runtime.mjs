@@ -163,6 +163,8 @@ await db.exec(`reset role;
   alter table workspaces add column name text default 'School A', add column logo_url text;
   alter table classes add column name text default 'JSS1', add column workspace_id uuid, add column academic_session text;
   alter table assessments add column blueprint jsonb default '{"term":"First Term","academicSession":"2026/2027"}';
+  alter table assessments add column subject_id uuid;
+  create table subjects(id uuid primary key, workspace_id uuid, name text);
   create table diagnoses (
     id uuid primary key, workspace_id uuid, student_id uuid, assessment_id uuid, status text,
     term text, academic_session text, reviewed_at timestamptz, finalised_at timestamptz,
@@ -242,12 +244,52 @@ await db.exec(`reset role;
 assert.equal((await parentReports()).length, 1);
 assert.equal((await parentReport(id(6))).passport_photo, photo);
 assert.equal(await parentReport(id(10)), null);
+await db.exec(`reset role;
+  insert into diagnoses (id,workspace_id,student_id,status,term,academic_session,reviewed_at,finalised_at,academic_strengths) values
+    ('${id(51)}','${id(4)}','${id(6)}','final','First Term','2026/2027',now(),now(),'[{"statement":"Standalone finding","evidenceIds":["internal"]}]'),
+    ('${id(52)}','${id(4)}','${id(6)}','draft','First Term','2026/2027',now(),now(),'[]'),
+    ('${id(53)}','${id(11)}','${id(10)}','final','First Term','2026/2027',now(),now(),'[]');
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123090000_learning_parent_diagnoses.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(31)}'`);
+const parentDiagnoses = (diagnosisId) => scalar('select get_my_parent_learning_diagnoses($1) as value', [diagnosisId ?? null]);
+const diagnosisList = await parentDiagnoses();
+assert.deepEqual(diagnosisList.map(row => row.id).sort(), [id(30), id(51)]);
+assert.equal(diagnosisList[0].diagnosis, undefined);
+assert.deepEqual((await parentDiagnoses(id(51)))[0].diagnosis.academicSkillStrengths, [{ statement: 'Standalone finding' }]);
+assert.deepEqual(await parentDiagnoses(id(52)), []);
+assert.deepEqual(await parentDiagnoses(id(53)), []);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await resultReport()).passport_photo, photo);
+await db.exec(`set app.uid = '${id(33)}'`);
+await db.exec("reset role;");
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123100000_learning_term_reports.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(31)}'`);
+const termArgs = [id(4), id(6), '2026/2027', 'First Term'];
+const termPreview = () => scalar('select learning_term_report_preview($1,$2,$3,$4) as value', termArgs);
+const publishTerm = (reportKind, ids) => scalar(
+  'select publish_learning_term_report($1,$2,$3,$4,$5,$6) as value', [...termArgs, reportKind, ids],
+);
+const parentTermReports = (reportId = null) => scalar('select get_my_parent_term_reports($1) as value', [reportId]);
+assert.deepEqual(await parentTermReports(), []);
+await assert.rejects(termPreview(), /leadership access/);
+await db.exec(`set app.uid = '${id(17)}'`);
+const preview = await termPreview();
+assert.equal(preview.assessments.length, 1);
+await assert.rejects(publishTerm('term', [id(53)]), /selected assessments changed/);
+const selectedTermIds = preview.assessments.map(({ id }) => id);
+const publishedMidterm = await publishTerm('midterm', selectedTermIds);
+await publishTerm('term', selectedTermIds);
+await assert.rejects(publishTerm('term', selectedTermIds), /already published/);
+await db.exec(`set app.uid = '${id(31)}'`);
+assert.equal((await parentTermReports()).length, 2);
+assert.equal((await parentTermReports(publishedMidterm))[0].assessments[0].id, selectedTermIds[0]);
 await db.exec(`set app.uid = '${id(33)}'`);
 await db.query('select revoke_learning_parent($1,$2)', [id(4), id(31)]);
 await savePhoto(id(6), null);
 await db.exec(`set app.uid = '${id(31)}'`);
+assert.deepEqual(await parentDiagnoses(), []);
+assert.deepEqual(await parentTermReports(), []);
 assert.deepEqual(await parentReports(), []);
 assert.equal(await parentReport(id(6)), null);
 await db.exec(`set app.uid = '${id(2)}'`);
@@ -306,8 +348,6 @@ assert.equal(closed.feedback.review[0].correct, 'b');
 await db.exec(`reset role; delete from private.learning_cbt_submissions where cbt_id = '${scheduled}'; set role authenticated;`);
 await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has closed/);
 await db.exec(`reset role;
-  alter table assessments add column subject_id uuid;
-  create table subjects(id uuid primary key, workspace_id uuid, name text);
   insert into subjects values ('${id(40)}','${id(4)}','Mathematics');
   insert into assessments(id,workspace_id,class_id,title,status,subject_id) values
     ('${id(41)}','${id(4)}','${id(5)}','Early mark entry','validated','${id(40)}'),
@@ -355,5 +395,69 @@ await db.query("select publish_learning_result_with_comments($1,1,'{}')", [id(42
 await db.exec(`set app.uid = '${id(2)}'`);
 const paperResult = (await publishedResults()).find(row => row.title === 'Paper only');
 assert.equal(paperResult.scores.project, 5);
+await db.exec(`reset role;
+  alter table assessments alter column id set default gen_random_uuid(),
+    add column created_by uuid, add column assessment_mode text;
+  alter table assessment_items alter column id set default gen_random_uuid();
+  update classes set workspace_id = '${id(4)}' where id = '${id(5)}';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123080000_learning_manual_project.sql', import.meta.url), 'utf8'));
+const createProject = (school = id(4), maximum = 20) => scalar(
+  "select create_learning_project($1,$2,$3,'Build a model','2026/2027','First Term',$4) as value",
+  [school, id(5), id(40), maximum],
+);
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+await assert.rejects(createProject(), /Choose a class and subject/);
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+await assert.rejects(createProject(id(11)), /Choose a class and subject/);
+await assert.rejects(createProject(id(4), 0), /valid maximum mark/);
+const manualProject = await createProject();
+const projectSheet = await readScoreSheet(manualProject);
+assert.equal(projectSheet.maxima.project, 20);
+assert.equal(projectSheet.cbt_enabled, false);
+assert.equal(projectSheet.roster[0].project, null);
+await scalar('select save_learning_paper_scores($1,$2,0,null,null,0) as value', [manualProject, id(6)]);
+await db.query("select change_learning_result_review($1,0,'submitted',null)", [manualProject]);
+await db.exec(`set app.uid = '${id(17)}'`);
+await db.query("select publish_learning_result_with_comments($1,1,'{}')", [manualProject]);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await publishedResults()).find(row => row.title === 'Build a model').scores.project, 0);
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123110000_learning_excused_marks.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(1)}'`);
+const excusedProject = await createProject();
+const saveExcused = (revision, keys) => scalar(
+  'select save_learning_marks($1,$2,$3,null,null,null,$4) as value', [excusedProject, id(6), revision, keys],
+);
+const submitExcused = () => db.query("select change_learning_result_review($1,0,'submitted',null)", [excusedProject]);
+await assert.rejects(submitExcused(), /Save all required marks/);
+await assert.rejects(saveExcused(0, ['objective']), /applicable sections/);
+assert.equal(await saveExcused(0, ['project']), 1);
+await assert.rejects(saveExcused(0, []), /Scores changed/);
+assert.deepEqual((await readScoreSheet(excusedProject)).roster[0].excused, ['project']);
+await submitExcused();
+await assert.rejects(saveExcused(1, []), /locked/);
+await db.exec(`set app.uid = '${id(17)}'`);
+await db.query("select publish_learning_result_with_comments($1,1,'{}')", [excusedProject]);
+await db.exec(`set app.uid = '${id(2)}'`);
+const reportWithExcusal = (await publishedResults()).find(row => row.scores.excused?.includes('project'));
+assert.equal(reportWithExcusal.scores.project, null);
+await db.exec(`reset role;
+  alter table student_accounts add column updated_at timestamptz;
+  update auth.users set raw_app_meta_data = jsonb_build_object('ksi_school_learner', '${id(6)}') where id = '${id(2)}';
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123120000_learning_temporary_password.sql', import.meta.url), 'utf8'));
+const setPasswordPending = (pending) => scalar('select set_learner_password_pending($1,$2,$3) as value', [id(2), id(6), pending]);
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+await assert.rejects(setPasswordPending(true), /permission denied/);
+await db.exec('reset role; set role service_role;');
+assert.equal(await setPasswordPending(true), true);
+await db.exec('set role authenticated;');
+await assert.rejects(publishedResults(), /active learner account/);
+await db.exec('reset role; set role service_role;');
+assert.equal(await setPasswordPending(false), true);
+assert.equal(await setPasswordPending(false), false);
+await db.exec('set role authenticated;');
+assert.ok((await publishedResults()).length > 0);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
