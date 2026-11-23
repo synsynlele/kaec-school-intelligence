@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabasePublicEnv } from "@/lib/env";
 import { learnerLoginDomain, resolveLearnerLogin } from "@/lib/learning/learner-login";
 
+import { schoolLoginEmail, schoolLoginUsername } from "@/lib/learning/school-login";
+
 export const runtime = "nodejs";
 
 const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
@@ -96,10 +98,14 @@ export async function POST(request: Request) {
     const password = createPassword();
     const updated = await admin.auth.admin.updateUserById(account.user_id, { password });
     if (updated.error) return failure("Could not reset the learner password.", 409);
-    return Response.json({ username: email.slice(0, -suffix.length), password }, { headers });
+    return Response.json({ username: schoolLoginUsername(email, learnerLoginDomain), password }, { headers });
   }
 
   if (input.action !== "issue") return failure("Choose a learner account action.", 400);
+
+  const username = typeof input.username === "string" ? input.username.trim().toLowerCase() : "";
+  const email = schoolLoginEmail(username, learnerLoginDomain);
+  if (!email) return failure("Enter an email-style username, such as tosin@kaec.com (up to 58 characters).", 400);
 
   // The existing invitation RPC checks school scope, active status and administrator permissions.
   const invite = await staff.rpc("issue_student_access_code", { target_student_id: input.studentId, ttl_hours: 1 });
@@ -108,14 +114,15 @@ export async function POST(request: Request) {
     return failure("Could not issue a login. Check school access and whether the learner is already linked.", 403);
   }
 
-  const username = `ksi-${randomBytes(9).toString("hex")}`;
-  const email = `${username}@${learnerLoginDomain}`;
   const password = createPassword();
   const created = await admin.auth.admin.createUser({
     email, password, email_confirm: true, app_metadata: { ksi_school_learner: input.studentId },
   });
   if (created.error && [401, 403].includes(created.error.status ?? 0)) {
     return failure("School login setup is unavailable. KSI could not authenticate with its account service.", 503);
+  }
+  if (["email_exists", "user_already_exists"].includes(created.error?.code ?? "")) {
+    return failure("That learner username is already in use.", 409);
   }
   if (created.error || !created.data.user) return failure("Could not create the learner login. Try again.", 409);
 

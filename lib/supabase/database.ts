@@ -133,6 +133,7 @@ type FinalStageFunctions = Omit<
     Returns: undefined;
   };
   set_school_staff_status: { Args: { school_id: string; staff_id: string; expected_status: string; new_status: string }; Returns: undefined };
+  restart_learning_parent_activation: { Args: { school_id: string; account_id: string }; Returns: boolean };
   get_learning_family_setup: { Args: { school_id: string }; Returns: Json };
   update_learning_parent: { Args: { school_id: string; account_id: string; parent_name: string; learner_ids: string[] }; Returns: undefined };
   register_learning_parent: { Args: { school_id: string; parent_id: string; parent_name: string; learner_ids: string[] }; Returns: undefined };

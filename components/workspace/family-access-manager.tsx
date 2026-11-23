@@ -6,6 +6,8 @@ import { groupAccessLearners, LearnerAccessFilters } from "@/components/workspac
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { resolveKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 
+import { parentLoginDomain, schoolLoginUsername } from "@/lib/learning/school-login";
+
 type Learner = { id: string; name: string; class_name: string | null; has_photo: boolean };
 type Parent = { id: string; name: string; username: string; status: string; learners: string[]; learner_ids?: string[] };
 type Setup = { learners: Learner[]; parents: Parent[] };
@@ -84,6 +86,23 @@ export function FamilyAccessManager() {
     }
   }
 
+  function resetParentPassword(parent: Parent) {
+    if (!window.confirm(`Replace the password for ${parent.name}?`)) return;
+    void run(async () => {
+      const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
+      if (!session) throw new Error("Sign in again to reset a password.");
+      const response = await fetch("/api/learning/parent-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ action: "reset", schoolId, accountId: parent.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Could not reset the parent password.");
+      setCredentials(result);
+      setMessage("Parent password reset. Copy the new login details above.");
+    });
+  }
+
   function resetParentForm() {
     setEditingParent(null);
     setName("");
@@ -142,7 +161,7 @@ export function FamilyAccessManager() {
 
   const parentQuery = parentSearch.trim().toLowerCase();
   const visibleParents = setup.parents.filter((parent) =>
-    [parent.name, parent.username, ...parent.learners].some((value) => value.toLowerCase().includes(parentQuery))
+    [parent.name, schoolLoginUsername(parent.username, parentLoginDomain), ...parent.learners].some((value) => value.toLowerCase().includes(parentQuery))
   );
 
   const parentForm = (
@@ -151,8 +170,8 @@ export function FamilyAccessManager() {
             <input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className="block w-full rounded border p-2" />
           </label>
           {!editingParent && <label className="block">Username
-            <input required minLength={2} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9.\-]{1,23}" value={handle}
-              onChange={(e) => setHandle(e.target.value)} placeholder="parent0042" className="block w-full rounded border p-2" />
+            <input required type="email" maxLength={58} value={handle}
+              onChange={(e) => setHandle(e.target.value)} placeholder="tosin@kaec.com" className="block w-full rounded border p-2" />
           </label>}
           <fieldset className="space-y-1">
             <legend className="font-semibold">Learners verified by the school</legend>
@@ -188,6 +207,12 @@ export function FamilyAccessManager() {
           <p className="break-all">Username <strong>{credentials.username}</strong></p>
           <p className="break-all">Temporary password <strong>{credentials.temporaryPassword}</strong></p>
           <p className="text-sm">The temporary password expires in seven days and must be changed before viewing results.</p>
+          <button type="button" className="mr-3 rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold"
+            onClick={() => void navigator.clipboard.writeText(
+              `Username: ${credentials.username}\nTemporary password: ${credentials.temporaryPassword}`
+            ).catch(() => setError("Could not copy the credentials. Select and copy them manually."))}>
+            Copy login details
+          </button>
           <button type="button" onClick={() => setCredentials(null)} className="font-semibold underline">Hide credentials</button>
         </section>
       )}
@@ -205,7 +230,7 @@ export function FamilyAccessManager() {
             <p className="text-sm text-zinc-600">{parent.status} · {parent.learners.length} linked</p>
             <details className="mt-2 text-sm">
               <summary className="w-fit cursor-pointer py-2 font-semibold text-emerald-900">Details and actions</summary>
-              <p className="break-all">Username {parent.username}</p>
+              <p className="break-all">Username {schoolLoginUsername(parent.username, parentLoginDomain)}</p>
               <p className="mb-2">Linked learners {parent.learners.join(", ") || "None"}</p>
               {parent.status !== "Revoked" && parent.learner_ids && (
                 <button type="button" disabled={busy} className="mb-2 mr-4 py-2 font-semibold text-emerald-900 underline"
@@ -216,6 +241,9 @@ export function FamilyAccessManager() {
                     setSelected(parent.learner_ids ?? []);
                   }}>Edit name and active learner links</button>
               )}
+              {parent.status !== "Revoked" && <button type="button" disabled={busy || Boolean(credentials)}
+                className="mb-2 mr-4 py-2 font-semibold text-emerald-900 underline"
+                onClick={() => resetParentPassword(parent)}>Reset school password</button>}
               {editingParent === parent.id && parentForm}
               {parent.status !== "Revoked" && <button type="button" disabled={busy}
                 className="font-semibold text-red-800 underline" onClick={() => {

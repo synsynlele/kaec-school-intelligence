@@ -186,7 +186,7 @@ export function StudentAccessManager() {
     }
   }
 
-  async function manageLogin(student: StudentRow, action: "issue" | "reset") {
+  async function manageLogin(student: StudentRow, action: "issue" | "reset", username?: string) {
     if (action === "reset" && !window.confirm(`Replace the school-issued password for ${student.display_name}?`)) return;
     setBusyId(student.id);
     setError(null);
@@ -200,7 +200,7 @@ export function StudentAccessManager() {
       const response = await fetch("/api/learning/student-account", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ action, studentId: student.id }),
+        body: JSON.stringify({ action, studentId: student.id, username }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not issue a learner login.");
@@ -265,6 +265,12 @@ export function StudentAccessManager() {
             <div><dt className="font-semibold">Username</dt><dd className="break-all font-mono">{issuedLogin.username}</dd></div>
             <div><dt className="font-semibold">Password</dt><dd className="break-all font-mono">{issuedLogin.password}</dd></div>
           </dl>
+          <button type="button" className="mr-3 rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold"
+            onClick={() => void navigator.clipboard.writeText(
+              `Username: ${issuedLogin.username}\nTemporary password: ${issuedLogin.password}`
+            ).catch(() => setError("Could not copy the credentials. Select and copy them manually."))}>
+            Copy login details
+          </button>
           <button type="button" className="rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold" onClick={() => setIssuedLogin(null)}>Hide credentials</button>
         </section>
       )}
@@ -321,11 +327,20 @@ export function StudentAccessManager() {
                     </button>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={!student.active || busyId !== null}
-                        onClick={() => void manageLogin(student, "issue")}
-                        className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
-                        Issue school login
-                      </button>
+                      <form className="flex flex-col gap-2" onSubmit={(event) => {
+                        event.preventDefault();
+                        const username = String(new FormData(event.currentTarget).get("username") ?? "");
+                        void manageLogin(student, "issue", username);
+                      }}>
+                        <label className="text-sm font-semibold">School username
+                          <input required name="username" type="email" maxLength={58} placeholder="tosin@kaec.com"
+                            className="mt-1 block w-full rounded-lg border px-3 py-2" />
+                        </label>
+                        <button type="submit" disabled={!student.active || busyId !== null}
+                          className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+                          Issue school login
+                        </button>
+                      </form>
                       <button type="button" disabled={!student.active || busyId !== null}
                         onClick={() => void issueCode(student)}
                         className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
