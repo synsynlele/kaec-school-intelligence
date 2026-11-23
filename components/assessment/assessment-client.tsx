@@ -638,7 +638,7 @@ export function AssessmentClient() {
   return (
     <main className="text-zinc-950">
       <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-5 sm:px-8 md:flex-row md:items-center md:justify-between">
+        <div className="ksi-workspace-banner mx-auto flex max-w-7xl flex-col gap-3 px-5 py-5 sm:px-8 md:flex-row md:items-center md:justify-between">
           <div>
             <Link href="/dashboard" className="text-sm font-medium text-emerald-900">
               ← Dashboard

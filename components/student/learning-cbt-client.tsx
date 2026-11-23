@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LearningPortalHeader } from "@/components/student/learning-portal-header";
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
@@ -37,6 +37,40 @@ export function LearningCbtClient() {
   const focusAssessmentHeading = useCallback((heading: HTMLHeadingElement | null) => {
     heading?.focus();
   }, []);
+  const learnerId = useRef<string | null>(null);
+
+  function draftKey(assessmentId: string) {
+    return `ksi:cbt-draft:${learnerId.current}:${assessmentId}`;
+  }
+
+  function restoreAnswers(cbt: Cbt): Record<string, string> {
+    if (!learnerId.current || !cbt.questions) return {};
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(draftKey(cbt.id)) ?? "{}");
+      return Object.fromEntries(cbt.questions.flatMap(({ id }) =>
+        typeof saved?.[id] === "string" ? [[id, saved[id]]] : []));
+    } catch {
+      return {};
+    }
+  }
+
+  function saveAnswers(assessmentId: string, next: Record<string, string>) {
+    if (!learnerId.current) return;
+    try {
+      if (Object.keys(next).length) sessionStorage.setItem(draftKey(assessmentId), JSON.stringify(next));
+      else sessionStorage.removeItem(draftKey(assessmentId));
+    } catch {
+      // Keep the live form usable when browser storage is unavailable.
+    }
+  }
+
+  function answerQuestion(questionId: string, value: string) {
+    if (!current) return;
+    const next = { ...answers, [questionId]: value };
+    setAnswers(next);
+    saveAnswers(current.id, next);
+  }
+
   const [list, setList] = useState<Cbt[]>([]);
   const [current, setCurrent] = useState<Cbt | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -56,6 +90,7 @@ export function LearningCbtClient() {
           window.location.replace("/learner-sign-in");
           return;
         }
+        learnerId.current = session.user.id;
         const { data, error: failure } = await client.rpc("get_learning_cbts");
         if (!active) return;
         if (failure?.message === "An active learner account is required.") {
@@ -82,7 +117,8 @@ export function LearningCbtClient() {
       if (failure) throw new Error(failure.message);
       const [cbt] = data as unknown as Cbt[];
       if (!cbt) throw new Error("This assessment is unavailable.");
-      setAnswers({});
+      if (!cbt.questions) saveAnswers(cbt.id, {});
+      setAnswers(restoreAnswers(cbt));
       setCurrent(cbt);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to open the assessment.");
@@ -92,7 +128,7 @@ export function LearningCbtClient() {
   }
 
   async function submit(cbt: Cbt) {
-    if (!window.confirm("Submit your answers? Your score is available immediately. For scheduled tests, correct answers appear after closing.")) return;
+    if (!window.confirm("Submit your answers? Your objective score is available immediately.")) return;
     setBusy(true);
     setError("");
     try {
@@ -105,6 +141,7 @@ export function LearningCbtClient() {
       setCurrent(submitted);
       setList((previous) => previous.map((item) => item.id === cbt.id ? submitted : item));
       setAnswers({});
+      saveAnswers(cbt.id, {});
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to submit. Please try again.");
     } finally {
@@ -155,6 +192,7 @@ export function LearningCbtClient() {
       )}
       {current && <button type="button" disabled={busy} onClick={() => {
         if (Object.keys(answers).length > 0 && !window.confirm("Leave this assessment? Your unsubmitted answers will be cleared.")) return;
+        saveAnswers(current.id, {});
         setCurrent(null);
         setError("");
       }} className="font-semibold text-emerald-900 underline">Back to assessments</button>}
@@ -195,13 +233,13 @@ export function LearningCbtClient() {
               {question.options ? question.options.map((option, optionIndex) => (
                 <label key={optionIndex} className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3">
                   <input type="radio" name={question.id} checked={answers[question.id] === option}
-                    onChange={() => setAnswers((previous) => ({ ...previous, [question.id]: option }))} />
+                    onChange={() => answerQuestion(question.id, option)} />
                   {option}
                 </label>
               )) : (
                 <textarea aria-label={`Answer for question ${index + 1}`} rows={4} maxLength={8000}
                   className="w-full rounded-lg border border-zinc-300 p-3" value={answers[question.id] ?? ""}
-                  onChange={(event) => setAnswers((previous) => ({ ...previous, [question.id]: event.target.value }))} />
+                  onChange={(event) => answerQuestion(question.id, event.target.value)} />
               )}
             </fieldset>
           ))}

@@ -502,5 +502,40 @@ assert.equal(await setPasswordPending(false), true);
 assert.equal(await setPasswordPending(false), false);
 await db.exec('set role authenticated;');
 assert.ok((await publishedResults()).length > 0);
+await db.exec("reset role;");
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123133000_learning_cbt_question_shuffle.sql', import.meta.url), 'utf8'));
+await db.exec(`
+  insert into auth.users (id) values ('${id(94)}');
+  insert into students (id, workspace_id, class_id, active, display_name)
+    values ('${id(95)}','${id(4)}','${id(5)}',true,'Second Learner');
+  insert into student_accounts (user_id, student_id, workspace_id, active)
+    values ('${id(94)}','${id(95)}','${id(4)}',true);
+  insert into workspace_members (user_id, workspace_id, role, status)
+    values ('${id(94)}','${id(4)}','student','active');
+  insert into private.learning_cbts (id, workspace_id, class_id, title, questions, assigned_by, cbt_enabled, opens_at, closes_at)
+    select '${id(96)}','${id(4)}','${id(5)}','Shuffled CBT',
+      jsonb_agg(jsonb_build_object('id', n::text, 'prompt', 'Select b', 'type', 'objective',
+        'options', jsonb_build_array('a','b'), 'correct', 'b', 'marks', 1) order by n),
+      '${id(1)}', true, now()-interval '1 minute', now()+interval '1 hour'
+    from generate_series(1,8) n;
+  set role authenticated; set app.uid = '${id(2)}';
+`);
+const shuffledTest = () => scalar('select get_learning_cbts($1) as value', [id(96)]);
+const [firstView] = await shuffledTest();
+assert.deepEqual((await shuffledTest())[0].questions, firstView.questions);
+assert.equal(firstView.questions.length, 8);
+assert(firstView.questions.every((question) => !Object.hasOwn(question, 'correct')));
+await db.exec(`set app.uid = '${id(94)}'`);
+const [secondView] = await shuffledTest();
+assert.notDeepEqual(secondView.questions, firstView.questions);
+await db.exec(`set app.uid = '${id(2)}'`);
+const shuffledFeedback = await scalar('select submit_learning_cbt($1,$2) as value',
+  [id(96), JSON.stringify({ [firstView.questions[0].id]: 'b' })]);
+assert.equal(shuffledFeedback.earned, 1);
+assert.deepEqual(shuffledFeedback.review.map(({ id }) => id), firstView.questions.map(({ id }) => id));
+assert(shuffledFeedback.review.every(({ correct }) => correct === 'b'));
+assert.deepEqual((await shuffledTest())[0].feedback, shuffledFeedback);
+await db.exec(`set app.uid = '${id(94)}'`);
+assert.equal((await shuffledTest())[0].feedback, null);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');

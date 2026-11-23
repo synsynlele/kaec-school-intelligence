@@ -90,7 +90,7 @@ export function LearningAssessmentHub() {
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <Link href="/assessment" className="text-sm font-semibold text-emerald-900 underline">Back to Assess</Link>
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      <header className="ksi-workspace-banner flex flex-wrap items-center justify-between gap-3 p-5 sm:p-7">
         <h1 className="text-3xl font-bold">CBT &amp; Score Sheets</h1>
         <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>

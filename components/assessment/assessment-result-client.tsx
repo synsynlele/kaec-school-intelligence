@@ -291,7 +291,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
                 <Link href={`/assessment/edit?assessment=${encodeURIComponent(state.assessment.id)}`}
                   className="font-semibold text-emerald-900 underline">Edit objective questions and answer keys</Link> before scheduling.
               </p>
-              <p className="text-sm">Times are in West Africa Time (WAT). Learners receive their score on submission and see correct answers after the window closes.</p>
+              <p className="text-sm">Times are in West Africa Time (WAT). New CBTs shuffle the questions for each learner and show objective feedback after submission.</p>
               <div className="flex flex-wrap gap-3">
                 <label className="grid gap-1 text-sm">Opens<input type="datetime-local" required value={opensAt}
                   onChange={(event) => setOpensAt(event.target.value)} className="rounded-lg border bg-white p-2" /></label>

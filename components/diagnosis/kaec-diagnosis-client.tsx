@@ -564,7 +564,7 @@ export function KaecDiagnosisClient() {
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-9">
       <div className="grid gap-7 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="space-y-5">
-          <div className="rounded-3xl border border-emerald-950/10 bg-white p-5 shadow-sm sm:p-6">
+          <div className="ksi-workspace-banner p-5 sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
               KAEC first-hand diagnosis sheet
             </p>

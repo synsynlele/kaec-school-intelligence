@@ -679,7 +679,7 @@ export function AcademicSetupClient({ initialStudentId }: { initialStudentId?: s
   return (
     <main className="min-h-screen bg-stone-50 text-zinc-950">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 border-b border-zinc-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="ksi-workspace-banner flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
           <div>
             <Link href="/dashboard" className="text-sm font-medium text-emerald-900">
               ← Dashboard
