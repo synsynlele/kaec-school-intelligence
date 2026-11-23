@@ -310,26 +310,30 @@ export function StudentAccessManager() {
                     {student.class_id ? classNames.get(student.class_id) ?? "Assigned class" : "No class assigned"}
                   </p>
                 </div>
-                {linked ? (
-                  <button type="button" disabled={!student.active || busyId !== null}
-                    onClick={() => void manageLogin(student, "reset")}
-                    className="w-fit rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
-                    Reset school password
-                  </button>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
+                <details className="text-sm">
+                  <summary className="cursor-pointer py-2 font-semibold text-emerald-900">Student actions</summary>
+                  <Link href={`/setup?student=${encodeURIComponent(student.id)}`} className="mb-2 block w-fit py-2 font-semibold text-emerald-900 underline">Edit details or change class</Link>
+                  {linked ? (
                     <button type="button" disabled={!student.active || busyId !== null}
-                      onClick={() => void manageLogin(student, "issue")}
-                      className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
-                      Issue school login
+                      onClick={() => void manageLogin(student, "reset")}
+                      className="w-fit rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
+                      Reset school password
                     </button>
-                    <button type="button" disabled={!student.active || busyId !== null}
-                      onClick={() => void issueCode(student)}
-                      className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
-                      {busyId === student.id ? "Please wait…" : "Generate access code"}
-                    </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={!student.active || busyId !== null}
+                        onClick={() => void manageLogin(student, "issue")}
+                        className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+                        Issue school login
+                      </button>
+                      <button type="button" disabled={!student.active || busyId !== null}
+                        onClick={() => void issueCode(student)}
+                        className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
+                        {busyId === student.id ? "Please wait…" : "Generate access code"}
+                      </button>
+                    </div>
+                  )}
+                </details>
               </div>
             );
           })}

@@ -76,7 +76,7 @@ async function loadContext(supabase: SupabaseClient): Promise<TeachingMapContext
   };
 }
 
-export function TeachingMapClient() {
+export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string } = {}) {
   const router = useRouter();
   const [context, setContext] = useState<TeachingMapContext | null>(null);
   const [classId, setClassId] = useState("");
@@ -98,7 +98,7 @@ export function TeachingMapClient() {
     setContext(next);
     setClassId((current) => current || next.classes[0]?.id || "");
     setSubjectId((current) => current || next.subjects[0]?.id || "");
-    setTeacherId((current) => current || next.map.teachers[0]?.user_id || "");
+    setTeacherId((current) => current || (!initialStaffId ? next.map.teachers[0]?.user_id : "") || "");
   }
 
   useEffect(() => {
@@ -115,7 +115,10 @@ export function TeachingMapClient() {
         setContext(next);
         setClassId(next.classes[0]?.id || "");
         setSubjectId(next.subjects[0]?.id || "");
-        setTeacherId(next.map.teachers[0]?.user_id || "");
+        const staffId = initialStaffId
+          ? next.map.teachers.find(({ user_id }) => user_id === initialStaffId)?.user_id
+          : next.map.teachers[0]?.user_id;
+        setTeacherId(staffId ?? "");
       })
       .catch((caught) => {
         if (!cancelled) setError(caught instanceof Error ? caught.message : "Teaching Map could not be loaded.");
@@ -127,8 +130,12 @@ export function TeachingMapClient() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [initialStaffId, router]);
 
+  const assignedStaff = context?.map.teachers.find(({ user_id }) => user_id === initialStaffId);
+  const visibleAssignments = context?.map.assignments.filter(
+    (item) => !initialStaffId || item.teacher_id === initialStaffId
+  ) ?? [];
   const canManage = context ? ["owner", "admin"].includes(context.map.role) : false;
   const activeCount = useMemo(
     () => context?.map.assignments.filter((item) => item.active).length ?? 0,
@@ -214,35 +221,39 @@ export function TeachingMapClient() {
       {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
       {notice ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{notice}</div> : null}
 
-      {canManage ? (
-        <form onSubmit={addAssignment} className="mt-8 grid gap-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+      {canManage && (!initialStaffId || assignedStaff) ? (
+        <form onSubmit={addAssignment} className={`mt-8 grid gap-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:items-end ${assignedStaff ? "lg:grid-cols-[1fr_1fr_auto]" : "lg:grid-cols-[1fr_1fr_1fr_auto]"}`}>
           <SelectField label="Class" value={classId} onChange={setClassId} options={context.classes.map((item) => ({ value: item.id, label: item.name }))} />
           <SelectField label="Subject" value={subjectId} onChange={setSubjectId} options={context.subjects.map((item) => ({ value: item.id, label: item.name }))} />
-          <SelectField label="Teacher" value={teacherId} onChange={setTeacherId} options={context.map.teachers.map((item) => ({ value: item.user_id, label: `${item.name} · ${item.role}` }))} />
+          {!assignedStaff && <SelectField label="Teacher" value={teacherId} onChange={setTeacherId} options={context.map.teachers.map((item) => ({ value: item.user_id, label: `${item.name} · ${item.role}` }))} />}
           <button
             type="submit"
             disabled={saving || !classId || !subjectId || !teacherId}
             className="rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Add teaching link"}
+            {saving ? "Saving…" : assignedStaff ? `Assign ${assignedStaff.name}` : "Add teaching link"}
           </button>
         </form>
       ) : (
         <div className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 text-sm leading-6 text-zinc-600">
-          This map is read-only for your role. School owners/admins manage teaching assignments.
+          {canManage ? "This staff member is unavailable for assignment." : "This map is read-only for your role. School owners/admins manage teaching assignments."}
         </div>
       )}
 
+      {initialStaffId && <div className="mt-8 flex flex-wrap items-center gap-4 text-sm">
+        <Link href="/setup/staff-access" className="font-semibold text-emerald-900 underline">Back to Staff</Link>
+        <Link href="/setup/teaching-map" className="font-semibold text-emerald-900 underline">View all assignments</Link>
+      </div>}
       <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 px-6 py-5">
-          <h2 className="text-lg font-bold text-zinc-950">Teaching assignments</h2>
+          <h2 className="text-lg font-bold text-zinc-950">{assignedStaff ? `Teaching assignments for ${assignedStaff.name}` : "Teaching assignments"}</h2>
           <p className="mt-1 text-sm text-zinc-500">Every active row is an approved instructional path for lesson delivery.</p>
         </div>
-        {context.map.assignments.length === 0 ? (
-          <div className="p-8 text-sm text-zinc-600">No teaching assignments exist yet. Add the first Teacher ↔ Class ↔ Subject link above.</div>
+        {visibleAssignments.length === 0 ? (
+          <div className="p-8 text-sm text-zinc-600">{initialStaffId ? "No teaching assignments for this staff member." : "No teaching assignments exist yet."}</div>
         ) : (
           <div className="divide-y divide-zinc-100">
-            {context.map.assignments.map((assignment) => (
+            {visibleAssignments.map((assignment) => (
               <div key={assignment.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
