@@ -163,6 +163,8 @@ await db.exec(`reset role;
   alter table workspaces add column name text default 'School A', add column logo_url text;
   alter table classes add column name text default 'JSS1', add column workspace_id uuid, add column academic_session text;
   alter table assessments add column blueprint jsonb default '{"term":"First Term","academicSession":"2026/2027"}';
+  alter table assessments add column subject_id uuid;
+  create table subjects(id uuid primary key, workspace_id uuid, name text);
   create table diagnoses (
     id uuid primary key, workspace_id uuid, student_id uuid, assessment_id uuid, status text,
     term text, academic_session text, reviewed_at timestamptz, finalised_at timestamptz,
@@ -260,10 +262,34 @@ assert.deepEqual(await parentDiagnoses(id(53)), []);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await resultReport()).passport_photo, photo);
 await db.exec(`set app.uid = '${id(33)}'`);
+await db.exec("reset role;");
+await db.exec(readFileSync(new URL('../supabase/migrations/20261123100000_learning_term_reports.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(31)}'`);
+const termArgs = [id(4), id(6), '2026/2027', 'First Term'];
+const termPreview = () => scalar('select learning_term_report_preview($1,$2,$3,$4) as value', termArgs);
+const publishTerm = (reportKind, ids) => scalar(
+  'select publish_learning_term_report($1,$2,$3,$4,$5,$6) as value', [...termArgs, reportKind, ids],
+);
+const parentTermReports = (reportId = null) => scalar('select get_my_parent_term_reports($1) as value', [reportId]);
+assert.deepEqual(await parentTermReports(), []);
+await assert.rejects(termPreview(), /leadership access/);
+await db.exec(`set app.uid = '${id(17)}'`);
+const preview = await termPreview();
+assert.equal(preview.assessments.length, 1);
+await assert.rejects(publishTerm('term', [id(53)]), /selected assessments changed/);
+const selectedTermIds = preview.assessments.map(({ id }) => id);
+const publishedMidterm = await publishTerm('midterm', selectedTermIds);
+await publishTerm('term', selectedTermIds);
+await assert.rejects(publishTerm('term', selectedTermIds), /already published/);
+await db.exec(`set app.uid = '${id(31)}'`);
+assert.equal((await parentTermReports()).length, 2);
+assert.equal((await parentTermReports(publishedMidterm))[0].assessments[0].id, selectedTermIds[0]);
+await db.exec(`set app.uid = '${id(33)}'`);
 await db.query('select revoke_learning_parent($1,$2)', [id(4), id(31)]);
 await savePhoto(id(6), null);
 await db.exec(`set app.uid = '${id(31)}'`);
 assert.deepEqual(await parentDiagnoses(), []);
+assert.deepEqual(await parentTermReports(), []);
 assert.deepEqual(await parentReports(), []);
 assert.equal(await parentReport(id(6)), null);
 await db.exec(`set app.uid = '${id(2)}'`);
@@ -322,8 +348,6 @@ assert.equal(closed.feedback.review[0].correct, 'b');
 await db.exec(`reset role; delete from private.learning_cbt_submissions where cbt_id = '${scheduled}'; set role authenticated;`);
 await assert.rejects(scalar('select submit_learning_cbt($1,$2) as value',[scheduled, '{}']), /has closed/);
 await db.exec(`reset role;
-  alter table assessments add column subject_id uuid;
-  create table subjects(id uuid primary key, workspace_id uuid, name text);
   insert into subjects values ('${id(40)}','${id(4)}','Mathematics');
   insert into assessments(id,workspace_id,class_id,title,status,subject_id) values
     ('${id(41)}','${id(4)}','${id(5)}','Early mark entry','validated','${id(40)}'),

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { resultScores, type PublishedResult, type ReportDiagnosis, type ResultReport } from "@/lib/learning/result-report";
+import { resultScores, termReportTitle, type TermReport, type PublishedResult, type ReportDiagnosis, type ResultReport } from "@/lib/learning/result-report";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 function DiagnosisTables({ diagnosis }: { diagnosis: ReportDiagnosis }) {
@@ -103,6 +103,7 @@ function ReportCard({ report }: { report: ResultReport }) {
 export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "learner" | "parent" }) {
   const [results, setResults] = useState<PublishedResult[] | null>(null);
   const [diagnoses, setDiagnoses] = useState<Pick<ResultReport, "id" | "title" | "learner_name" | "term" | "academic_session">[] | null>(null);
+  const [termReports, setTermReports] = useState<TermReport[] | null>(null);
   const [learnerId, setLearnerId] = useState<string | undefined>();
   const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
@@ -136,6 +137,20 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
+  async function loadTermReports() {
+    setBusy(true);
+    setError("");
+    try {
+      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_parent_term_reports", {});
+      if (error) throw new Error("Could not load published term reports.");
+      setTermReports(data as unknown as TermReport[]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load published term reports.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openReport(assignmentId: string, targetLearner?: string) {
     setBusy(true);
     setError("");
@@ -154,21 +169,21 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
-  async function downloadReport(query: URLSearchParams, diagnosisOnly = false) {
+  async function downloadReport(query: URLSearchParams, diagnosisOnly = false, termReport = false) {
     setBusy(true);
     setError("");
     try {
       const { data: { session } } = await getBrowserSupabaseClient().auth.getSession();
       if (!session) throw new Error("Sign in again to download your result.");
       if (diagnosisOnly) query.set("format", "diagnosis");
-      const response = await fetch(`/api/learning/result/pdf?${query}`, {
+      const response = await fetch(`/api/learning/${termReport ? "term-report" : "result/pdf"}?${query}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!response.ok) throw new Error((await response.json()).error ?? "Could not download the result.");
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = diagnosisOnly ? "ksi-learner-diagnosis.pdf" : "ksi-assessment-result.pdf";
+      link.download = termReport ? "ksi-term-report.pdf" : diagnosisOnly ? "ksi-learner-diagnosis.pdf" : "ksi-assessment-result.pdf";
       document.body.append(link);
       link.click();
       link.remove();
@@ -232,6 +247,26 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
                     onClick={() => void downloadReport(new URLSearchParams({ diagnosis: diagnosis.id }), true)}>
                     Download PDF
                   </button>
+                </div>
+              ))}
+            </section>
+          )}
+          {viewer === "parent" && (
+            <section aria-label="Term reports" className="space-y-3 border-t border-stone-200 pt-3">
+              <button type="button" disabled={busy} onClick={() => void loadTermReports()} className="font-semibold text-emerald-900 underline">
+                {termReports ? "Refresh term reports" : "View term reports"}
+              </button>
+              {termReports?.length === 0 && <p>No term reports have been published yet.</p>}
+              {termReports?.map((item) => (
+                <div key={item.id} className="space-y-2 rounded-lg border border-stone-200 p-3">
+                  <p className="font-semibold">{item.learner_name} · {termReportTitle(item.kind)}</p>
+                  <p className="text-sm text-zinc-600">{item.academic_session} · {item.term}</p>
+                  <div className="flex flex-wrap gap-3">
+                    <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
+                      onClick={() => void downloadReport(new URLSearchParams({ report: item.id }), false, true)}>Download PDF</button>
+                    <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
+                      onClick={() => void downloadReport(new URLSearchParams({ report: item.id, combined: "1" }), false, true)}>Download combined term PDF</button>
+                  </div>
                 </div>
               ))}
             </section>

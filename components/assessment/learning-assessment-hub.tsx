@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { LearningTermReports } from "@/components/assessment/learning-term-reports";
 import { ManualProjectForm } from "@/components/assessment/manual-project-form";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ export function LearningAssessmentHub() {
     classes: { id: string; name: string }[];
     subjects: { id: string; name: string }[];
   } | null>(null);
+  const [reportSetup, setReportSetup] = useState<{ schoolId: string; classes: { id: string; name: string }[] } | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ search: "", page: 0 });
   const [rows, setRows] = useState<Assessment[]>([]);
@@ -63,6 +65,8 @@ export function LearningAssessmentHub() {
       if (error) throw new Error(error.message);
       if (!active) return;
       setRows(data as unknown as Assessment[]);
+      setReportSetup(membership.data && ["owner", "admin", "leader"].includes(membership.data.role) && !classes.error
+        ? { schoolId, classes: classes.data ?? [] } : null);
       if (membership.data && ["owner", "admin", "teacher"].includes(membership.data.role)
         && !classes.error && !subjects.error) {
         setProjectSetup({ schoolId, classes: classes.data ?? [], subjects: subjects.data ?? [] });
@@ -91,6 +95,7 @@ export function LearningAssessmentHub() {
         <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>
       <p className="text-sm text-zinc-700">Open a class assessment to enter marks or schedule its CBT.</p>
+      {reportSetup && <LearningTermReports {...reportSetup} />}
       {projectSetup && <ManualProjectForm {...projectSetup} />}
       <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
         event.preventDefault();

@@ -1,6 +1,6 @@
 import type { GeneratedDiagnosis } from "@/lib/diagnosis/engine";
 import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
-import { resultScores, type ResultReport, type ReportDiagnosis } from "@/lib/learning/result-report";
+import { resultScores, type ResultReport, type ReportDiagnosis, type TermReport, termReportTitle } from "@/lib/learning/result-report";
 import { KSI_PDF_ATTRIBUTION, resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 
 export type DiagnosisPdfInput = {
@@ -704,6 +704,39 @@ export function createLearningResultPdf(report: ResultReport) {
   const diagnosisPages = diagnosis ? new FlowPage(diagnosis).build() : [];
 
   return serializePdf(buildPdfObjects([cover, ...diagnosisPages], logoInput, "Assessment result", photo));
+}
+
+export function createLearningTermPdf(reports: TermReport[], diagnoses: DiagnosisReport[] = []) {
+  if (!reports.length) throw new Error("A published report is required.");
+  const branding = resolvePdfBranding(reports[0].school_logo);
+  const logo = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
+  const pages = reports.flatMap((report) => {
+    const output: string[][] = [];
+    for (let offset = 0; offset < report.assessments.length; offset += 15) {
+      const page: string[] = [];
+      textAtTop(page, report.school_name, 48, 47, 11, true, FOREST);
+      textAtTop(page, termReportTitle(report.kind), 48, 69, 22, true, FOREST);
+      textAtTop(page, report.learner_name, 48, 103, 13, true);
+      textAtTop(page, [report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), 48, 126, 10);
+      rectTop(page, 48, 150, 500, 24, FOREST, null);
+      textAtTop(page, "Subject / Assessment", 58, 157, 10, true, CREAM);
+      textAtTop(page, "Published marks", 430, 157, 10, true, CREAM);
+      report.assessments.slice(offset, offset + 15).forEach((assessment, index) => {
+        const top = 185 + index * 35;
+        const { total, maximum } = resultScores(assessment);
+        textAtTop(page, assessment.subject ?? "General", 58, top, 9, true);
+        textAtTop(page, assessment.title.length > 65 ? assessment.title.slice(0, 62) + "…" : assessment.title, 58, top + 13, 9);
+        textAtTop(page, `${total} / ${maximum}`, 430, top + 6, 10);
+      });
+      output.push(page);
+    }
+    return output;
+  });
+  for (const source of diagnoses) {
+    const diagnosis = approvedReportDiagnosis(source, logo);
+    if (diagnosis) pages.push(...new FlowPage(diagnosis).build());
+  }
+  return serializePdf(buildPdfObjects(pages, logo, reports.length > 1 || diagnoses.length ? "Term report bundle" : termReportTitle(reports[0].kind)));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {
