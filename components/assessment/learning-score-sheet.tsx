@@ -96,7 +96,21 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
           <span className="mb-1 block text-xs text-zinc-600 sm:hidden">{label} / {maxima[key]}</span>
           {maxima[key] === 0 ? "—" : writable && row.editable ? (
             <input
+              data-score-input=""
               aria-label={`${label} score for ${row.name}`}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                event.preventDefault();
+                if (event.ctrlKey || event.metaKey) {
+                  if (dirty && valid && !busy) void save();
+                  return;
+                }
+                const inputs = Array.from(event.currentTarget.closest("table")?.querySelectorAll<HTMLInputElement>(
+                  "input[data-score-input]:enabled",
+                ) ?? []);
+                const current = inputs.indexOf(event.currentTarget);
+                inputs[current + (event.shiftKey ? -1 : 1)]?.focus();
+              }}
               aria-invalid={scores[key] !== null && (scores[key] < 0 || scores[key] > maxima[key])}
               className="w-full rounded-lg border border-zinc-300 px-2 py-2 focus-visible:outline-2 focus-visible:outline-emerald-800 sm:w-24"
               type="number"
@@ -130,7 +144,10 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
             {busy ? "Saving…" : "Save"}
           </button>
         )}
-        {message && <p role="status" className="mt-1 text-sm">{message}</p>}
+        {message && <p role={message === "Saved" ? "status" : "alert"} className="mt-1 text-sm">{message}</p>}
+        {dirty && !message && !busy && <p className="mt-1 text-xs text-zinc-600">
+          {valid ? "Unsaved" : "Check the mark limits"}
+        </p>}
       </td>}
     </>
   );
@@ -368,6 +385,9 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
       {sheet.roster.length === 0 ? <p>No learners are listed for this class.</p> : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
           <table className="block w-full border-collapse text-sm sm:table" role="table">
+            {sheet.writable && <caption className="hidden p-3 text-left text-xs text-zinc-600 sm:table-caption">
+              Enter moves to the next mark. Shift + Enter moves back. Ctrl or Command + Enter saves the learner’s marks.
+            </caption>}
             <thead className="sr-only bg-stone-100 text-left sm:not-sr-only" role="rowgroup">
               <tr>
                 <th scope="col" className="p-3">Learner</th>

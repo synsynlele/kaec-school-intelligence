@@ -183,7 +183,8 @@ export function StudentAccessManager() {
     }
   }
 
-  async function issueLogin(student: StudentRow) {
+  async function manageLogin(student: StudentRow, action: "issue" | "reset") {
+    if (action === "reset" && !window.confirm(`Replace the school-issued password for ${student.display_name}?`)) return;
     setBusyId(student.id);
     setError(null);
     setIssued(null);
@@ -196,12 +197,12 @@ export function StudentAccessManager() {
       const response = await fetch("/api/learning/student-account", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ studentId: student.id }),
+        body: JSON.stringify({ action, studentId: student.id }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not issue a learner login.");
       setIssuedLogin({ studentName: student.display_name, username: data.username, password: data.password });
-      setContext((current) => current && {
+      if (action === "issue") setContext((current) => current && {
         ...current,
         accounts: [...current.accounts, { student_id: student.id, active: true }],
       });
@@ -295,10 +296,16 @@ export function StudentAccessManager() {
                     {student.class_id ? classNames.get(student.class_id) ?? "Assigned class" : "No class assigned"}
                   </p>
                 </div>
-                {linked ? null : (
+                {linked ? (
+                  <button type="button" disabled={!student.active || busyId !== null}
+                    onClick={() => void manageLogin(student, "reset")}
+                    className="w-fit rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
+                    Reset school password
+                  </button>
+                ) : (
                   <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={!student.active || busyId !== null}
-                      onClick={() => void issueLogin(student)}
+                      onClick={() => void manageLogin(student, "issue")}
                       className="rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
                       Issue school login
                     </button>

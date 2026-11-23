@@ -10,6 +10,10 @@ const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const headers = { "Cache-Control": "private, no-store" };
 
+function createPassword() {
+  return `${randomBytes(18).toString("base64url")}aA9!`;
+}
+
 function failure(error: string, status: number) {
   return Response.json({ error }, { status, headers });
 }
@@ -31,6 +35,39 @@ export async function POST(request: Request) {
   const admin = createClient(url, key, { auth });
   const learner = createClient(url, publishableKey, { auth });
 
+  if (input.action === "reset") {
+    const { data: account, error } = await staff.from("student_accounts")
+      .select("user_id,workspace_id").eq("student_id", input.studentId).eq("active", true).maybeSingle();
+    const { data: { user } } = await staff.auth.getUser(authorization.slice(7));
+    if (!account || error || !user) return failure("Learner account unavailable.", 403);
+
+    const [{ data: membership }, { data: student }, { data: school }] = await Promise.all([
+      staff.from("workspace_members").select("role").eq("workspace_id", account.workspace_id)
+        .eq("user_id", user.id).eq("status", "active").maybeSingle(),
+      staff.from("students").select("id").eq("workspace_id", account.workspace_id)
+        .eq("id", input.studentId).eq("active", true).maybeSingle(),
+      staff.from("workspaces").select("id").eq("id", account.workspace_id)
+        .eq("workspace_type", "school").eq("access_status", "active").maybeSingle(),
+    ]);
+    if (!membership || !["owner", "admin"].includes(membership.role) || !student || !school) {
+      return failure("Only the learner's school owner or admin can reset this login.", 403);
+    }
+
+    const { data: identity } = await admin.auth.admin.getUserById(account.user_id);
+    const email = identity?.user?.email ?? "";
+    const suffix = `@${learnerLoginDomain}`;
+    if (!email.endsWith(suffix) || identity.user?.app_metadata.ksi_school_learner !== input.studentId) {
+      return failure("This learner uses an existing email or Google account.", 409);
+    }
+
+    const password = createPassword();
+    const updated = await admin.auth.admin.updateUserById(account.user_id, { password });
+    if (updated.error) return failure("Could not reset the learner password.", 409);
+    return Response.json({ username: email.slice(0, -suffix.length), password }, { headers });
+  }
+
+  if (input.action !== "issue") return failure("Choose a learner account action.", 400);
+
   // The existing invitation RPC checks school scope, active status and administrator permissions.
   const invite = await staff.rpc("issue_student_access_code", { target_student_id: input.studentId, ttl_hours: 1 });
   const code = invite.data?.[0]?.access_code;
@@ -40,8 +77,10 @@ export async function POST(request: Request) {
 
   const username = `ksi-${randomBytes(9).toString("hex")}`;
   const email = `${username}@${learnerLoginDomain}`;
-  const password = `${randomBytes(18).toString("base64url")}aA9!`;
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const password = createPassword();
+  const created = await admin.auth.admin.createUser({
+    email, password, email_confirm: true, app_metadata: { ksi_school_learner: input.studentId },
+  });
   if (created.error || !created.data.user) return failure("Could not create the learner login. Try again.", 409);
 
   const signedIn = await learner.auth.signInWithPassword({ email, password });
