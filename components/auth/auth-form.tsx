@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { PasswordInput } from "@/components/auth/password-input";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useMemo, useState } from "react";
 
@@ -287,7 +289,7 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
       <h2 className="text-xl font-bold">Change your temporary password</h2>
       <p className="text-sm text-zinc-700">Choose a new password with at least 12 characters before opening KSI Learning.</p>
       <label className="block text-sm font-semibold">New password
-        <input autoComplete="new-password" required type="password" minLength={12} maxLength={72}
+        <PasswordInput autoComplete="new-password" required minLength={12} maxLength={72}
           value={newPassword} onChange={(event) => setNewPassword(event.target.value)}
           className="mt-1 block w-full rounded-xl border border-zinc-300 p-3" />
       </label>
@@ -306,7 +308,7 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
 
   return (
     <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
-      <div>
+      <div className="ksi-workspace-banner p-4 sm:p-5">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Enter KSI</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950">{learnerOnly ? "Learner sign-in" : "Choose your workspace"}</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
@@ -431,8 +433,7 @@ export function AuthForm({ learnerOnly = false }: { learnerOnly?: boolean }) {
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold text-zinc-800">Password</span>
-              <input
-                type="password"
+              <PasswordInput key={mode}
                 required
                 minLength={6}
                 value={password}

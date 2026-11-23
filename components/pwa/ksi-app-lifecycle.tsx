@@ -8,16 +8,6 @@ import { invalidateKsiRuntimeAccess } from "@/lib/supabase/runtime-access";
 const APP_RESUME_EVENT = "ksi:app-resume";
 const MIN_BACKGROUND_MS = 15_000;
 
-function isPublicPath(pathname: string) {
-  return (
-    pathname === "/" ||
-    pathname.startsWith("/sign-in") ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/owner/access") ||
-    pathname.startsWith("/teacher/join")
-  );
-}
-
 export function KsiAppLifecycle() {
   useEffect(() => {
     let hiddenAt = document.visibilityState === "hidden" ? Date.now() : null;
@@ -29,16 +19,8 @@ export function KsiAppLifecycle() {
       recovery = (async () => {
         invalidateKsiRuntimeAccess();
 
-        const {
-          data: { session },
-          error,
-        } = await getBrowserSupabaseClient().auth.getSession();
-
-        if (!error && !session && !isPublicPath(window.location.pathname)) {
-          window.location.replace("/auth/resolve");
-          return;
-        }
-
+        // Refresh the local session without navigating away from open forms.
+        await getBrowserSupabaseClient().auth.getSession();
         window.dispatchEvent(new Event(APP_RESUME_EVENT));
       })()
         .catch(() => {

@@ -68,3 +68,22 @@ body.ksi-school-nav-active {
 .ksi-hqls-result-document h3 {
   overflow-wrap: anywhere;
 }
+
+/* Shared dashboard treatment for the main workspace entry points. */
+.ksi-workspace-banner {
+  min-width: 0;
+  border: 1px solid #d8e5e6;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(ellipse at top right, #e0ebff 0%, transparent 55%),
+    linear-gradient(130deg, #fff 20%, #effaf6 100%);
+  box-shadow: 0 12px 32px -24px rgb(15 23 42 / 45%);
+  overflow-wrap: anywhere;
+}
+
+.ksi-workspace-banner-dark {
+  border-color: transparent;
+  background:
+    radial-gradient(ellipse at top right, rgb(99 102 241 / 28%), transparent 55%),
+    linear-gradient(130deg, #0f172a, #115e59);
+}

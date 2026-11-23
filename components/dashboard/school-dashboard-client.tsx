@@ -217,7 +217,7 @@ export function SchoolDashboardClient() {
   return (
     <main className="min-h-screen bg-stone-50 px-4 pb-24 pt-5 sm:px-7 lg:pb-10 lg:pt-7">
       <div className="mx-auto max-w-7xl">
-        <header className="rounded-[2rem] border border-emerald-950/10 bg-white p-5 shadow-sm sm:p-7">
+        <header className="ksi-workspace-banner p-5 sm:p-7">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="flex items-center gap-3">

@@ -241,7 +241,7 @@ export function StaffAccessManager() {
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="ksi-workspace-banner flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
         <div>
           <Link href="/dashboard" className="text-sm font-semibold text-emerald-900">← Dashboard</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Staff Access</p>

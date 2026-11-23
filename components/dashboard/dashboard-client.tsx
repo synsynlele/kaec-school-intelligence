@@ -273,7 +273,7 @@ export function DashboardClient() {
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-10">
         {error ? <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">{error}</div> : null}
 
-        <section className="rounded-3xl bg-emerald-950 p-7 text-white shadow-sm sm:p-9">
+        <section className="ksi-workspace-banner ksi-workspace-banner-dark p-7 text-white sm:p-9">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">{roleLabel(activeRole)}</p>

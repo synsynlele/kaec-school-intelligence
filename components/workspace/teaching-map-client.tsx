@@ -203,7 +203,7 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="ksi-workspace-banner flex flex-col gap-4 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/dashboard" className="text-sm font-semibold text-emerald-900">← Dashboard</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Academic Teaching Map</p>

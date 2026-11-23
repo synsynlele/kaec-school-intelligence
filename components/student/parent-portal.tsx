@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { PasswordInput } from "@/components/auth/password-input";
+
 import { parentLoginDomain, resolveParentLogin } from "@/lib/learning/school-login";
 
 import { useEffect, useState, type FormEvent } from "react";
@@ -96,12 +98,12 @@ export function ParentPortal() {
         </label>
         {temporary ? (
           <label className="block font-medium">Choose a new password
-            <input required type="password" autoComplete="new-password" minLength={12} maxLength={72}
+            <PasswordInput key="new-password" required autoComplete="new-password" minLength={12} maxLength={72}
               value={replacement} onChange={(e) => setReplacement(e.target.value)} className="block w-full rounded border p-2" />
           </label>
         ) : (
           <label className="block font-medium">Password
-            <input required type="password" autoComplete="current-password" value={password}
+            <PasswordInput key="current-password" required autoComplete="current-password" value={password}
               onChange={(e) => setPassword(e.target.value)} className="block w-full rounded border p-2" />
           </label>
         )}

@@ -494,7 +494,7 @@ export function AcademicResourcesClient() {
   return (
     <main className="min-h-screen bg-stone-50 pb-24 text-zinc-950">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="ksi-workspace-banner flex flex-wrap items-center justify-between gap-3 p-5 sm:p-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">
               Teacher KSI · {context.workspaceName}

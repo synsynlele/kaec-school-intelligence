@@ -36,18 +36,21 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GateState>("checking");
   const [error, setError] = useState<string | null>(null);
 
-  const resolveAccess = useCallback(async () => {
-    setState("checking");
-    setError(null);
+  const resolveAccess = useCallback(async (background = false) => {
+    if (!background) {
+      setState("checking");
+      setError(null);
+    }
 
     try {
       const access = await resolveKsiRuntimeAccess(getBrowserSupabaseClient());
       if (!access) {
-        router.replace("/sign-in");
+        if (!background) router.replace("/sign-in");
         return;
       }
       setState(access.activeSchool ? "ready" : "needs-school");
     } catch (caught) {
+      if (background) return;
       setError(
         caught instanceof Error
           ? caught.message
@@ -70,10 +73,10 @@ export function KsiSchoolShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (ungated) return;
-    const handleResume = () => void resolveAccess();
+    const handleResume = () => void resolveAccess(state === "ready");
     window.addEventListener("ksi:app-resume", handleResume);
     return () => window.removeEventListener("ksi:app-resume", handleResume);
-  }, [resolveAccess, ungated]);
+  }, [resolveAccess, state, ungated]);
 
   if (ungated) return <>{children}</>;
 

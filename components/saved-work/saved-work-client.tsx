@@ -203,7 +203,7 @@ export function SavedWorkClient() {
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="ksi-workspace-banner flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
             Saved Work

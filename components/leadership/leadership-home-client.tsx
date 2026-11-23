@@ -179,7 +179,7 @@ export function LeadershipHomeClient() {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
-      <section className="rounded-3xl bg-emerald-950 p-7 text-white shadow-sm sm:p-9">
+      <section className="ksi-workspace-banner ksi-workspace-banner-dark p-7 text-white sm:p-9">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
           Leadership KSI
         </p>
