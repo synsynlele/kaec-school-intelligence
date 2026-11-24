@@ -36,6 +36,7 @@ export function SubjectGradebook() {
   const [roster, setRoster] = useState<Roster | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [scores, setScores] = useState<Scores>({ maxima: {}, marks: {} });
+  const [resumptionDate, setResumptionDate] = useState("");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null);
@@ -91,6 +92,7 @@ export function SubjectGradebook() {
     void perform(async () => {
       await open({ school_id: school, target_class: selected.id, school_session: selected.academic_session!,
         school_term: String(form.get("term")), report_period: String(form.get("period")) });
+      setResumptionDate("");
       select(null);
     });
   }
@@ -114,7 +116,7 @@ export function SubjectGradebook() {
   function publish() {
     if (!scope || !roster || !window.confirm("Approve and publish the whole class for this period? Previously published reports for these learners will be replaced.")) return;
     void perform(async () => {
-      const { data, error } = await getBrowserSupabaseClient().rpc("approve_learning_subject_gradebook", { ...scope, reviewed_sheet: { ...roster, subjects: roster.subjects.map(item => ({ ...item })), learners: roster.learners.map(item => ({ ...item })) } });
+      const { data, error } = await getBrowserSupabaseClient().rpc("approve_learning_subject_gradebook_with_resumption", { ...scope, next_resumption_date: resumptionDate || null, reviewed_sheet: { ...roster, subjects: roster.subjects.map(item => ({ ...item })), learners: roster.learners.map(item => ({ ...item })) } });
       if (error) throw new Error(error.message);
       setFeedback({ error: false, text: `${data} class reports published.` });
     });
@@ -208,6 +210,12 @@ export function SubjectGradebook() {
             <tbody>{roster.learners.map(learner => <tr className="border-t" key={learner.id}><th scope="row" className="p-2">{learner.name}</th>
               {roster.subjects.map(item => <td className="p-2" key={item.id}>{result(learner, item)}</td>)}</tr>)}</tbody>
           </table></div>
+          <label className="grid max-w-sm gap-1 text-sm font-semibold">
+            Resumption date
+            <input type="date" className={field} value={resumptionDate} disabled={busy}
+              onChange={event => setResumptionDate(event.target.value)} />
+            <span className="font-normal text-zinc-600">Applies to every report in this release. Leave blank to keep the previously published date, if any.</span>
+          </label>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} disabled={busy || dirty || !ready} onClick={publish}>Approve and publish whole class</button>
             <button type="button" className={field} disabled={busy} onClick={download}>Download published class PDF</button>

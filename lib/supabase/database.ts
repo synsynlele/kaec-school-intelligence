@@ -145,6 +145,7 @@ type FinalStageFunctions = Omit<
   restart_learning_cbt: { Args: { source_id: string; learner_id: string }; Returns: undefined };
   get_learning_subject_gradebook: { Args: SubjectGradebookScope; Returns: Json };
   save_learning_subject_gradebook: { Args: SubjectGradebookScope & { target_subject: string; new_sheet: Json; previous_sheet: Json }; Returns: undefined };
+  approve_learning_subject_gradebook_with_resumption: { Args: SubjectGradebookScope & { reviewed_sheet: Json; next_resumption_date: string | null }; Returns: number };
   approve_learning_subject_gradebook: { Args: SubjectGradebookScope & { reviewed_sheet: Json }; Returns: number };
   get_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string }; Returns: Json };
   save_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string; selected_sources: Json; previous_sources: Json }; Returns: undefined };

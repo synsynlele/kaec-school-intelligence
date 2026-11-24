@@ -718,69 +718,93 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
   const pages: string[][] = [];
   const photos = new Map<number, NonNullable<ReturnType<typeof passportImage>>>();
   for (const report of reports) {
-    const rowsPerPage = 19;
+    const rowsPerPage = 22;
+    const light: Color = [0.93, 0.96, 0.95];
     const scoredSubjects = report.assessments.map(resultScores)
       .filter(({ maximum, summary }) => maximum > 0 && summary !== "Pending");
     const marks = scoredSubjects.reduce((sum, subject) => sum + subject.total, 0);
     const availableMarks = scoredSubjects.reduce((sum, subject) => sum + subject.maximum, 0);
     for (let offset = 0; offset < Math.max(1, report.assessments.length); offset += rowsPerPage) {
       const page: string[] = [];
-      if (branding.hasSchoolLogo) page.push(`q 52 0 0 52 48 ${PAGE_HEIGHT - 90} cm /Im1 Do Q`);
+      rectTop(page, 28, 28, CONTENT_WIDTH, 74, light, null);
+      if (branding.hasSchoolLogo) page.push(`q 52 0 0 52 40 ${PAGE_HEIGHT - 91} cm /Im1 Do Q`);
+      const titleX = branding.hasSchoolLogo ? 107 : 40;
+      wrapText(report.school_name, 630, 21, true).slice(0, 2).forEach((line, index) =>
+        textAtTop(page, line, titleX, 34 + index * 22, 21, true, FOREST));
+      textAtTop(page, termReportTitle(report.kind), titleX, 80, 12, true, FOREST);
+      rectTop(page, 28, 102, CONTENT_WIDTH, 2, FOREST, null);
+
+      const side = 640;
+      const cardWidth = PAGE_WIDTH - MARGIN_X - side;
       const photo = passportImage(report.passport_photo);
+      let top = 122;
+      rectTop(page, side, top, cardWidth, 145, light, null);
+      textAtTop(page, "LEARNER RECORD", side + 12, top + 11, 8, true, FOREST);
       if (photo) {
         photos.set(pages.length, photo);
-        page.push(`q 60 0 0 75 488 ${PAGE_HEIGHT - 143} cm /Im2 Do Q`);
+        page.push(`q 36 0 0 45 ${side + cardWidth - 48} ${PAGE_HEIGHT - top - 70} cm /Im2 Do Q`);
       }
-      const titleX = branding.hasSchoolLogo ? 114 : 48;
-      textAtTop(page, report.school_name, titleX, 43, 17, true, FOREST);
-      textAtTop(page, termReportTitle(report.kind), titleX, 69, 13, true);
-      rectTop(page, 48, 95, 426, 2, FOREST, null);
-      textAtTop(page, report.learner_name, 48, 104, 13, true);
-      textAtTop(page, [report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), 48, 125, 10);
-      textAtTop(page, offset ? "Subject results (continued)" : "Subject results", 48, 151, 11, true, FOREST);
-      rectTop(page, 48, 170, 500, 24, FOREST, null);
-      textAtTop(page, "Subject", 58, 177, 9, true, CREAM);
-      const columns = [["Critical thinking", 201], ["CBT", 284], ["Subjective", 325], ["Project", 384]] as const;
-      for (const [label, x] of columns) textAtTop(page, label, x, 177, 8, true, CREAM);
-      textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 431, 177, 8, true, CREAM);
-      textAtTop(page, "Mastery", 488, 177, 8, true, CREAM);
+      wrapText(report.learner_name, photo ? 100 : 150, 11, true).slice(0, 3).forEach((line, index) =>
+        textAtTop(page, line, side + 12, top + 26 + index * 13, 11, true));
+      textAtTop(page, report.class_name ?? "-", side + 12, top + 76, 10, true);
+      textAtTop(page, report.academic_session, side + 12, top + 92, 9);
+      textAtTop(page, report.term, side + 12, top + 107, 9);
+
+      if (report.admission_reference) {
+        const [reference] = wrapText(`ID  ${report.admission_reference}`, cardWidth - 24, 9);
+        textAtTop(page, reference, side + 12, top + 122, 9);
+      }
+
+      top = 279;
+      rectTop(page, side, top, cardWidth, 105, light, null);
+      textAtTop(page, "PERFORMANCE SUMMARY", side + 12, top + 11, 8, true, FOREST);
+      textAtTop(page, availableMarks ? `${(marks * 100 / availableMarks).toFixed(2)}%` : "-", side + 12, top + 25, 23, true, FOREST);
+      textAtTop(page, "Overall score", side + 12, top + 53, 8);
+      textAtTop(page, `${scoredSubjects.length} subjects scored`, side + 12, top + 69, 9);
+      textAtTop(page, availableMarks ? `Marks obtained  ${marks} / ${availableMarks}` : "Marks unavailable", side + 12, top + 85, 9);
+
+      top = 396;
+      if (report.mastery_progressing_at != null) {
+        rectTop(page, side, top, cardWidth, 84, light, null);
+        textAtTop(page, "MASTERY GUIDE", side + 12, top + 11, 8, true, FOREST);
+        textAtTop(page, "Complete  100%", side + 12, top + 28, 9);
+        textAtTop(page, `Progressing  ${report.mastery_progressing_at}% to below 100%`, side + 12, top + 44, 9);
+        textAtTop(page, `Incomplete  Below ${report.mastery_progressing_at}%`, side + 12, top + 60, 9);
+        top += 96;
+      }
+      rectTop(page, side, top, cardWidth, 62, FOREST, null);
+      textAtTop(page, "RESUMPTION DATE", side + 12, top + 12, 8, true, CREAM);
+      textAtTop(page, report.resumption_date ? dateLabel(report.resumption_date) : "To be announced", side + 12, top + 29, 12, true, CREAM);
+
+      textAtTop(page, offset ? "Subject results (continued)" : "Subject results", 28, 122, 11, true, FOREST);
+      rectTop(page, 28, 143, 599, 23, FOREST, null);
+      textAtTop(page, "Subject", 38, 150, 9, true, CREAM);
+      const columns = [["Critical thinking", 205], ["CBT", 290], ["Subjective", 350], ["Project", 420]] as const;
+      for (const [label, x] of columns) textAtTop(page, label, x, 150, 8, true, CREAM);
+      textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 482, 150, 8, true, CREAM);
+      textAtTop(page, "Mastery", 553, 150, 8, true, CREAM);
       report.assessments.slice(offset, offset + rowsPerPage).forEach((assessment, index) => {
-        const top = 194 + index * 26;
-        if (index % 2 === 0) rectTop(page, 48, top, 500, 26, [0.93, 0.96, 0.96], null);
+        const top = 166 + index * 17.5;
+        if (index % 2 === 0) rectTop(page, 28, top, 599, 17.5, light, null);
         const { rows, summary, total, maximum } = resultScores(assessment);
-        const subjectLines = wrapText(assessment.subject ?? assessment.title, 140, 9, true).slice(0, 2);
-        subjectLines.forEach((line, lineIndex) => textAtTop(page, line, 58, top + 3 + lineIndex * 10, 9, true));
+        const subjectLines = wrapText(assessment.subject ?? assessment.title, 157, 8, true).slice(0, 2);
+        subjectLines.forEach((line, lineIndex) => textAtTop(page, line, 38, top + 0.75 + lineIndex * 8, 8, true));
         for (const [label, x] of columns) {
           const row = rows.find((entry) => entry.label.toLowerCase() === label.toLowerCase());
           const value = !row ? "-" : row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score}/${row.maximum}`;
-          textAtTop(page, value, x, top + 6, 8);
+          textAtTop(page, value, x, top + 4.5, 8);
         }
         const scored = maximum > 0 && summary !== "Pending" && report.mastery_progressing_at != null;
         const displayedTotal = scored
           ? String(total === maximum ? 100 : Math.min(99.99, Math.round(total * 10000 / maximum) / 100))
           : summary;
-        textAtTop(page, displayedTotal, 431, top + 6, 8);
+        textAtTop(page, displayedTotal, 482, top + 4.5, 8);
         if (scored && report.mastery_progressing_at != null) {
           const mastery = total === maximum ? "Complete"
             : total * 100 >= maximum * report.mastery_progressing_at ? "Progressing" : "Incomplete";
-          textAtTop(page, mastery, 488, top + 6, 8, true);
+          textAtTop(page, mastery, 553, top + 4.5, 8, true);
         }
       });
-      if (offset + rowsPerPage >= report.assessments.length) {
-        const top = 210 + Math.min(rowsPerPage, report.assessments.length - offset) * 26;
-        textAtTop(page, "Performance summary", 48, top, 11, true, FOREST);
-        rectTop(page, 48, top + 18, 500, 48, [0.93, 0.96, 0.96], null);
-        const metrics = [
-          ["Subjects scored", String(scoredSubjects.length)],
-          ["Marks obtained", availableMarks ? `${marks} / ${availableMarks}` : "-"],
-          ["Overall score", availableMarks ? `${(marks * 100 / availableMarks).toFixed(2)}%` : "-"],
-        ];
-        metrics.forEach(([label, value], index) => {
-          const x = 60 + index * 166;
-          textAtTop(page, label, x, top + 25, 8, true, FOREST);
-          textAtTop(page, value, x, top + 40, 11, true);
-        });
-      }
       pages.push(page);
     }
   }
