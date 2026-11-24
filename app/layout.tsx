@@ -102,8 +102,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: pwaInstallCaptureScript }} />
         <KsiAiTransport />
         <KsiAppLifecycle />
-        <KsiSchoolShell>{children}</KsiSchoolShell>
         <KsiAppNav />
+        <KsiSchoolShell>{children}</KsiSchoolShell>
       </body>
     </html>
   );
