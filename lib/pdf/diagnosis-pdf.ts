@@ -519,6 +519,7 @@ function buildPdfObjects(
   input: Pick<DiagnosisPdfInput, "brandLogoJpegBase64" | "hasSchoolLogo">,
   documentLabel = "Diagnosis",
   photo: ReturnType<typeof passportImage> = null,
+  pagePhotos: ReadonlyMap<number, NonNullable<ReturnType<typeof passportImage>>> = new Map(),
 ) {
   const logo = Buffer.from(input.brandLogoJpegBase64, "base64");
   const pageCount = pageCommands.length;
@@ -543,11 +544,15 @@ function buildPdfObjects(
     Buffer.from("\nendstream"),
   ]);
 
-  const photoRef = 6 + pageCount * 2;
-  if (photo) {
-    objects[photoRef] = Buffer.concat([
-      Buffer.from(`<< /Type /XObject /Subtype /Image /Width ${photo.width} /Height ${photo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${photo.bytes.length} >>\nstream\n`),
-      photo.bytes,
+  const photos = new Map(pagePhotos);
+  if (photo) photos.set(0, photo);
+  const photoRefs = new Map<number, number>();
+  for (const [page, image] of photos) {
+    const ref = 6 + pageCount * 2 + photoRefs.size;
+    photoRefs.set(page, ref);
+    objects[ref] = Buffer.concat([
+      Buffer.from(`<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`),
+      image.bytes,
       Buffer.from("\nendstream"),
     ]);
   }
@@ -567,7 +572,7 @@ function buildPdfObjects(
       Buffer.from("\nendstream"),
     ]);
     objects[pageRef] = Buffer.from(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R${photo && index === 0 ? ` /Im2 ${photoRef} 0 R` : ""} >> >> /Contents ${contentRef} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R${photoRefs.has(index) ? ` /Im2 ${photoRefs.get(index)} 0 R` : ""} >> >> /Contents ${contentRef} 0 R >>`,
     );
   }
 
@@ -710,33 +715,56 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
   if (!reports.length) throw new Error("A published report is required.");
   const branding = resolvePdfBranding(reports[0].school_logo);
   const logo = { brandLogoJpegBase64: branding.logoJpegBase64, hasSchoolLogo: branding.hasSchoolLogo };
-  const pages = reports.flatMap((report) => {
-    const output: string[][] = [];
+  const pages: string[][] = [];
+  const photos = new Map<number, NonNullable<ReturnType<typeof passportImage>>>();
+  for (const report of reports) {
     for (let offset = 0; offset < report.assessments.length; offset += 15) {
       const page: string[] = [];
-      textAtTop(page, report.school_name, 48, 47, 11, true, FOREST);
+      if (branding.hasSchoolLogo) page.push(`q 34 0 0 34 48 ${PAGE_HEIGHT - 72} cm /Im1 Do Q`);
+      const photo = passportImage(report.passport_photo);
+      if (photo) {
+        photos.set(pages.length, photo);
+        page.push(`q 60 0 0 75 488 ${PAGE_HEIGHT - 133} cm /Im2 Do Q`);
+      }
+      textAtTop(page, report.school_name, branding.hasSchoolLogo ? 92 : 48, 47, 11, true, FOREST);
       textAtTop(page, termReportTitle(report.kind), 48, 69, 22, true, FOREST);
       textAtTop(page, report.learner_name, 48, 103, 13, true);
       textAtTop(page, [report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), 48, 126, 10);
       rectTop(page, 48, 150, 500, 24, FOREST, null);
       textAtTop(page, "Subject / Assessment", 58, 157, 10, true, CREAM);
-      textAtTop(page, "Published marks", 430, 157, 10, true, CREAM);
+      const columns = [["Critical thinking", 206], ["CBT", 279], ["Subjective", 325], ["Project", 384]] as const;
+      for (const [label, x] of columns) textAtTop(page, label, x, 157, 8, true, CREAM);
+      textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 438, 157, 8, true, CREAM);
+      textAtTop(page, "Mastery", 484, 157, 8, true, CREAM);
       report.assessments.slice(offset, offset + 15).forEach((assessment, index) => {
         const top = 185 + index * 35;
-        const { summary } = resultScores(assessment);
-        textAtTop(page, assessment.subject ?? "General", 58, top, 9, true);
-        textAtTop(page, assessment.title.length > 65 ? assessment.title.slice(0, 62) + "…" : assessment.title, 58, top + 13, 9);
-        textAtTop(page, summary, 430, top + 6, 10);
+        const { rows, summary, total, maximum } = resultScores(assessment);
+        textAtTop(page, (assessment.subject ?? "General").slice(0, 27), 58, top, 9, true);
+        textAtTop(page, assessment.title.length > 30 ? assessment.title.slice(0, 27) + "…" : assessment.title, 58, top + 13, 9);
+        for (const [label, x] of columns) {
+          const row = rows.find((entry) => entry.label.toLowerCase() === label.toLowerCase());
+          const value = !row ? "-" : row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score}/${row.maximum}`;
+          textAtTop(page, value, x, top + 6, 8);
+        }
+        const scored = maximum > 0 && summary !== "Pending" && report.mastery_progressing_at != null;
+        const displayedTotal = scored
+          ? String(total === maximum ? 100 : Math.min(99.99, Math.round(total * 10000 / maximum) / 100))
+          : summary;
+        textAtTop(page, displayedTotal, 438, top + 6, 8);
+        if (scored && report.mastery_progressing_at != null) {
+          const mastery = total === maximum ? "Complete"
+            : total * 100 >= maximum * report.mastery_progressing_at ? "Progressing" : "Incomplete";
+          textAtTop(page, mastery, 484, top + 6, 8, true);
+        }
       });
-      output.push(page);
+      pages.push(page);
     }
-    return output;
-  });
+  }
   for (const source of diagnoses) {
     const diagnosis = approvedReportDiagnosis(source, logo);
     if (diagnosis) pages.push(...new FlowPage(diagnosis).build());
   }
-  return serializePdf(buildPdfObjects(pages, logo, reports.length > 1 || diagnoses.length ? "Term report bundle" : termReportTitle(reports[0].kind)));
+  return serializePdf(buildPdfObjects(pages, logo, reports.length > 1 || diagnoses.length ? "Term report bundle" : termReportTitle(reports[0].kind), null, photos));
 }
 
 export function safeDiagnosisPdfFilename(studentName: string) {

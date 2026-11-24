@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { LearningClassBroadsheet } from "@/components/assessment/learning-class-broadsheet";
+import { LearningSubjectEnrolment } from "@/components/assessment/learning-subject-enrolment";
 import { LearningTermReports } from "@/components/assessment/learning-term-reports";
 import { ManualProjectForm } from "@/components/assessment/manual-project-form";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
@@ -95,6 +97,8 @@ export function LearningAssessmentHub() {
         <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>
       <p className="text-sm text-zinc-700">Open a class assessment to enter marks or schedule its CBT.</p>
+      {reportSetup && <LearningSubjectEnrolment {...reportSetup} />}
+      {reportSetup && <LearningClassBroadsheet {...reportSetup} />}
       {reportSetup && <LearningTermReports {...reportSetup} />}
       {projectSetup && <ManualProjectForm {...projectSetup} />}
       <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {

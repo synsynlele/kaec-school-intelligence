@@ -71,8 +71,10 @@ export type TermReport = {
   term: string;
   published_at: string;
   assessments: TermReportAssessment[];
+  passport_photo?: string | null;
+  mastery_progressing_at?: number;
 };
 
 export function termReportTitle(kind: TermReport["kind"]) {
-  return kind === "midterm" ? "Midterm report" : "End-of-term report";
+  return kind === "midterm" ? "Mid-Term Report" : "Terminal Report";
 }

@@ -307,6 +307,15 @@ assert.equal((await resultReport()).passport_photo, photo);
 await db.exec(`set app.uid = '${id(33)}'`);
 await db.exec("reset role;");
 await db.exec(readFileSync(new URL('../supabase/migrations/20261123100000_learning_term_reports.sql', import.meta.url), 'utf8'));
+await db.exec(`
+  alter table students add unique (id, workspace_id);
+  alter table classes add unique (id, workspace_id);
+  create table teaching_assignments(workspace_id uuid, class_id uuid, subject_id uuid, active boolean);
+  insert into teaching_assignments select workspace_id, class_id, subject_id, true
+    from assessments where id = '${id(7)}' and subject_id is not null;
+`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124115000_learning_subject_enrolment.sql', import.meta.url), 'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124120000_learning_term_report_withdrawal.sql', import.meta.url), 'utf8'));
 await db.exec(`set role authenticated; set app.uid = '${id(31)}'`);
 const termArgs = [id(4), id(6), '2026/2027', 'First Term'];
 const termPreview = () => scalar('select learning_term_report_preview($1,$2,$3,$4) as value', termArgs);
@@ -328,6 +337,25 @@ await db.exec(`set app.uid = '${id(31)}'`);
 assert.equal((await parentTermReports()).length, 2);
 assert.equal((await parentTermReports(publishedMidterm))[0].assessments[0].id, selectedTermIds[0]);
 await db.exec(`set app.uid = '${id(33)}'`);
+const withdraw = (reason) => db.query('select withdraw_learning_term_report($1,$2,$3)', [id(4), publishedMidterm, reason]);
+await db.exec(`set app.uid = '${id(31)}'`);
+await assert.rejects(withdraw('Correct marks'), /leadership access/);
+await db.exec(`set app.uid = '${id(17)}'`);
+assert.equal((await termPreview()).published_reports.midterm, publishedMidterm);
+await assert.rejects(withdraw('  '), /withdrawal reason/);
+await withdraw('Correct marks');
+await db.exec(`set app.uid = '${id(31)}'`);
+assert.deepEqual(await parentTermReports(publishedMidterm), []);
+assert.deepEqual((await parentTermReports()).map(({ kind }) => kind), ['term']);
+await db.exec(`set app.uid = '${id(17)}'`);
+assert.equal((await termPreview()).withdrawal_history[0].reason, 'Correct marks');
+const revisedMidterm = await publishTerm('midterm', selectedTermIds);
+assert.notEqual(revisedMidterm, publishedMidterm);
+await db.exec(`set app.uid = '${id(31)}'`);
+assert.equal((await parentTermReports()).length, 2);
+assert.equal((await parentTermReports(revisedMidterm))[0].withdrawal_history, undefined);
+assert.deepEqual(await parentTermReports(publishedMidterm), []);
+await db.exec(`set app.uid = '${id(33)}'`);
 await db.query('select revoke_learning_parent($1,$2)', [id(4), id(31)]);
 await savePhoto(id(6), null);
 await db.exec(`set app.uid = '${id(31)}'`);
@@ -337,6 +365,75 @@ assert.deepEqual(await parentReports(), []);
 assert.equal(await parentReport(id(6)), null);
 await db.exec(`set app.uid = '${id(2)}'`);
 assert.equal((await resultReport()).passport_photo, null);
+
+// Explicit enrolment limits report candidates and distinguishes a missing subject from an elective.
+await db.exec(`reset role;
+  update classes set workspace_id = '${id(4)}', academic_session = '2026/2027' where id = '${id(5)}';
+  insert into subjects values ('${id(80)}','${id(4)}','English'), ('${id(81)}','${id(4)}','Physics');
+  update assessments set subject_id = '${id(80)}' where id = (select assessment_id from private.learning_cbts where id = '${selectedTermIds[0]}');
+  insert into teaching_assignments values
+    ('${id(4)}','${id(5)}','${id(80)}',true), ('${id(4)}','${id(5)}','${id(81)}',true);
+  set role authenticated; set app.uid = '${id(17)}';
+`);
+const enrolmentScope = [id(4), id(5), '2026/2027'];
+const readEnrolments = () => scalar('select get_learning_subject_enrolments($1,$2,$3) as value', enrolmentScope);
+const saveEnrolment = (students, subjects) =>
+  db.query('select save_learning_subject_enrolment($1,$2,$3,$4,$5)', [...enrolmentScope, students, subjects]);
+assert.equal((await readEnrolments()).learners[0].subjects, null);
+await assert.rejects(saveEnrolment([id(10)], [id(80)]), /roster or teaching assignments/);
+await assert.rejects(saveEnrolment([id(6)], [id(79)]), /roster or teaching assignments/);
+await saveEnrolment([id(6)], [id(81)]);
+assert.deepEqual((await readEnrolments()).learners[0].subjects, [id(81)]);
+assert.deepEqual((await termPreview()).assessments, []);
+await saveEnrolment([id(6)], [id(80), id(81)]);
+await assert.rejects(publishTerm('midterm', selectedTermIds), /every enrolled subject/);
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124122000_learning_class_broadsheet.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(17)}'`);
+const classSheet = () => scalar('select preview_learning_class_broadsheet($1,$2,$3,$4) as value', [...enrolmentScope, 'First Term']);
+const broadsheet = await classSheet();
+assert.deepEqual(broadsheet.subjects.map(({ name }) => name), ['English', 'Physics']);
+assert.equal(broadsheet.learners.length, 1);
+assert.deepEqual(broadsheet.learners[0].subjects, [id(80), id(81)]);
+assert.deepEqual(broadsheet.learners[0].assessments.map(({ subject_id }) => subject_id), [id(80)]);
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124124000_learning_class_release.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(17)}'`);
+const periodArgs = [...enrolmentScope, 'First Term'];
+const periodSource = JSON.stringify({ [id(80)]: selectedTermIds[0] });
+const savePeriod = (kind) => db.query('select save_learning_broadsheet_period($1,$2,$3,$4,$5,$6,$7)',
+  [...periodArgs, kind, periodSource, '{}']);
+const releaseClass = () => scalar('select publish_learning_class_reports($1,$2,$3,$4,$5,$6) as value',
+  [...periodArgs, 'term', periodSource]);
+await savePeriod('term');
+await assert.rejects(savePeriod('midterm'), /other period/);
+await assert.rejects(releaseClass(), /Complete every enrolled subject/);
+await saveEnrolment([id(6)], [id(80)]);
+await db.exec("reset role; update private.learning_term_reports set withdrawn_at = now() where report_kind = 'term'; set role authenticated");
+assert.equal(await releaseClass(), 1);
+const reports = await scalar('select get_published_learning_class_reports($1,$2,$3,$4,$5) as value', [...periodArgs, 'term']);
+assert.equal(reports[0].mastery_progressing_at, 60);
+await db.exec(`set app.uid = '${id(2)}'`);
+const learnerReports = () => scalar('select get_my_learner_term_reports() as value');
+assert.equal((await learnerReports()).filter(({ kind }) => kind === 'term').length, 1);
+await db.exec(`set app.uid = '${id(3)}'`);
+assert.deepEqual(await learnerReports(), []);
+await db.exec(`set app.uid = '${id(17)}'`);
+assert.equal(await scalar('select withdraw_learning_class_reports($1,$2,$3,$4,$5,$6) as value',
+  [...periodArgs, 'term', 'Correct results']), 1);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await learnerReports()).filter(({ kind }) => kind === 'term').length, 0);
+const releaseBatch = (classes) => scalar('select publish_learning_class_batch($1,$2,$3,$4,$5,$6) as value',
+  [id(4), '2026/2027', 'First Term', 'term', JSON.stringify(classes), 60]);
+await assert.rejects(releaseBatch({ [id(5)]: JSON.parse(periodSource) }), /leadership access/);
+await db.exec(`set app.uid = '${id(17)}'`);
+await assert.rejects(releaseBatch({ [id(5)]: JSON.parse(periodSource), [id(11)]: {} }), /class in its academic session/);
+assert.deepEqual(await scalar('select get_published_learning_class_reports($1,$2,$3,$4,$5) as value', [...periodArgs, 'term']), []);
+assert.equal(await releaseBatch({ [id(5)]: JSON.parse(periodSource) }), 1);
+
+await db.exec(`set app.uid = '${id(2)}'`);
+await assert.rejects(readEnrolments(), /leadership access/);
+await assert.rejects(classSheet(), /leadership access/);
 
 // Scheduled delivery uses PostgreSQL time and withholds item-level feedback until closing.
 await db.exec(`reset role;

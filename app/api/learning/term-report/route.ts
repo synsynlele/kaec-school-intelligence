@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!authorization.startsWith("Bearer ")) return Response.json({ error: "Sign in to download reports." }, { status: 401, headers });
   const query = new URL(request.url).searchParams;
   const reportId = query.get("report") ?? "";
-  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(reportId)) {
+  if (!query.has("target_class") && !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(reportId)) {
     return Response.json({ error: "Choose a published report." }, { status: 400, headers });
   }
 
@@ -24,12 +24,35 @@ export async function GET(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 
-  const { data, error } = await client.rpc("get_my_parent_term_reports", { report_id: reportId });
-  const report = (data as unknown as TermReport[] | null)?.[0];
-  if (error || !report) return Response.json({ error: "Published report unavailable." }, { status: 404, headers });
+  if (query.has("target_class")) {
+    const { data, error } = await client.rpc("get_published_learning_class_reports", {
+      school_id: query.get("school_id") ?? "",
+      target_class: query.get("target_class") ?? "",
+      school_session: query.get("school_session") ?? "",
+      school_term: query.get("school_term") ?? "",
+      report_kind: query.get("report_kind") ?? "",
+    });
+    const reports = data as unknown as TermReport[] | null;
+    if (error || !reports?.length) return Response.json({ error: "No published class reports available." }, { status: 404, headers });
+    try {
+      return new Response(createLearningTermPdf(pdfSafeValue(reports)) as BodyInit, { headers: {
+        ...headers,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="ksi-class-reports.pdf"',
+      } });
+    } catch {
+      return Response.json({ error: "Could not prepare the class PDF." }, { status: 500, headers });
+    }
+  }
+
+  const parent = await client.rpc("get_my_parent_term_reports", { report_id: reportId });
+  const parentReport = (parent.data as unknown as TermReport[] | null)?.[0];
+  const learner = parentReport ? null : await client.rpc("get_my_learner_term_reports", { report_id: reportId });
+  const report = parentReport ?? (learner?.data as unknown as TermReport[] | null)?.[0];
+  if (!report) return Response.json({ error: "Published report unavailable." }, { status: 404, headers });
 
   try {
-    const bundle = query.get("combined") === "1";
+    const bundle = Boolean(parentReport) && query.get("combined") === "1";
     let reports = [report];
     let diagnoses: ResultReport[] = [];
     if (bundle) {
