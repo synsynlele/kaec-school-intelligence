@@ -132,7 +132,6 @@ export async function POST(request: Request) {
       responseSchema: RESOURCE_SCHEMA,
       schemaName: "ksi_curriculum_learning_resource",
       maxOutputTokens: 5200,
-      reasoningEffort: "low",
     });
 
     const content = {

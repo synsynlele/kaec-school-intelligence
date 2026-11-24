@@ -18,6 +18,14 @@ type OpenAIResponse = {
   status?: string;
   output?: OpenAIOutputItem[];
   error?: { code?: string; message?: string };
+  model?: string;
+  usage?: {
+    input_tokens?: number;
+    input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+    output_tokens?: number;
+    output_tokens_details?: { reasoning_tokens?: number };
+    total_tokens?: number;
+  };
   incomplete_details?: { reason?: string };
 };
 
@@ -31,7 +39,7 @@ export class OpenAIProviderError extends Error {
   }
 }
 
-export type OpenAIReasoningEffort = "none" | "minimal" | "low" | "medium" | "high";
+export type OpenAIReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export type OpenAITextVerbosity = "low" | "medium" | "high";
 
 export type GenerateOpenAIJsonInput = {
@@ -42,7 +50,6 @@ export type GenerateOpenAIJsonInput = {
   temperature?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
-  reasoningEffort?: OpenAIReasoningEffort;
   model?: string;
   promptCacheKey?: string;
   promptCacheTtl?: "30m";
@@ -155,17 +162,44 @@ function extractOutputText(payload: OpenAIResponse) {
   );
 }
 
-function supportsReasoningEffort(model: string) {
-  return model.startsWith("gpt-5") || /^o\d/.test(model);
+export function configuredOpenAIModel() {
+  return (
+    process.env.KSI_OPENAI_MODEL?.trim() ||
+    process.env.KSI_AI_MODEL?.trim() ||
+    "gpt-6-luna"
+  );
 }
 
-function defaultReasoningEffort(input: GenerateOpenAIJsonInput): OpenAIReasoningEffort {
-  if (input.reasoningEffort) return input.reasoningEffort;
+function configuredReasoningEffort(model: string, schemaName?: string): OpenAIReasoningEffort | undefined {
+  if (!/^gpt-[56](?:[.-]|$)/.test(model) && !/^o\d/.test(model)) return;
 
-  // KSI's deterministic validators protect fidelity after generation. Use a
-  // lower-cost first pass for responsiveness, while repair schemas keep medium
-  // reasoning so failed fidelity checks still receive a stronger correction pass.
-  return input.schemaName?.includes("repair") ? "medium" : "low";
+  const supportsNoReasoning = /^gpt-6(?:[.-]|$)/.test(model) || model.startsWith("gpt-5.6");
+  const isQuick = schemaName === "ksi_result_comment";
+  const isRepair = schemaName?.includes("repair");
+  const configured = (
+    isQuick ? process.env.KSI_AI_REASONING_QUICK :
+    isRepair ? process.env.KSI_AI_REASONING_REPAIR :
+    process.env.KSI_AI_REASONING_STANDARD
+  )?.trim();
+
+  switch (configured) {
+    case "none":
+      if (supportsNoReasoning) return configured;
+      break;
+    case "low":
+    case "medium":
+    case "high":
+      return configured;
+    case "xhigh":
+    case "max":
+      if (/^gpt-6-luna(?:-|$)/.test(model)) return configured;
+      break;
+  }
+
+  if (isQuick) return supportsNoReasoning ? "none" : "minimal";
+  if (schemaName === "ksi_hqls_lesson" && model.startsWith("gpt-5.6")) return "none";
+  if (schemaName?.startsWith("ksi_hqls_")) return "low";
+  return isRepair ? "medium" : "low";
 }
 
 function configuredTimeoutMs() {
@@ -192,15 +226,9 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  // Callers may pin a feature-specific model so provenance and the provider
-  // request cannot drift. KSI keeps gpt-5-mini as the platform-wide cost-safe
-  // fallback for features that do not deliberately choose another model.
-  const model =
-    input.model?.trim() ||
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5-mini";
-  const reasoningEffort = defaultReasoningEffort(input);
+  const model = input.model?.trim() || configuredOpenAIModel();
+  const reasoningEffort = configuredReasoningEffort(model, input.schemaName);
+  const supportsGpt6 = /^gpt-6(?:[.-]|$)/.test(model);
   const timeoutMs = input.timeoutMs === undefined ? configuredTimeoutMs()
     : Math.min(configuredTimeoutMs(), Math.max(5000, input.timeoutMs));
   const startedAt = Date.now();
@@ -233,17 +261,17 @@ export async function generateOpenAIJson<T>(
             strict: true,
             schema: strictifySchema(input.responseSchema),
           },
-          ...(input.textVerbosity && model.startsWith("gpt-5")
+          ...(input.textVerbosity && (supportsGpt6 || model.startsWith("gpt-5"))
             ? { verbosity: input.textVerbosity }
             : {}),
         },
-        ...(supportsReasoningEffort(model)
+        ...(reasoningEffort
           ? { reasoning: { effort: reasoningEffort } }
           : {}),
         ...(input.promptCacheKey
           ? { prompt_cache_key: input.promptCacheKey }
           : {}),
-        ...(input.promptCacheKey && model.startsWith("gpt-5.6")
+        ...(input.promptCacheKey && (supportsGpt6 || model.startsWith("gpt-5.6"))
           ? { prompt_cache_options: { ttl: input.promptCacheTtl ?? "30m" } }
           : {}),
         max_output_tokens: input.maxOutputTokens ?? 12000,
@@ -257,9 +285,7 @@ export async function generateOpenAIJson<T>(
       JSON.stringify({
         schema: input.schemaName ?? "ksi_hqls_response",
         model,
-        reasoningEffort: supportsReasoningEffort(model)
-          ? reasoningEffort
-          : "not_applicable",
+        reasoningEffort: reasoningEffort ?? "not_applicable",
         durationMs,
         status: isTimeoutError(caught) ? "timeout" : "network_error",
       }),
@@ -278,22 +304,29 @@ export async function generateOpenAIJson<T>(
     );
   }
 
+  const payload = response.ok ? (await response.json()) as OpenAIResponse : null;
   const durationMs = Date.now() - startedAt;
   console.info(
     "KSI_AI_TIMING",
     JSON.stringify({
       schema: input.schemaName ?? "ksi_hqls_response",
       model,
-      reasoningEffort: supportsReasoningEffort(model)
-        ? reasoningEffort
-        : "not_applicable",
+      resolvedModel: payload?.model,
+      reasoningEffort: reasoningEffort ?? "not_applicable",
       durationMs,
       status: response.status,
+      responseStatus: payload?.status,
       ok: response.ok,
+      inputTokens: payload?.usage?.input_tokens,
+      cachedInputTokens: payload?.usage?.input_tokens_details?.cached_tokens,
+      cacheWriteTokens: payload?.usage?.input_tokens_details?.cache_write_tokens,
+      outputTokens: payload?.usage?.output_tokens,
+      reasoningTokens: payload?.usage?.output_tokens_details?.reasoning_tokens,
+      totalTokens: payload?.usage?.total_tokens,
     }),
   );
 
-  if (!response.ok) {
+  if (!payload) {
     const detail = await response.text().catch(() => "");
     throw new OpenAIProviderError(
       `OPENAI_HTTP_${response.status}`,
@@ -301,7 +334,6 @@ export async function generateOpenAIJson<T>(
     );
   }
 
-  const payload = (await response.json()) as OpenAIResponse;
   if (payload.error?.message) {
     throw new OpenAIProviderError(
       payload.error.code

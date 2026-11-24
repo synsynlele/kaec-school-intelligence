@@ -65,7 +65,6 @@ export async function POST(request: Request) {
         schemaName: "ksi_result_comment",
         maxOutputTokens: 250,
         timeoutMs: 10000,
-        reasoningEffort: "minimal",
       });
       if (typeof data.comment === "string" && data.comment.trim() && data.comment.length <= 500) {
         return Response.json({ comment: data.comment.trim(), generatedBy: "ai" });

@@ -55,7 +55,7 @@ const [
 ]);
 
 assert(
-  openai.includes('return input.schemaName?.includes("repair") ? "medium" : "low";') &&
+  openai.includes('return isRepair ? "medium" : "low";') &&
     openai.includes("reasoning: { effort: reasoningEffort }") &&
     openai.includes("AbortSignal.timeout(timeoutMs)") &&
     openai.includes("KSI_AI_TIMING"),

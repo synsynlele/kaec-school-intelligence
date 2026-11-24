@@ -14,7 +14,7 @@ import {
   type DiagnosisEvidencePacket,
   type GeneratedDiagnosis,
 } from "@/lib/diagnosis/engine";
-import { generateOpenAIJson, OpenAIProviderError } from "@/lib/ai/openai";
+import { configuredOpenAIModel, generateOpenAIJson, OpenAIProviderError } from "@/lib/ai/openai";
 import { alignDiagnosisPronouns } from "@/lib/diagnosis/pronouns";
 import { canReviseApprovedDiagnosis, isApprovedRevisionSource, validateRevisionReason } from "@/lib/diagnosis/revisions";
 import { completeAiRun, startAiRun } from "@/lib/data/ai-runs";
@@ -93,14 +93,6 @@ function number(value: unknown, label: string, min = 0) {
     throw new Error(`${label} must be a valid number of at least ${min}.`);
   }
   return result;
-}
-
-function configuredOpenAIModel() {
-  return (
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5-mini"
-  );
 }
 
 function errorMessage(caught: unknown) {
@@ -742,7 +734,7 @@ export async function GET(request: Request) {
       })),
       assessments,
       diagnoses,
-      modelPolicy: "gpt-5-mini",
+      modelPolicy: configuredOpenAIModel(),
     });
   } catch (caught) {
     const message = errorMessage(caught);

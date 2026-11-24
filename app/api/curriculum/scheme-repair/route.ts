@@ -192,7 +192,6 @@ export async function POST(request: Request) {
       responseSchema: extractionSchema(classLevel),
       schemaName: "ksi_scheme_source_extraction",
       maxOutputTokens: 20000,
-      reasoningEffort: "low",
     });
 
     const rows = extraction.data.rows.filter(

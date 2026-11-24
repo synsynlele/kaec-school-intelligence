@@ -5,6 +5,7 @@ import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.10";
 export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.37";
+export const HQLS_SINGLE_PASS_PROMPT_VERSION = "HQLS_PROMPT_v1.38_single_pass";
 
 export type HqlsStageAction =
   | "improve"
@@ -281,6 +282,7 @@ export function buildHqlsGenerationSystemInstruction() {
 export function buildHqlsGenerationPrompt(
   input: HqlsLessonRequest,
   sourceLabels: string[],
+  singlePass = false,
 ) {
   return `
 Design one complete HQLS lesson for the context below.
@@ -315,6 +317,14 @@ IMPORTANT: Write every stage in very simple plain English that a teacher can use
 Stage 5 Full Illumination is NORMAL LESSON MODE. Write the complete teaching content inside teachingContent. Make it focused, objective-led and substantial enough to give the lesson serious meaning: clearly explain the central concept, include the key terms/rule/process or core facts, one useful example when needed, the main misconception to correct, a brief practical connection where useful, and a short takeaway. Use short paragraphs and simple labels with colons when they improve clarity. Develop the explanation enough that the teacher can teach confidently from it, but do not turn it into a long textbook chapter. Do not write placeholders such as “teacher explains”, and do not pad the lesson with repeated detail.
 
 Stage 6 must make learners apply the now-taught concept again and make the improvement from the first attempt easy to see. Stage 7 must populate both reflectionPrompt and transferTask in plain English.
+${singlePass ? `
+CLASSROOM-READY FIRST DRAFT — plan and check within this response:
+1. Work backwards from the objective. Design the paired trials and their expected answers first. Identify a likely misconception, what Stage 5 must teach to resolve it, and an observable improvement in Trial 2.
+2. Prepare the complete learner inputs before writing directions. For counted materials (including cards, passages, examples and problems), print the actual items, count them, and make instructions match. Give reused sets a clear name and cite the original stage plus the exact set or entries. Each item must be usable in class as written.
+3. Check subject accuracy in context. When a word's grammatical role depends on how it is used, supply a complete sentence for any task requiring a definitive label. For calculations and worked examples, verify the arithmetic, units and expected answer. Put answers and worked methods where they cannot spoil Trial 1.
+4. Read Stages 1–4 as a learner. Remove any early reveal of the formal topic, rule, method or answer. Let the same situation carry through Exploration, the single short clue and the collaborative first attempt. Check that Full Illumination teaches the missing idea fully, that Trial 2 uses it, and that Integration includes reflection and a concrete transfer task.
+5. Silently walk through each stage as a teacher: can I run it with what is supplied? Check each count, answer, instruction and reference. Fix discrepancies before returning. Return only the requested lesson JSON, without a planning or audit transcript.
+` : ""}
 `;
 }
 
@@ -350,6 +360,7 @@ export function buildStageRegenerationPrompt(args: {
   targetStage: HqlsStageContent;
   action: HqlsStageAction;
   lessonContext: string;
+  compactContext?: boolean;
 }) {
   const definition = HQLS_STAGES[args.targetStage.stageNumber - 1];
   const actionInstruction =
@@ -358,6 +369,23 @@ export function buildStageRegenerationPrompt(args: {
       : definition.index === 5
       ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve focused, accurate conventional teaching with enough connected explanation to carry the lesson seriously, written in simple plain English.`
       : ACTION_INSTRUCTIONS[args.action];
+
+  const continuity = args.compactContext
+    ? JSON.stringify({
+        ...args.lesson,
+        stages: args.lesson.stages.filter((stage) => {
+          const number = stage.stageNumber;
+          const target = args.targetStage.stageNumber;
+          // Keep the adjacent stages, the opening scenario for early stages,
+          // and the teaching/reattempt sequence used to correct the first trial.
+          return number !== target && (
+            Math.abs(number - target) === 1 ||
+            (number === 1 && target <= 4) ||
+            (number >= 4 && number <= 6 && target >= 4)
+          );
+        }),
+      })
+    : JSON.stringify(args.lesson);
 
   return `
 Revise ONLY Stage ${definition.index} — ${definition.title} of the HQLS lesson below.
@@ -369,8 +397,9 @@ Stage rule: ${definition.nonNegotiable}
 LESSON CONTEXT:
 ${args.lessonContext}
 
-CURRENT FULL LESSON JSON (use it only to preserve continuity):
-${JSON.stringify(args.lesson)}
+CURRENT LESSON CONTEXT JSON (use it only to preserve continuity):
+${continuity}
+${args.compactContext ? "Only relevant stages are shown. Preserve existing references to omitted stages and never infer that an omitted stage is missing." : ""}
 
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
