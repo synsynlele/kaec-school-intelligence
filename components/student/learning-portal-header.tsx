@@ -22,14 +22,14 @@ export function LearningPortalHeader({ viewer, onSignOut }: {
         </div>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{parent ? "Family dashboard" : "My learning"}</h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-white/85 sm:text-base">
-          {parent ? "Find your learners’ school-published results, term reports and approved diagnoses." : "See what’s assigned, take assessments and check your results."}
+          {parent ? "Find your learners’ term reports and approved diagnoses." : "See what’s assigned, take assessments and check your results."}
         </p>
         <nav aria-label={parent ? "Family dashboard shortcuts" : "Learning dashboard shortcuts"} className="mt-5 flex flex-wrap gap-2">
           {!parent && <a href="#assessments" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-indigo-950">
             <FiBookOpen aria-hidden="true" /> Assessments
           </a>}
           <a href="#published-results" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white hover:bg-white/15">
-            <FiDownload aria-hidden="true" /> {parent ? "Reports and results" : "Published results"}
+            <FiDownload aria-hidden="true" /> {parent ? "School reports" : "Published results"}
           </a>
         </nav>
       </div>

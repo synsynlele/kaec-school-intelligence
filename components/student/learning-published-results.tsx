@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FiActivity, FiClipboard, FiFileText } from "react-icons/fi";
 
 import { resultScores, termReportTitle, type TermReport, type PublishedResult, type ReportDiagnosis, type ResultReport } from "@/lib/learning/result-report";
@@ -102,11 +102,10 @@ function ReportCard({ report }: { report: ResultReport }) {
 }
 
 export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "learner" | "parent" }) {
-  const [category, setCategory] = useState<"results" | "diagnoses" | "reports">("results");
+  const [category, setCategory] = useState<"results" | "diagnoses" | "reports">(viewer === "parent" ? "reports" : "results");
   const [results, setResults] = useState<PublishedResult[] | null>(null);
   const [diagnoses, setDiagnoses] = useState<Pick<ResultReport, "id" | "title" | "learner_name" | "term" | "academic_session">[] | null>(null);
   const [termReports, setTermReports] = useState<TermReport[] | null>(null);
-  const [learnerId, setLearnerId] = useState<string | undefined>();
   const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -115,7 +114,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     setBusy(true);
     setError("");
     try {
-      const { data, error } = await getBrowserSupabaseClient().rpc(viewer === "parent" ? "get_my_parent_learning_results" : "get_my_published_learning_results");
+      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_published_learning_results");
       if (error) throw new Error(error.message);
       setResults(data as unknown as PublishedResult[]);
     } catch (caught) {
@@ -139,7 +138,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
-  async function loadTermReports() {
+  const loadTermReports = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
@@ -151,19 +150,22 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     } finally {
       setBusy(false);
     }
-  }
+  }, [viewer]);
 
-  async function openReport(assignmentId: string, targetLearner?: string) {
+  useEffect(() => {
+    if (viewer !== "parent") return;
+    const timer = window.setTimeout(() => void loadTermReports(), 0);
+    return () => window.clearTimeout(timer);
+  }, [viewer, loadTermReports]);
+
+  async function openReport(assignmentId: string) {
     setBusy(true);
     setError("");
     try {
       const client = getBrowserSupabaseClient();
-      const { data, error } = targetLearner
-        ? await client.rpc("get_my_parent_learning_report", { assignment_id: assignmentId, target_learner: targetLearner })
-        : await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
+      const { data, error } = await client.rpc("get_my_learning_result_report", { assignment_id: assignmentId });
       if (error || !data) throw new Error("Published result unavailable.");
       setReport(data as unknown as ResultReport);
-      setLearnerId(targetLearner);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not open the report.");
     } finally {
@@ -199,14 +201,13 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
 
   function downloadAssessment(assignmentId: string, diagnosisOnly = false) {
     const query = new URLSearchParams({ assignment: assignmentId });
-    if (learnerId) query.set("learner", learnerId);
     return downloadReport(query, diagnosisOnly);
   }
 
   return (
     <section id="published-results" aria-labelledby="published-results-heading" className="scroll-mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
       <h2 id="published-results-heading" className="text-xl font-bold tracking-tight text-slate-950">
-        {viewer === "parent" ? "Reports and results" : "Published results"}
+        {viewer === "parent" ? "School reports" : "Published results"}
       </h2>
       {error && <p role="alert" className="text-red-900">{error}</p>}
       {report ? (
@@ -230,12 +231,12 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
       ) : (
         <>
           {(
-            <div role="group" aria-label="Report category" className="grid gap-2 sm:grid-cols-3">
+            <div role="group" aria-label="Report category" className="grid gap-2 sm:grid-cols-2">
               {([
                 { id: "results", label: "Assessment results", icon: FiClipboard, loaded: results !== null, load: loadResults },
                 { id: "reports", label: "Term reports", icon: FiFileText, loaded: termReports !== null, load: loadTermReports },
                 { id: "diagnoses", label: "Approved diagnoses", icon: FiActivity, loaded: diagnoses !== null, load: loadDiagnoses },
-              ] as const).filter(({ id }) => viewer === "parent" || id !== "diagnoses").map(({ id, label, icon: Icon, loaded, load }) => (
+              ] as const).filter(({ id }) => viewer === "parent" ? id !== "results" : id !== "diagnoses").map(({ id, label, icon: Icon, loaded, load }) => (
                 <button key={id} type="button" aria-pressed={category === id} disabled={busy}
                   onClick={() => { setCategory(id); setError(""); if (!loaded || category === id) void load(); }}
                   className={`inline-flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold disabled:opacity-60 ${category === id ? "border-teal-800 bg-teal-50 text-teal-950" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
@@ -250,8 +251,6 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
               {busy ? "Loading…" : results ? "Refresh results" : "View published results"}
             </button>
           )}
-          {viewer === "parent" && category === "results" && !results && !busy && !error &&
-            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Select a category to load your learners’ published records.</p>}
           {viewer === "parent" && busy && <p role="status" className="text-sm text-slate-600">Working…</p>}
           {viewer === "parent" && category === "diagnoses" && (
             <section aria-label="Approved learner diagnoses" className="space-y-3">
@@ -293,7 +292,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
           {category === "results" && results?.map((result) => {
             const { summary } = resultScores(result);
             return (
-              <button key={`${result.id}:${result.learner_id ?? ""}`} type="button" disabled={busy} onClick={() => void openReport(result.id, result.learner_id)}
+              <button key={`${result.id}:${result.learner_id ?? ""}`} type="button" disabled={busy} onClick={() => void openReport(result.id)}
                 className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
                 <span className="font-semibold">{result.title}{result.learner_name && <small className="block font-normal">{result.learner_name}</small>}</span>
                 <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-950">{summary}</span>
