@@ -3,6 +3,7 @@ import { reviewHqlsAdvisory, readHqlsAdvice, replaceHqlsAdvice, updateTeacherRev
 import { createClient } from "@supabase/supabase-js";
 
 import {
+  configuredOpenAIModel,
   generateOpenAIJson,
   OpenAIProviderError,
   type OpenAIPart,
@@ -614,19 +615,6 @@ async function saveLessonValidation(args: {
   }
 }
 
-function configuredOpenAIModel() {
-  return (
-    process.env.KSI_HQLS_OPENAI_MODEL?.trim() ||
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5.6-terra"
-  );
-}
-
-function configuredHqlsReasoningEffort(model: string) {
-  return model.startsWith("gpt-5.6") ? ("none" as const) : ("low" as const);
-}
-
 function keepOneAwakeningQuestion(lesson: GeneratedHqlsLesson): GeneratedHqlsLesson {
   return {
     ...lesson,
@@ -698,7 +686,6 @@ async function handleGenerate(
       responseSchema: HQLS_LESSON_JSON_SCHEMA,
       schemaName: "ksi_hqls_lesson",
       model,
-      reasoningEffort: configuredHqlsReasoningEffort(model),
       promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}`,
       promptCacheTtl: "30m",
       textVerbosity: "low",
@@ -744,7 +731,6 @@ ${(
             responseSchema: HQLS_STAGE_JSON_SCHEMA,
             schemaName: "ksi_hqls_stage_repair",
             model,
-            reasoningEffort: "low",
             promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair`,
             promptCacheTtl: "30m",
             textVerbosity: "low",
@@ -771,7 +757,6 @@ ${(
           responseSchema: HQLS_LESSON_JSON_SCHEMA,
           schemaName: "ksi_hqls_lesson_repair",
           model,
-          reasoningEffort: "low",
           promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
           promptCacheTtl: "30m",
           textVerbosity: "low",
@@ -794,7 +779,6 @@ ${(
         responseSchema: HQLS_LESSON_JSON_SCHEMA,
         schemaName: "ksi_hqls_lesson_repair",
         model,
-        reasoningEffort: "low",
         promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
         promptCacheTtl: "30m",
         textVerbosity: "low",
@@ -1065,7 +1049,7 @@ async function reviewGeneratedContent(lesson: GeneratedHqlsLesson, context: stri
       parts: [{ text: `${context}\nReview this complete lesson: ${lesson.title}\nLesson intent: ${lesson.lessonIntent}\nAll stage fields in source catalogue (select evidenceId; do not rewrite evidence):\n${JSON.stringify(hqlsReviewSources(lesson))}` }, ...parts],
       responseSchema: hqlsQualityReviewSchema(lesson),
       schemaName: "ksi_hqls_subject_task_review",
-      reasoningEffort: "low", textVerbosity: "low", maxOutputTokens: 2000, timeoutMs: 20000,
+      textVerbosity: "low", maxOutputTokens: 2000, timeoutMs: 20000,
     });
     return result.data;
   }, { subject: context.match(/^Subject: (.*)$/m)?.[1], objective: context.match(/^Objective: (.*)$/m)?.[1] });

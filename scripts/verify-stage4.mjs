@@ -92,7 +92,7 @@ for (const required of [
   "finaliseDiagnosis",
   'schemaName: "ksi_student_diagnosis"',
   'schemaName: "ksi_student_diagnosis_repair"',
-  '"gpt-5-mini"',
+  "configuredOpenAIModel()",
   "stabilizeDiagnosisAfterRepair",
   "DIAGNOSIS_VALIDATION_FAILED",
 ]) {
@@ -237,8 +237,8 @@ assert(
   "Dashboard must expose Diagnosis Intelligence.",
 );
 assert(
-  openai.includes('"gpt-5-mini"'),
-  "KSI must retain gpt-5-mini as the core OpenAI default.",
+  openai.includes('"gpt-6-luna"'),
+  "KSI must use GPT-6 Luna as the core OpenAI default.",
 );
 assert(
   engine.includes(
@@ -248,5 +248,5 @@ assert(
 );
 
 console.log(
-  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, dedicated reviewed result view, human review/approval, landscape parent PDF, quota-safe Vercel branch gating and gpt-5-mini policy are present.",
+  "Stage 4 structure verification passed: KAEC first-hand teacher intake, evidence hierarchy, three diagnosis modes, deterministic safety/uncertainty validation, first-class Session/Term/concise diagnosis, dedicated reviewed result view, human review/approval, landscape parent PDF, quota-safe Vercel branch gating and shared GPT-6 Luna policy are present.",
 );

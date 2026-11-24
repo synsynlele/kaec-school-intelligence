@@ -17,6 +17,7 @@ import {
   type GeneratedAssessmentItem,
 } from "@/lib/assessment/engine";
 import {
+  configuredOpenAIModel,
   generateOpenAIJson,
   OpenAIProviderError,
   type OpenAIPart,
@@ -428,14 +429,6 @@ async function loadResourceContext(
     warnings.push(`${row.title}: this file type cannot be read directly by the generator.`);
   }
   return { rows: orderedRows, labels, parts, warnings, sourceContext };
-}
-
-function configuredOpenAIModel() {
-  return (
-    process.env.KSI_OPENAI_MODEL?.trim() ||
-    process.env.KSI_AI_MODEL?.trim() ||
-    "gpt-5-mini"
-  );
 }
 
 function toAssessmentItemInput(item: GeneratedAssessmentItem) {

@@ -16,9 +16,7 @@ const assert = (condition, message) => {
 for (const requirement of [
   "HQLS_MAX_OUTPUT_TOKENS = 8000",
   "HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS = 3500",
-  "KSI_HQLS_OPENAI_MODEL",
-  '"gpt-5.6-terra"',
-  "configuredHqlsReasoningEffort",
+  "configuredOpenAIModel()",
   "promptCacheKey",
   'textVerbosity: "low"',
   'repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson"',
@@ -80,13 +78,13 @@ for (const requirement of [
   "prompt_cache_key",
   "prompt_cache_options",
   "verbosity: input.textVerbosity",
-  '"gpt-5-mini"',
+  '"gpt-6-luna"',
 ]) {
   assert(openai.includes(requirement), `OpenAI low-latency control missing: ${requirement}`);
 }
 
 console.log(
-  "HQLS generation performance verification passed: HQLS-specific Terra selection, platform cost fallback, concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
+  "HQLS generation performance verification passed: shared Luna configuration, concise output, cached low-reasoning first pass, targeted repair and parallel I/O are enforced.",
 );
 
 assert(!route.includes("contentRepairAttempt") && !route.includes("HQLS_CONTENT_REVIEW_FAILED"), "Content suggestions must never trigger automatic repairs or reject saving.");

@@ -100,7 +100,7 @@ for (const required of [
   'artifact_type: "assessment"',
   'action: "generate"',
   'action: "save_edits"',
-  '"gpt-5-mini"',
+  "configuredOpenAIModel()",
   "ASSESSMENT_ENGINE_VERSION_V11",
   "ASSESSMENT_PROMPT_VERSION_V11",
   "assessmentKind",
@@ -256,7 +256,7 @@ assert(
 
 const openai = await text("lib/ai/openai.ts");
 assert(
-  openai.includes('"gpt-5-mini"') &&
+  openai.includes('"gpt-6-luna"') &&
     openai.includes("process.env.KSI_OPENAI_MODEL"),
   "KSI cost-optimised OpenAI default/override contract is missing.",
 );
