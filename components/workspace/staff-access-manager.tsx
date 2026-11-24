@@ -314,7 +314,7 @@ export function StaffAccessManager() {
           {visibleStaff.length === 0 && <p className="text-sm text-zinc-600">No matching staff records.</p>}
           <ul className="divide-y divide-zinc-100">
             {visibleStaff.map((member) => {
-              const canAssign = member.status === "active" && ["owner", "admin", "teacher"].includes(member.role);
+              const canAssign = member.status === "active" && ["owner", "admin", "leader", "teacher"].includes(member.role);
               const canManage = member.user_id !== context.viewerId && member.role !== "owner"
                 && (member.role !== "admin" || context.viewerRole === "owner");
               const canChangeAccess = canManage && ["active", "suspended"].includes(member.status);
