@@ -238,8 +238,8 @@ export function LeadershipHomeClient() {
             </span>
           </div>
 
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="mt-5 overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-emerald-900" tabIndex={0} role="region" aria-label="Leadership overview table">
+            <table style={{ minWidth: "36rem" }} className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs uppercase tracking-[0.1em] text-zinc-500">
                   <th className="pb-3 pr-4">Class</th>

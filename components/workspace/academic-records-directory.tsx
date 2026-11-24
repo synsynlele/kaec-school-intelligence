@@ -185,7 +185,7 @@ export function AcademicRecordsDirectory({
         <p className="text-xs font-medium text-zinc-500">{classes.length} classes · {students.length} students · {subjects.length} subjects</p>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2" aria-label="Record categories">
+      <div className="mt-5 grid grid-cols-1 gap-2 min-[380px]:grid-cols-3" aria-label="Record categories">
         {(["class", "student", "subject"] as const).map((kind) => (
           <button
             key={kind}
@@ -316,7 +316,7 @@ export function AcademicRecordsDirectory({
                       <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">Needs rename — use the actual class name</span>
                     ) : null}
                   </div>
-                  <p className="mt-1 truncate text-xs text-zinc-500">{secondary}</p>
+                  <p className="mt-1 text-xs text-zinc-500">{secondary}</p>
                 </div>
                 <span aria-hidden="true" className="shrink-0 text-lg text-zinc-400">{isClassExpanded ? "⌄" : "›"}</span>
               </button>
@@ -349,7 +349,7 @@ export function AcademicRecordsDirectory({
                               onClick={() => { changeTab("student", item.id); setSelected({ kind: "student", id: student.id }); }}
                               className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-stone-50"
                             >
-                              <span className="min-w-0 truncate">{student.display_name}</span>
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{student.display_name}</span>
                               <span className="shrink-0 text-xs text-zinc-500">{student.active ? "" : "Inactive"} ›</span>
                             </button>
                           </li>

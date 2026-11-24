@@ -27,7 +27,7 @@ export function KsiBrand({ compact = false }: { compact?: boolean }) {
           ) : null}
         </div>
         <p
-          className={`${compact ? "text-[10px]" : "text-xs"} whitespace-nowrap font-semibold tracking-tight text-zinc-600`}
+          className={`${compact ? "text-[10px]" : "text-xs"} font-semibold tracking-tight text-zinc-600`}
         >
           KAEC School Intelligence
         </p>

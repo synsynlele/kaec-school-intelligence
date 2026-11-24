@@ -193,12 +193,12 @@ export function LearningClassBroadsheet({ schoolId, classes }: { schoolId: strin
           <p className="text-sm" role="status">{sheet.learners.filter(({ subjects }) => !subjects).length} of {sheet.learners.length} learners need subject enrolment.</p>
           {sheet.subjects.length === 0 && <p className="text-sm">There are no teaching assignments for this class.</p>}
           {sheet.learners.length > 0 && sheet.subjects.length > 0 && (
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Class marks">
+            <div className="overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-emerald-900" tabIndex={0} role="region" aria-label="Class marks">
               <table className="w-full border-collapse text-left text-sm">
                 <caption className="sr-only">Class broadsheet by learner and subject</caption>
                 <thead>
                   <tr className="bg-emerald-50">
-                    <th scope="col" className="p-3">Learner</th>
+                    <th scope="col" className="min-w-36 p-3">Learner</th>
                     {sheet.subjects.map(({ id, name }) => (
                       <th key={id} scope="col" className="min-w-44 p-3">
                         <label className="grid gap-2">
