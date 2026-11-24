@@ -141,7 +141,7 @@ export function SubjectGradebook() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-8">
-      <nav className="flex gap-4 text-sm font-semibold text-emerald-900"><Link href="/assessment">Assess</Link><Link href="/assessment/cbt">Manage CBT</Link></nav>
+      <nav className="flex gap-4 text-sm font-semibold text-emerald-900"><Link href="/assessment">Assess</Link><Link href="/assessment/cbt">Manage CBT</Link><Link href="/setup/teaching-map">Class subjects and enrolment</Link></nav>
       <h1 className="text-3xl font-bold">Class scores and results</h1>
       <form onSubmit={loadClass} className="flex flex-wrap items-end gap-3">
         <label className="grid gap-1">Class<select name="class" required className={field}><option value="">Choose a class</option>{classes.map(item =>
@@ -153,7 +153,10 @@ export function SubjectGradebook() {
       {feedback && <p role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
       {roster && scope && <>
         <h2 className="text-xl font-semibold">{classes.find(({ id }) => id === scope.target_class)?.name} · {scope.school_term} · {scope.report_period === "midterm" ? "Mid-Term" : "Terminal"}</h2>
-        {roster.can_publish && <LearningSubjectEnrolment schoolId={school} classes={classes} />}
+        {roster.can_publish && <>
+          <Link href={`/setup/teaching-map?class=${encodeURIComponent(scope.target_class)}`} className="font-semibold text-emerald-900 underline">Assign subjects and teachers</Link>
+          <LearningSubjectEnrolment key={scope.target_class} schoolId={school} classes={classes.filter(item => item.id === scope.target_class)} />
+        </>}
         {!roster.subjects.length && <p>No teaching assignments are available for this class.</p>}
         <div className="flex flex-wrap gap-2">{roster.subjects.map(item => <button type="button" key={item.id}
           disabled={busy} aria-pressed={subject?.id === item.id} className={subject?.id === item.id ? button : field}

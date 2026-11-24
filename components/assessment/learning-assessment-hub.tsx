@@ -45,7 +45,7 @@ export function LearningAssessmentHub() {
       if (profileError) throw new Error(profileError.message);
       if (!profile.default_workspace_id) throw new Error("Choose your school workspace to open CBT.");
       const schoolId = profile.default_workspace_id;
-      const { data, error } = await client.rpc("list_learning_assessments", {
+      const { data, error } = await client.rpc("list_learning_objective_exams", {
         school_id: schoolId, search_text: filters.search, page_offset: filters.page * pageSize,
       });
       if (error) throw new Error(error.message);
@@ -78,7 +78,7 @@ export function LearningAssessmentHub() {
         showPage(query.trim(), 0);
       }}>
         <label className="grid min-w-0 flex-1 gap-1 text-sm font-semibold">
-          Find an assessment
+          Find an objective exam
           <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by title, class or subject" className="rounded-xl border border-zinc-300 bg-white p-2.5 font-normal" />
         </label>
@@ -86,7 +86,7 @@ export function LearningAssessmentHub() {
       </form>
       {loading ? <p role="status">Loading assessments…</p> : error ? <p role="alert">{error}</p> : (
         <>
-          {rows.length === 0 && <p>{filters.search ? "No assessments match this search." : "Create a class assessment to schedule a CBT."}</p>}
+          {rows.length === 0 && <p>{filters.search ? "No objective exams match this search." : "Create an objective-only assessment to schedule a CBT."}</p>}
           <ul className="space-y-3">
             {rows.slice(0, pageSize).map((row) => {
               const eligible = row.status === "validated" && row.class_id;
