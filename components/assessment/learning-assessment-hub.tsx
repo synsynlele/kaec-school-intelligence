@@ -3,10 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { LearningClassBroadsheet } from "@/components/assessment/learning-class-broadsheet";
-import { LearningSubjectEnrolment } from "@/components/assessment/learning-subject-enrolment";
-import { LearningTermReports } from "@/components/assessment/learning-term-reports";
-import { ManualProjectForm } from "@/components/assessment/manual-project-form";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -28,12 +24,6 @@ type Assessment = {
 const pageSize = 20;
 
 export function LearningAssessmentHub() {
-  const [projectSetup, setProjectSetup] = useState<{
-    schoolId: string;
-    classes: { id: string; name: string }[];
-    subjects: { id: string; name: string }[];
-  } | null>(null);
-  const [reportSetup, setReportSetup] = useState<{ schoolId: string; classes: { id: string; name: string }[] } | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ search: "", page: 0 });
   const [rows, setRows] = useState<Assessment[]>([]);
@@ -53,28 +43,13 @@ export function LearningAssessmentHub() {
       const { data: profile, error: profileError } = await client.from("profiles")
         .select("default_workspace_id").eq("id", user.id).single();
       if (profileError) throw new Error(profileError.message);
-      if (!profile.default_workspace_id) throw new Error("Choose your school workspace to open CBT & Score Sheets.");
+      if (!profile.default_workspace_id) throw new Error("Choose your school workspace to open CBT.");
       const schoolId = profile.default_workspace_id;
-      const [{ data, error }, membership, classes, subjects] = await Promise.all([
-        client.rpc("list_learning_assessments", {
-          school_id: schoolId, search_text: filters.search, page_offset: filters.page * pageSize,
-        }),
-        client.from("workspace_members").select("role").eq("workspace_id", schoolId)
-          .eq("user_id", user.id).eq("status", "active").maybeSingle(),
-        client.from("classes").select("id,name").eq("workspace_id", schoolId).order("name"),
-        client.from("subjects").select("id,name").eq("workspace_id", schoolId).order("name"),
-      ]);
+      const { data, error } = await client.rpc("list_learning_assessments", {
+        school_id: schoolId, search_text: filters.search, page_offset: filters.page * pageSize,
+      });
       if (error) throw new Error(error.message);
-      if (!active) return;
-      setRows(data as unknown as Assessment[]);
-      setReportSetup(membership.data && ["owner", "admin", "leader"].includes(membership.data.role) && !classes.error
-        ? { schoolId, classes: classes.data ?? [] } : null);
-      if (membership.data && ["owner", "admin", "teacher"].includes(membership.data.role)
-        && !classes.error && !subjects.error) {
-        setProjectSetup({ schoolId, classes: classes.data ?? [], subjects: subjects.data ?? [] });
-      } else {
-        setProjectSetup(null);
-      }
+      if (active) setRows(data as unknown as Assessment[]);
     }
     void load().catch((caught) => {
       if (active) setError(caught instanceof Error ? caught.message : "Unable to load assessments.");
@@ -93,14 +68,11 @@ export function LearningAssessmentHub() {
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <Link href="/assessment" className="text-sm font-semibold text-emerald-900 underline">Back to Assess</Link>
       <header className="ksi-workspace-banner flex flex-wrap items-center justify-between gap-3 p-5 sm:p-7">
-        <h1 className="text-3xl font-bold">CBT &amp; Score Sheets</h1>
+        <h1 className="text-3xl font-bold">Manage CBT</h1>
         <Link href="/assessment" className={action}>Generate assessment</Link>
       </header>
-      <p className="text-sm text-zinc-700">Open a class assessment to enter marks or schedule its CBT.</p>
-      {reportSetup && <LearningSubjectEnrolment {...reportSetup} />}
-      {reportSetup && <LearningClassBroadsheet {...reportSetup} />}
-      {reportSetup && <LearningTermReports {...reportSetup} />}
-      {projectSetup && <ManualProjectForm {...projectSetup} />}
+      <Link href="/assessment/class-results" className="text-sm font-semibold text-emerald-900 underline">Class scores and results</Link>
+      <p className="text-sm text-zinc-700">Preview, edit or schedule assessments, and manage learner CBT attempts.</p>
       <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
         event.preventDefault();
         showPage(query.trim(), 0);
@@ -114,7 +86,7 @@ export function LearningAssessmentHub() {
       </form>
       {loading ? <p role="status">Loading assessments…</p> : error ? <p role="alert">{error}</p> : (
         <>
-          {rows.length === 0 && <p>{filters.search ? "No assessments match this search." : "Generate a class assessment to begin mark entry."}</p>}
+          {rows.length === 0 && <p>{filters.search ? "No assessments match this search." : "Create a class assessment to schedule a CBT."}</p>}
           <ul className="space-y-3">
             {rows.slice(0, pageSize).map((row) => {
               const eligible = row.status === "validated" && row.class_id;
@@ -143,13 +115,15 @@ export function LearningAssessmentHub() {
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">
-                    {eligible && <Link className={action} href={`/assessment/score-sheet${query}`}>
-                      {row.review_status === "published" ? "View marks" : row.review_status === "submitted" ? "Open for review" : "Enter marks"}
+                    {eligible && <Link className={action} href={`/assessment/score-sheet${query}&from=cbt`}>
+                      Manage attempts
                     </Link>}
                     <Link className={eligible ? "text-sm font-semibold text-emerald-900 underline" : action}
                       href={`/assessment/${!row.class_id && row.status === "validated" ? "edit" : "result"}${query}`}>
                       {!row.class_id && row.status === "validated" ? "Select class" : "View assessment"}
                     </Link>
+                    {row.status === "validated" && <Link className="text-sm font-semibold text-emerald-900 underline"
+                      href={`/assessment/edit${query}`}>Edit assessment</Link>}
                     {eligible && <span className="text-xs text-zinc-600">{row.opens_at && row.closes_at ?
                       `CBT ${formatCbtTime(row.opens_at)} to ${formatCbtTime(row.closes_at)} WAT` :
                       row.assigned ? "CBT assigned" : "CBT not scheduled"}</span>}

@@ -142,6 +142,10 @@ type FinalStageFunctions = Omit<
   get_my_learning_parent_status: { Args: Record<PropertyKey, never>; Returns: string | null };
   get_my_parent_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   learning_term_report_preview: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string }; Returns: Json };
+  restart_learning_cbt: { Args: { source_id: string; learner_id: string }; Returns: undefined };
+  get_learning_subject_gradebook: { Args: SubjectGradebookScope; Returns: Json };
+  save_learning_subject_gradebook: { Args: SubjectGradebookScope & { target_subject: string; new_sheet: Json; previous_sheet: Json }; Returns: undefined };
+  approve_learning_subject_gradebook: { Args: SubjectGradebookScope & { reviewed_sheet: Json }; Returns: number };
   get_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string }; Returns: Json };
   save_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string; selected_sources: Json; previous_sources: Json }; Returns: undefined };
   publish_learning_class_batch: { Args: { school_id: string; school_session: string; school_term: string; report_kind: string; reviewed_classes: Json; mastery_cutoff: number }; Returns: number };
@@ -340,3 +344,5 @@ export type Database = Omit<GeneratedDatabase, "public"> & {
 };
 
 export type KsiSupabaseClient = SupabaseClient<Database>;
+
+export type SubjectGradebookScope = { school_id: string; target_class: string; school_session: string; school_term: string; report_period: string };

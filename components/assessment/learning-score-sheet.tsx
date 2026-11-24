@@ -173,7 +173,7 @@ function LearnerScores({ row, maxima, writable, assessmentId, onDirty, onSaved }
   );
 }
 
-export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
+export function LearningScoreSheet({ assessmentId, cbtManagement = false }: { assessmentId: string; cbtManagement?: boolean }) {
   const [insights, setInsights] = useState<ItemInsight[]>([]);
   const [insightsError, setInsightsError] = useState(false);
   const [needsOpening, setNeedsOpening] = useState(false);
@@ -292,6 +292,37 @@ export function LearningScoreSheet({ assessmentId }: { assessmentId: string }) {
       setOpening(false);
     }
   }
+
+  async function restart(learner: ScoreRow) {
+    if (!window.confirm(`Restart the submitted CBT for ${learner.name}? The previous attempt will be kept in the audit history.`)) return;
+    setReviewBusy(true);
+    setReviewError("");
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("restart_learning_cbt", { source_id: assessmentId, learner_id: learner.id });
+      if (error) throw new Error(error.message);
+      setRefresh((previous) => previous + 1);
+    } catch (cause) {
+      setReviewError(cause instanceof Error ? cause.message : "Unable to restart the attempt.");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  if (cbtManagement && needsOpening) return <p>Schedule this CBT from the assessment preview first.</p>;
+  if (cbtManagement && sheet && !error) return (
+    <section className="space-y-3">
+      <h2 className="text-xl font-semibold">{sheet.title}</h2>
+      <p className="text-sm">Restart an individual submission while the CBT window is open and the assessment is available for correction.</p>
+      {reviewError && <p role="alert" className="text-red-800">{reviewError}</p>}
+      <ul className="divide-y rounded-xl border">
+        {sheet.roster.map(learner => <li key={learner.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+          <span>{learner.name} · {learner.objective === null ? "No submitted score" : `${learner.objective} / ${sheet.maxima.objective}`}</span>
+          {sheet.cbt_enabled && sheet.writable && learner.editable && learner.objective !== null &&
+            <button type="button" disabled={reviewBusy} onClick={() => void restart(learner)} className="rounded-lg border px-3 py-2 disabled:opacity-50">Restart attempt</button>}
+        </li>)}
+      </ul>
+    </section>
+  );
 
   if (needsOpening) return (
     <section className="space-y-3 rounded-xl border bg-white p-4">

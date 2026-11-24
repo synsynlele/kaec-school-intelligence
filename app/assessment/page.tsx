@@ -19,8 +19,9 @@ export default async function AssessmentPage({ searchParams }: { searchParams: P
           <KaecBrand compact />
           <div className="flex flex-wrap gap-2">
           <Link href="/assessment/cbt" className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">
-            CBT &amp; Score Sheets
+            Manage CBT
           </Link>
+          <Link href="/assessment/class-results" className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">Class scores and results</Link>
           <Link
             href="/saved-work"
             className="inline-flex w-fit items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-stone-50"

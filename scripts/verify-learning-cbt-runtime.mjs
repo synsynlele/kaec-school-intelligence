@@ -435,6 +435,36 @@ await db.exec(`set app.uid = '${id(2)}'`);
 await assert.rejects(readEnrolments(), /leadership access/);
 await assert.rejects(classSheet(), /leadership access/);
 
+await db.exec('reset role');
+await db.exec('alter table teaching_assignments add column teacher_id uuid;');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124130000_learning_subject_gradebook.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(17)}'`);
+const gradebookArgs = [...periodArgs, 'term'];
+const gradebook = () => scalar('select get_learning_subject_gradebook($1,$2,$3,$4,$5) as value',gradebookArgs);
+const approveGradebook = async () => scalar('select approve_learning_subject_gradebook($1,$2,$3,$4,$5,$6) as value',
+  [...gradebookArgs,JSON.stringify(await gradebook())]);
+const saveGradebook = (score, previous) => db.query('select save_learning_subject_gradebook($1,$2,$3,$4,$5,$6,$7,$8)',
+  [...gradebookArgs,id(80),JSON.stringify({
+    maxima:{objective:0,subjective:100,critical_thinking:0,project:0}, marks:{[id(6)]:{subjective:score}},
+  }),JSON.stringify(previous)]);
+await assert.rejects(approveGradebook(), /Complete the marks/);
+await assert.rejects(saveGradebook(101,null), /exceeds/);
+await saveGradebook(0,null);
+assert.equal(await approveGradebook(),1);
+const gradebookReports = () => scalar('select get_published_learning_class_reports($1,$2,$3,$4,$5) as value', [...periodArgs,'term']);
+const [firstGradebookReport] = await gradebookReports();
+assert.equal(firstGradebookReport.assessments[0].scores.subjective,0);
+const sheetBeforeCorrection = (await gradebook()).subjects.find(({id:subject}) => subject===id(80)).sheet;
+await saveGradebook(80,sheetBeforeCorrection);
+assert.equal((await gradebookReports())[0].id,firstGradebookReport.id);
+assert.equal(await approveGradebook(),1);
+const [correctedGradebookReport] = await gradebookReports();
+assert.notEqual(correctedGradebookReport.id,firstGradebookReport.id);
+assert.equal(correctedGradebookReport.assessments[0].scores.subjective,80);
+await assert.rejects(saveGradebook(81,sheetBeforeCorrection), /Scores changed/);
+await db.exec(`set app.uid = '${id(2)}'`);
+await assert.rejects(gradebook(), /School staff access/);
+
 // Scheduled delivery uses PostgreSQL time and withholds item-level feedback until closing.
 await db.exec(`reset role;
   update classes set workspace_id = '${id(4)}', name = 'JSS1';
@@ -634,5 +664,16 @@ assert(shuffledFeedback.review.every(({ correct }) => correct === 'b'));
 assert.deepEqual((await shuffledTest())[0].feedback, shuffledFeedback);
 await db.exec(`set app.uid = '${id(94)}'`);
 assert.equal((await shuffledTest())[0].feedback, null);
+await db.exec(`reset role; update private.learning_cbts set closes_at=now()+interval '1 hour' where id='${scheduled}';`);
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124131000_learning_cbt_restart.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; set app.uid = '${id(2)}'`);
+await assert.rejects(db.query('select restart_learning_cbt($1,$2)', [source,id(6)]), /unavailable/);
+await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, JSON.stringify({[running.questions[0].id]: 'b'})]);
+
+await db.exec(`set app.uid = '${id(1)}'`);
+await db.query('select restart_learning_cbt($1,$2)', [source,id(6)]);
+await db.exec(`set app.uid = '${id(2)}'`);
+assert.equal((await scalar('select get_learning_cbts($1) as value',[scheduled]))[0].feedback,null);
+assert.equal((await scalar('select submit_learning_cbt($1,$2) as value', [scheduled, JSON.stringify({[running.questions[0].id]: 'b'})])).earned,3);
 await db.close();
 console.log('CBT migration passed PostgreSQL checks for assignment, school isolation, answer visibility, grading and submission retries.');
