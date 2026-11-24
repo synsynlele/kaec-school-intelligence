@@ -12,7 +12,7 @@ import { checkRequiredReflexiveForms } from "../lib/hqls/category-coverage";
 import { checkPromisedMaterials } from "../lib/hqls/materials";
 import { needsCoordinatedRepair, mergeStageRepairs, contentRepairStageNumbers } from "../lib/hqls/coordinated-repair";
 import { repairContentFidelity } from "../lib/hqls/repair-fidelity";
-import { validateHqlsLesson, buildHqlsGenerationPrompt, buildHqlsRepairPrompt, buildStageRegenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
+import { isHqlsMaterialViolation, validateHqlsLesson, buildHqlsGenerationPrompt, buildHqlsRepairPrompt, buildStageRegenerationPrompt, lessonContextSummary } from "../lib/hqls/engine";
 import { resolveLearningLevel, learningLevelGuidance, primaryTaskBand, teacherUsabilityGuidance } from "../lib/domain/learning-level";
 import { buildAssessmentPrompt } from "../lib/assessment/engine";
 import { buildDiagnosisPrompt } from "../lib/diagnosis/engine";
@@ -200,6 +200,14 @@ async function verifyQuality() {
   assert.equal(materialFailures(genericItems + "\nItems (4):\n1. Rain\n2. Wind\n3. Sun\n4. Cloud").length, 0);
   assert.equal(materialFailures(brokenTask + materialBlock(words.slice(0, 15))).length, 1);
   assert.equal(materialFailures(brokenTask + materialBlock(words)).length, 0);
+  const laterMissing = { ...materialLesson(brokenTask + materialBlock(words)), stages: materialLesson(brokenTask + materialBlock(words)).stages.map((stage) => stage.stageNumber === 6 ? { ...stage, experience: "Give pairs four new scenarios below." } : stage) };
+  const laterFindings = validateHqlsLesson(laterMissing, undefined, true).violations;
+  assert(laterFindings.some((issue) => issue.code === "stage_materials_missing"), "Stage 6 supplied materials must receive the same completeness check.");
+  assert(isHqlsMaterialViolation({ code: "trial_first_materials_missing" }));
+  assert(isHqlsMaterialViolation({ code: "stage_materials_missing" }));
+  assert(!isHqlsMaterialViolation({ code: "pre_illumination_topic_revealed" }), "Suspense violations must remain hard fidelity failures.");
+  assert.equal(checkPromisedMaterials(materialLesson(brokenTask + "\nWord cards (16): " + words.map((word) => '"' + word + '"').join(", ") + ".")).length, 0, "Quoted compact word lists are valid.");
+
   const answerOnly = materialLesson(brokenTask);
   answerOnly.stages[4].teachingContent = materialBlock(words);
   assert.equal(checkPromisedMaterials(answerOnly).length, 1, "Later teacher answers do not supply Trial 1 materials.");

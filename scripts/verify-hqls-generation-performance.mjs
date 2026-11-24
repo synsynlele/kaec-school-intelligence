@@ -52,7 +52,7 @@ assert(
 
 
 assert(
-  engine.includes('HQLS_PROMPT_v1.36') &&
+  engine.includes('HQLS_PROMPT_v1.37') &&
     engine.includes("PLAIN-ENGLISH RULES FOR EVERY STAGE") &&
     engine.includes("BENCHMARK TEACHER-PLAN SHAPE") &&
     engine.includes("teacherPrompts must be short exact words or actions") &&
@@ -91,3 +91,6 @@ console.log(
 
 assert(!route.includes("contentRepairAttempt") && !route.includes("HQLS_CONTENT_REVIEW_FAILED"), "Content suggestions must never trigger automatic repairs or reject saving.");
 assert(route.includes("reviewHqlsAdvisory") && !route.includes("runHqlsQualityReview"), "Content review must use the single-call advisory path.");
+
+assert(engine.includes("NON-NEGOTIABLE MATERIAL COMPLETENESS FOR ALL SEVEN STAGES") && engine.includes("silently audit EVERY instruction"), "Generator must audit the complete materials in all seven stages.");
+assert(route.includes("validation.violations.some((issue) => !isHqlsMaterialViolation(issue))") && route.includes("targetViolations.some((issue) => !isHqlsMaterialViolation(issue))"), "Unresolved material-only findings must preserve the draft without weakening other fidelity gates.");

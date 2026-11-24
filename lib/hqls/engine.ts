@@ -4,7 +4,7 @@ import { hqlsStageTimings } from "./timing";
 import { learningLevelGuidance } from "@/lib/domain/learning-level";
 
 export const HQLS_ENGINE_VERSION = "HQLS_ENGINE_v1.10";
-export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.36";
+export const HQLS_PROMPT_VERSION = "HQLS_PROMPT_v1.37";
 
 export type HqlsStageAction =
   | "improve"
@@ -171,6 +171,8 @@ The app calculates and displays one suggested timetable for all seven stages fro
 
 SUBJECT ACCURACY AND TASK INTEGRITY:
 - Keep facts, calculations, examples and expected answers correct. Use supplied curriculum and prerequisites. Judge a word by its role in its sentence, not spelling alone; distinguish pronouns from determiners and reflexive action from emphasis.
+- NON-NEGOTIABLE MATERIAL COMPLETENESS FOR ALL SEVEN STAGES: Plan the actual learner-facing stimuli, examples, resources and tasks before writing instructions. Whenever any stage promises prepared content, supply the complete content in that stage before use, or point precisely to an earlier complete set and identify the entries reused. This applies to stories, headlines, dialogue, word lists, sentences, passages, questions, cards, problem statements, scenarios, tables, figures, data, visual descriptions and individual checks. A real-life assignment must contain its complete instructions and any supplied stimuli, but may ask learners to find or create their own examples. Never confuse learner-created outputs with prepared inputs.
+- Before returning JSON, silently audit EVERY instruction against the actual materials: enumerate the promised items, count them, verify requested categories and check all references. If an instruction promises 16 words, put all 16 actual words in the learner-facing material, not just a sample. Use a clearly labelled compact list when practical. If a count is unnecessary, remove the numerical promise only when the supplied task still meets the objective; never remove necessary content merely to pass the check. Do not output your audit. Repeat this audit after any repair or stage regeneration and preserve dependent stages, selected entries and answer alignment. Never reveal the formal topic or solutions in Stages 1–4 to satisfy this rule.
 - Trial 1 must be ready to run. Whenever it asks the teacher to give learners sentences, words, cards, passages, questions, pictures, scenarios, data or other prepared items, include every actual item in Stage 4 experience before learners need it. For a numbered promise use the same count in the task and list; "give six sentences" must be followed by all six sentences. A clear reference to an earlier complete set is also valid. Examples, placeholders and teacher-only answers cannot stand in for missing entries. For a visual, give the actual stimulus or a complete description the teacher can draw or show. Ordinary classroom objects only need a practical quantity and sourcing instructions.
 - Prefer board examples, teacher voice and familiar objects unless printed cards are useful or requested. Write one complete master set in Stage 4. Later stages can say "Use the same set from Stage 4" and identify any selected entries; do not copy the whole list again.
 - Materials may use numbered lines, bullets, a compact inline list or clearly quoted examples. A particular heading or layout is not a learning requirement. Counts and required categories must agree with the actual content. Physical counters need a quantity, not a numbered list of identical stones.
@@ -322,6 +324,7 @@ export function buildHqlsRepairPrompt(
   validation: HqlsValidationResult,
 ) {
   return `
+Before returning, verify every promised learner-facing item across all seven stages, including reused sets and dependent answers. Repair missing inputs with their actual content, not placeholders or instructions for the teacher to create them.
 The draft below failed deterministic HQLS fidelity validation. Repair only what is necessary while keeping the lesson context and useful content intact.
 
 CONTEXT:
@@ -371,6 +374,8 @@ ${JSON.stringify(args.lesson)}
 
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}
+
+Before returning, count and supply every prepared item promised by this stage and ensure references to earlier or later stages remain accurate. Preserve existing referenced material unless the requested revision requires a change.
 
 Apply the learning-level guidance in the lesson context to the replacement. For early years use play, concrete materials and short oral/gestural responses, not formal written outputs. For tertiary learners preserve disciplinary depth, evidence and autonomy. Do not remove or reorder stages.
 
@@ -553,7 +558,7 @@ function topicIsExplicitlyRevealed(stage: HqlsStageContent, topic?: string) {
 export function validateHqlsLesson(
   lesson: GeneratedHqlsLesson,
   topic?: string,
-  requireTrialMaterials = false,
+  checkAllStageMaterials = false,
 ): HqlsValidationResult {
   const violations: HqlsViolation[] = [];
   const evidence: string[] = [];
@@ -734,10 +739,11 @@ export function validateHqlsLesson(
     "Micro-Illumination remains non-blocking on question count: the prompt prefers one short clue and no redundant questions, while deterministic fidelity only blocks premature solutions or a separate formal task.",
   );
 
-  if (requireTrialMaterials) {
+  if (checkAllStageMaterials) {
     for (const issue of checkPromisedMaterials(lesson)) {
-      if (issue.stageNumber === 4 && issue.category === "task_integrity") {
-        fail("trial_first", "trial_first_materials_missing", issue.correction);
+      const stage = HQLS_STAGES[issue.stageNumber - 1];
+      if (stage && issue.category === "task_integrity") {
+        fail(stage.key, issue.stageNumber === 4 ? "trial_first_materials_missing" : "stage_materials_missing", issue.correction);
       }
     }
   }
@@ -849,6 +855,10 @@ export function validateHqlsLesson(
     evidence,
     stageValidation,
   };
+}
+
+export function isHqlsMaterialViolation(issue: { code: string }) {
+  return issue.code === "trial_first_materials_missing" || issue.code === "stage_materials_missing";
 }
 
 export function toLessonStageInputs(
