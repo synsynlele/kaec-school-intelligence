@@ -73,6 +73,8 @@ export type TermReport = {
   assessments: TermReportAssessment[];
   passport_photo?: string | null;
   mastery_progressing_at?: number;
+  resumption_date?: string;
+  admission_reference?: string;
 };
 
 export function termReportTitle(kind: TermReport["kind"]) {
