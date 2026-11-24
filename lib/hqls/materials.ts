@@ -16,7 +16,7 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
   const issues: { stageNumber: number; category: string; evidence: string; correction: string; evidenceMatch: string }[] = [];
   for (const stage of lesson.stages) {
     const texts = textValues(stage);
-    const promise = new RegExp(`\\b(\\d{1,3}|${numberWords.slice(1).join("|")})\\s+(${kinds})\\b`, "gi");
+    const promise = new RegExp(`\\b(\\d{1,3}|${numberWords.slice(1).join("|")})\\s+(?:(?:new|additional|different|short|sample|practice|actual|prepared|simple|distinct)\\s+){0,3}(${kinds})\\b`, "gi");
     for (const text of texts) {
       for (const match of text.matchAll(promise)) {
         const before = text.slice(0, match.index);
