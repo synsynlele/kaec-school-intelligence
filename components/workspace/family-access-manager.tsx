@@ -160,7 +160,15 @@ export function FamilyAccessManager() {
     .filter(([, learners]) => learners.length);
 
   const parentQuery = parentSearch.trim().toLowerCase();
-  const visibleParents = setup.parents.filter((parent) =>
+  const activeLearnerNames = new Map(setup.learners.map(learner => [learner.id, learner.name]));
+  const activeParents = setup.parents.filter(parent => parent.status !== "Revoked").map(parent => ({
+    ...parent,
+    learners: parent.learner_ids?.flatMap(id => {
+      const label = activeLearnerNames.get(id);
+      return label ? [label] : [];
+    }) ?? parent.learners,
+  }));
+  const visibleParents = activeParents.filter((parent) =>
     [parent.name, schoolLoginUsername(parent.username, parentLoginDomain), ...parent.learners].some((value) => value.toLowerCase().includes(parentQuery))
   );
 
@@ -216,14 +224,43 @@ export function FamilyAccessManager() {
           <button type="button" onClick={() => setCredentials(null)} className="font-semibold underline">Hide credentials</button>
         </section>
       )}
+      {!editingParent && <details className="rounded-xl border border-stone-200 bg-white">
+        <summary className="cursor-pointer p-4 font-semibold text-emerald-900">Issue a parent login</summary>
+        {parentForm}
+      </details>}
+
+      <details className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
+        <summary className="cursor-pointer font-semibold text-emerald-900">Learner passport photo</summary>
+        <label className="block">Learner
+          <select value={learnerId} onChange={(e) => { setLearnerId(e.target.value); setPhoto(null); }}
+            className="block w-full rounded border p-2">
+            <option value="">Choose learner</option>
+            {setup.learners.map((learner) => <option key={learner.id} value={learner.id}>
+              {learner.name}{learner.class_name ? ` · ${learner.class_name}` : ""}{learner.has_photo ? " · Photo saved" : ""}
+            </option>)}
+          </select>
+        </label>
+        <label className="block">Photo file
+          <input key={learnerId} type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="block w-full" />
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" disabled={busy || !learnerId || !photo} onClick={() => updatePhoto(false)}
+            className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">Save photo</button>
+          {setup.learners.find(({ id }) => id === learnerId)?.has_photo && (
+            <button type="button" disabled={busy} onClick={() => updatePhoto(true)} className="font-semibold text-red-800 underline">Remove photo</button>
+          )}
+        </div>
+      </details>
+
       <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-lg font-bold text-zinc-950">Parent accounts</h2>
-        {setup.parents.length === 0 && <p>No school-issued parent accounts yet.</p>}
+        {activeParents.length === 0 && <p>No current parent accounts.</p>}
         <label className="block text-sm font-semibold">Search parents
           <input type="search" value={parentSearch} onChange={(event) => setParentSearch(event.target.value)}
             placeholder="Name, username or learner" className="mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-zinc-300 px-3 py-2 font-normal" />
         </label>
-        {setup.parents.length > 0 && visibleParents.length === 0 && <p>No parents match your search.</p>}
+        {activeParents.length > 0 && visibleParents.length === 0 && <p>No parents match your search.</p>}
         {visibleParents.map((parent) => (
           <div key={parent.id} className="border-t border-zinc-200 py-3">
             <p className="font-semibold">{parent.name}</p>
@@ -254,6 +291,7 @@ export function FamilyAccessManager() {
                     });
                     if (error) throw new Error(error.message);
                     if (editingParent === parent.id) resetParentForm();
+                    setSetup(current => current && ({ ...current, parents: current.parents.filter(item => item.id !== parent.id) }));
                     setMessage("Parent access revoked.");
                   });
                 }}>Revoke access</button>}
@@ -262,34 +300,6 @@ export function FamilyAccessManager() {
         ))}
       </section>
 
-      {!editingParent && <details className="rounded-xl border border-stone-200 bg-white">
-        <summary className="cursor-pointer p-4 font-semibold text-emerald-900">Issue a parent login</summary>
-        {parentForm}
-      </details>}
-
-      <details className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
-        <summary className="cursor-pointer font-semibold text-emerald-900">Learner passport photo</summary>
-        <label className="block">Learner
-          <select value={learnerId} onChange={(e) => { setLearnerId(e.target.value); setPhoto(null); }}
-            className="block w-full rounded border p-2">
-            <option value="">Choose learner</option>
-            {setup.learners.map((learner) => <option key={learner.id} value={learner.id}>
-              {learner.name}{learner.class_name ? ` · ${learner.class_name}` : ""}{learner.has_photo ? " · Photo saved" : ""}
-            </option>)}
-          </select>
-        </label>
-        <label className="block">Photo file
-          <input key={learnerId} type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="block w-full" />
-        </label>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" disabled={busy || !learnerId || !photo} onClick={() => updatePhoto(false)}
-            className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50">Save photo</button>
-          {setup.learners.find(({ id }) => id === learnerId)?.has_photo && (
-            <button type="button" disabled={busy} onClick={() => updatePhoto(true)} className="font-semibold text-red-800 underline">Remove photo</button>
-          )}
-        </div>
-      </details>
     </div>
   );
 }
