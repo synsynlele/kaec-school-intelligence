@@ -67,7 +67,7 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
           found = entries.length === listedCount && entries.every((entry, index) => entry.position === index + 1 && !/\b(?:etc\.?|tbd|placeholder|insert here)\b|\.\.\.|…/i.test(entry.value));
           // Repeated words can be intentional practice materials, not omissions.
           if (!entries.length && /^(?:words|word cards)$/.test(kind)) {
-            const values = header[1].split(/[,;]/).map((value) => value.trim().replace(/^[“"'‘]|[”"'’]$/g, "").replace(/\.$/, "").trim()).filter(Boolean);
+            const values = header[1].split(/[,;]/).map((value) => value.trim().replace(/\.$/, "").replace(/^[“"'‘]|[”"'’]$/g, "").trim()).filter(Boolean);
             found = values.length === listedCount && values.every((value) =>
               /^[\p{L}\p{M}'’\-]+$/u.test(value) && !/^(?:etc|tbd|placeholder)$/i.test(value));
           }
