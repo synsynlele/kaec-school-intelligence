@@ -139,6 +139,8 @@ type FinalStageFunctions = Omit<
   register_learning_parent: { Args: { school_id: string; parent_id: string; parent_name: string; learner_ids: string[] }; Returns: undefined };
   revoke_learning_parent: { Args: { school_id: string; account_id: string }; Returns: undefined };
   activate_learning_parent: { Args: { account_id: string }; Returns: boolean };
+  manage_learning_improvement_plan: { Args: { school_id: string; target_class: string; school_session: string; target_learner: string; operation: "read" | "publish" | "withdraw"; plan?: Json }; Returns: Json };
+  get_my_learning_improvement_plans: { Args: Record<PropertyKey, never>; Returns: Json };
   get_my_learning_parent_status: { Args: Record<PropertyKey, never>; Returns: string | null };
   get_my_parent_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   learning_term_report_preview: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string }; Returns: Json };
