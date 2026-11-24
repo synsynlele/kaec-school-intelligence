@@ -31,10 +31,65 @@ function utf16Hex(value: string) {
   return Array.from({ length: value.length }, (_, i) => value.charCodeAt(i).toString(16).padStart(4, "0")).join("");
 }
 
+// Paint report text as ordinary vector paths. Keep an invisible Unicode text
+// layer for selection and search, even on viewers that cannot paint the CID font.
+function outlineReportText(content: string, sources: FontSource[]) {
+  const paths = [new Map<number, string>(), new Map<number, string>()];
+  const number = (value: number) => Number(value.toFixed(5));
+  return content.replace(
+    /^BT \/F([12]) ([\d.]+) Tf 1 0 0 1 ([-\d.]+) ([-\d.]+) Tm \(((?:\\[\s\S]|[^\\)])*)\) Tj ET$/gm,
+    (_, face: string, size: string, x: string, y: string, literal: string) => {
+      const index = Number(face) - 1;
+      const { font } = sources[index];
+      const scale = Number(size) / font.unitsPerEm;
+      const text = literal.replace(/\\([\\()])/g, "$1");
+      let pen = Number(x);
+      const strokes: string[] = [];
+      for (const character of text) {
+        const glyph = font.glyphForCodePoint(character.codePointAt(0)!);
+        let path = paths[index].get(glyph.id);
+        if (path === undefined) {
+          const commands: string[] = [];
+          let lastX = 0;
+          let lastY = 0;
+          glyph.path.toFunction()({
+            moveTo(px: number, py: number) {
+              commands.push(`${px} ${py} m`);
+              lastX = px;
+              lastY = py;
+            },
+            lineTo(px: number, py: number) {
+              commands.push(`${px} ${py} l`);
+              lastX = px;
+              lastY = py;
+            },
+            quadraticCurveTo(cx: number, cy: number, px: number, py: number) {
+              commands.push(`${number((lastX + 2 * cx) / 3)} ${number((lastY + 2 * cy) / 3)} ${number((px + 2 * cx) / 3)} ${number((py + 2 * cy) / 3)} ${px} ${py} c`);
+              lastX = px;
+              lastY = py;
+            },
+            bezierCurveTo(ax: number, ay: number, bx: number, by: number, px: number, py: number) {
+              commands.push(`${ax} ${ay} ${bx} ${by} ${px} ${py} c`);
+              lastX = px;
+              lastY = py;
+            },
+            closePath() { commands.push("h"); },
+          });
+          path = commands.join("\n");
+          paths[index].set(glyph.id, path);
+        }
+        if (path) strokes.push(`q ${scale.toFixed(9)} 0 0 ${scale.toFixed(9)} ${number(pen)} ${y} cm\n${path}\nf Q`);
+        pen += glyph.advanceWidth * scale;
+      }
+      return `${strokes.join("\n")}\nBT /F${face} ${size} Tf 3 Tr 1 0 0 1 ${x} ${y} Tm (${literal}) Tj 0 Tr ET`;
+    },
+  );
+}
+
 /** Compile the composers' text commands to embedded Unicode fonts before xref serialization.
  * Maps belong to this document, never to a shared user/workspace cache.
  */
-export function embedUnicodePdfFonts(objects: Buffer[]) {
+export function embedUnicodePdfFonts(objects: Buffer[], outlineText = false) {
   const sources = fonts();
   const maps = [new Map<string, number>(), new Map<string, number>()];
   for (let index = 1; index < objects.length; index++) {
@@ -43,7 +98,8 @@ export function embedUnicodePdfFonts(objects: Buffer[]) {
     const start = raw.indexOf("\nstream\n") + 8;
     const end = raw.lastIndexOf("\nendstream");
     let fontIndex = 0;
-    const content = raw.slice(start, end).replace(/\/(F[12])\s+[\d.]+\s+Tf|\(((?:\\[\s\S]|[^\\)])*)\)\s*Tj/g, (match, selected: string | undefined, literal: string | undefined) => {
+    const original = raw.slice(start, end);
+    const content = (outlineText ? outlineReportText(original, sources) : original).replace(/\/(F[12])\s+[\d.]+\s+Tf|\(((?:\\[\s\S]|[^\\)])*)\)\s*Tj/g, (match, selected: string | undefined, literal: string | undefined) => {
       if (selected) { fontIndex = selected === "F2" ? 1 : 0; return match; }
       const text = literal!.replace(/\\([\\()])/g, "$1");
       let encoded = "";
@@ -59,7 +115,7 @@ export function embedUnicodePdfFonts(objects: Buffer[]) {
       return `<${encoded}> Tj`;
     });
     const bytes = Buffer.from(content, "ascii");
-    objects[index] = Buffer.concat([Buffer.from(`<< /Length ${bytes.length} >>\nstream\n`), bytes, Buffer.from("\nendstream")]);
+    objects[index] = outlineText ? stream(bytes) : Buffer.concat([Buffer.from(`<< /Length ${bytes.length} >>\nstream\n`), bytes, Buffer.from("\nendstream")]);
   }
 
   sources.forEach(({ bytes, font }, index) => {

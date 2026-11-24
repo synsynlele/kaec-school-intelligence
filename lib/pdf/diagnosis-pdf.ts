@@ -580,7 +580,7 @@ function buildPdfObjects(
 }
 
 function serializePdf(objects: Buffer[]) {
-  embedUnicodePdfFonts(objects);
+  embedUnicodePdfFonts(objects, true);
   const header = Buffer.from("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
