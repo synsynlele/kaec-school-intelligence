@@ -26,7 +26,7 @@ export function pdfSafeValue<T>(value: T): T {
   if (value && typeof value === "object") {
     const output: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-      output[key] = pdfSafeValue(item);
+      output[key] = key === "school_logo" || key === "passport_photo" ? item : pdfSafeValue(item);
     }
     return output as T;
   }

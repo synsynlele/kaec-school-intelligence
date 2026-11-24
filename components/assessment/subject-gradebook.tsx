@@ -120,6 +120,20 @@ export function SubjectGradebook() {
     });
   }
 
+  function withdraw() {
+    if (!scope || !roster?.can_publish) return;
+    const reason = window.prompt("Unpublish this class report from both portals? Enter the reason for withdrawal.")?.trim();
+    if (!reason) return;
+    void perform(async () => {
+      const { report_period, ...period } = scope;
+      const { data, error } = await getBrowserSupabaseClient().rpc("withdraw_learning_class_reports", {
+        ...period, report_kind: report_period, reason,
+      });
+      if (error) throw new Error(error.message);
+      setFeedback({ error: false, text: data ? `${data} reports unpublished from both portals.` : "No published reports to withdraw for this class and period." });
+    });
+  }
+
   function download() {
     if (!scope) return;
     void perform(async () => {
@@ -197,6 +211,7 @@ export function SubjectGradebook() {
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} disabled={busy || dirty || !ready} onClick={publish}>Approve and publish whole class</button>
             <button type="button" className={field} disabled={busy} onClick={download}>Download published class PDF</button>
+            <button type="button" className={`${field} font-semibold text-red-800`} disabled={busy} onClick={withdraw}>Unpublish class reports</button>
           </div>
         </section>}
       </>}
