@@ -36,7 +36,7 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
         const implicitReuse = /\b(?:same|again|reuse|reusing|revisit|earlier|previous|original)\b/i.test(text);
         const impliedEarlier = !earlier.length && implicitReuse ? lesson.stages.filter((item) => item.stageNumber < stage.stageNumber) : [];
 
-        const materialTexts = [stage.experience, ...(stage.stageNumber === 5 ? [stage.teachingContent] : []), ...earlier.flatMap((item) => [item.experience, ...(item.stageNumber === 5 ? [item.teachingContent] : [])]), ...impliedEarlier.map((item) => item.experience)];
+        const materialTexts = [stage.experience, ...(stage.stageNumber === 5 ? [stage.teachingContent] : []), ...(stage.stageNumber === 7 ? [stage.transferTask, stage.reflectionPrompt] : []), ...earlier.flatMap((item) => [item.experience, ...(item.stageNumber === 5 ? [item.teachingContent] : [])]), ...impliedEarlier.map((item) => item.experience)];
         const headingKind = kind === "cards" ? "(?:picture[- ]word cards|picture cards|word cards|sentence cards|scenario cards|word-only cards|cards)"
           : kind === "word cards" ? "(?:word cards|word-only cards|cards)"
           : /picture[- ]word cards/.test(kind) ? "(?:picture[- ]word cards|cards)"
@@ -67,7 +67,7 @@ export function checkPromisedMaterials(lesson: GeneratedHqlsLesson) {
           found = entries.length === listedCount && entries.every((entry, index) => entry.position === index + 1 && !/\b(?:etc\.?|tbd|placeholder|insert here)\b|\.\.\.|…/i.test(entry.value));
           // Repeated words can be intentional practice materials, not omissions.
           if (!entries.length && /^(?:words|word cards)$/.test(kind)) {
-            const values = header[1].split(/[,;]/).map((value) => value.trim()).filter(Boolean);
+            const values = header[1].split(/[,;]/).map((value) => value.trim().replace(/^[“"'‘]|[”"'’]$/g, "").replace(/\.$/, "").trim()).filter(Boolean);
             found = values.length === listedCount && values.every((value) =>
               /^[\p{L}\p{M}'’\-]+$/u.test(value) && !/^(?:etc|tbd|placeholder)$/i.test(value));
           }
