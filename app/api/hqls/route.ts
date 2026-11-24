@@ -25,6 +25,7 @@ import {
   parseHqlsStageContent,
   toLessonStageInputs,
   validateHqlsLesson,
+  isHqlsMaterialViolation,
   type GeneratedHqlsLesson,
   type HqlsLessonRequest,
   type HqlsStageAction,
@@ -804,7 +805,16 @@ ${(
       validation = validateHqlsLesson(lesson, input.topic, true);
     }
 
-    if (!validation.passed) {
+    // Material-list checks are heuristic. After bounded repair, preserve the
+    // teacher's draft and its real findings instead of discarding it solely for
+    // an unresolved material count/layout. Structural HQLS rules still block.
+    if (!validation.passed && validation.violations.every(isHqlsMaterialViolation)) {
+      console.warn("KSI_HQLS_MATERIAL_ADVICE", JSON.stringify({
+        repairMode,
+        violations: validation.violations.map(({ code, stageKey }) => ({ code, stageKey })),
+      }));
+    }
+    if (validation.violations.some((issue) => !isHqlsMaterialViolation(issue))) {
       console.warn(
         "KSI_HQLS_FIDELITY_FAILED",
         JSON.stringify({
@@ -1151,7 +1161,7 @@ async function handleRegenerateStage(
         stage.stageNumber === stageNumber ? replacement : stage,
       ),
     };
-    let validation = validateHqlsLesson(candidate, current.lesson.topic, targetStage.stageNumber === 4);
+    let validation = validateHqlsLesson(candidate, current.lesson.topic, true);
     let targetViolations = validation.violations.filter(
       (item) => item.stageKey === replacement.stageKey,
     );
@@ -1179,13 +1189,13 @@ async function handleRegenerateStage(
           stage.stageNumber === stageNumber ? replacement : stage,
         ),
       };
-      validation = validateHqlsLesson(candidate, current.lesson.topic, targetStage.stageNumber === 4);
+      validation = validateHqlsLesson(candidate, current.lesson.topic, true);
       targetViolations = validation.violations.filter(
         (item) => item.stageKey === replacement.stageKey,
       );
     }
 
-    if (targetViolations.length > 0) {
+    if (targetViolations.some((issue) => !isHqlsMaterialViolation(issue))) {
       await completeAiRun(
         supabase,
         runId,
