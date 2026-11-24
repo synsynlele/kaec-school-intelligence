@@ -142,6 +142,17 @@ type FinalStageFunctions = Omit<
   get_my_learning_parent_status: { Args: Record<PropertyKey, never>; Returns: string | null };
   get_my_parent_learning_results: { Args: Record<PropertyKey, never>; Returns: Json };
   learning_term_report_preview: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string }; Returns: Json };
+  get_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string }; Returns: Json };
+  save_learning_broadsheet_period: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string; selected_sources: Json; previous_sources: Json }; Returns: undefined };
+  publish_learning_class_batch: { Args: { school_id: string; school_session: string; school_term: string; report_kind: string; reviewed_classes: Json; mastery_cutoff: number }; Returns: number };
+  publish_learning_class_reports: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string; expected_sources: Json; mastery_cutoff?: number }; Returns: number };
+  withdraw_learning_class_reports: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string; reason: string }; Returns: number };
+  get_published_learning_class_reports: { Args: { school_id: string; target_class: string; school_session: string; school_term: string; report_kind: string }; Returns: Json };
+  get_my_learner_term_reports: { Args: { report_id?: string }; Returns: Json };
+  preview_learning_class_broadsheet: { Args: { school_id: string; target_class: string; school_session: string; school_term: string }; Returns: Json };
+  get_learning_subject_enrolments: { Args: { school_id: string; target_class: string; school_session: string }; Returns: Json };
+  save_learning_subject_enrolment: { Args: { school_id: string; target_class: string; school_session: string; learner_ids: string[]; selected_subject_ids: string[] }; Returns: undefined };
+  withdraw_learning_term_report: { Args: { school_id: string; report_id: string; reason: string }; Returns: undefined };
   publish_learning_term_report: { Args: { school_id: string; target_learner: string; school_session: string; school_term: string; report_kind: string; selected_ids: string[] }; Returns: string };
   get_my_parent_term_reports: { Args: { report_id?: string }; Returns: Json };
   get_my_parent_learning_diagnoses: { Args: { diagnosis_id?: string }; Returns: Json };

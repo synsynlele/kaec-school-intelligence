@@ -143,7 +143,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     setBusy(true);
     setError("");
     try {
-      const { data, error } = await getBrowserSupabaseClient().rpc("get_my_parent_term_reports", {});
+      const { data, error } = await getBrowserSupabaseClient().rpc(viewer === "parent" ? "get_my_parent_term_reports" : "get_my_learner_term_reports", {});
       if (error) throw new Error("Could not load published term reports.");
       setTermReports(data as unknown as TermReport[]);
     } catch (caught) {
@@ -229,13 +229,13 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
         </>
       ) : (
         <>
-          {viewer === "parent" && (
+          {(
             <div role="group" aria-label="Report category" className="grid gap-2 sm:grid-cols-3">
               {([
                 { id: "results", label: "Assessment results", icon: FiClipboard, loaded: results !== null, load: loadResults },
                 { id: "reports", label: "Term reports", icon: FiFileText, loaded: termReports !== null, load: loadTermReports },
                 { id: "diagnoses", label: "Approved diagnoses", icon: FiActivity, loaded: diagnoses !== null, load: loadDiagnoses },
-              ] as const).map(({ id, label, icon: Icon, loaded, load }) => (
+              ] as const).filter(({ id }) => viewer === "parent" || id !== "diagnoses").map(({ id, label, icon: Icon, loaded, load }) => (
                 <button key={id} type="button" aria-pressed={category === id} disabled={busy}
                   onClick={() => { setCategory(id); setError(""); if (!loaded || category === id) void load(); }}
                   className={`inline-flex min-h-12 items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold disabled:opacity-60 ${category === id ? "border-teal-800 bg-teal-50 text-teal-950" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
@@ -272,7 +272,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
               ))}
             </section>
           )}
-          {viewer === "parent" && category === "reports" && (
+          {category === "reports" && (
             <section aria-label="Term reports" className="space-y-3">
               {termReports?.length === 0 && <p>No term reports have been published yet.</p>}
               {termReports?.map((item) => (
@@ -282,8 +282,8 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
                   <div className="flex flex-wrap gap-3">
                     <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
                       onClick={() => void downloadReport(new URLSearchParams({ report: item.id }), false, true)}>Download PDF</button>
-                    <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
-                      onClick={() => void downloadReport(new URLSearchParams({ report: item.id, combined: "1" }), false, true)}>Download combined term PDF</button>
+                    {viewer === "parent" && <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
+                      onClick={() => void downloadReport(new URLSearchParams({ report: item.id, combined: "1" }), false, true)}>Download combined term PDF</button>}
                   </div>
                 </div>
               ))}

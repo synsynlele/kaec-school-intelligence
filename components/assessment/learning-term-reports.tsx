@@ -8,16 +8,28 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 type Option = { id: string; name: string };
 type Learner = { id: string; display_name: string; class_id: string | null };
 
+type ReportPreview = Omit<TermReport, "assessments"> & {
+  assessments: (TermReport["assessments"][number] & { subject_id?: string })[];
+  enrolled_subject_ids?: string[] | null;
+  published_reports?: Partial<Record<TermReport["kind"], string>>;
+  withdrawal_history?: { id: string; kind: TermReport["kind"]; withdrawn_at: string; reason: string }[];
+};
+
 export function LearningTermReports({ schoolId, classes }: { schoolId: string; classes: Option[] }) {
   const [learners, setLearners] = useState<Learner[]>([]);
   const [classId, setClassId] = useState("");
-  const [report, setReport] = useState<TermReport | null>(null);
+  const [report, setReport] = useState<ReportPreview | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [period, setPeriod] = useState<{ school_id: string; target_learner: string; school_session: string; school_term: string } | null>(null);
   const [kind, setKind] = useState<TermReport["kind"]>("midterm");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const publishedId = report?.published_reports?.[kind];
+  const history = report?.withdrawal_history?.filter((entry) => entry.kind === kind) ?? [];
+  const missingSubjects = report?.enrolled_subject_ids?.filter(
+    (id) => !report.assessments.some((item) => item.subject_id === id && selection.includes(item.id)),
+  ).length ?? 0;
   const field = "w-full rounded-lg border border-zinc-300 bg-white p-2.5";
 
   async function chooseClass(id: string) {
@@ -57,7 +69,7 @@ export function LearningTermReports({ schoolId, classes }: { schoolId: string; c
       if (error || !data) throw new Error(error?.message ?? "Report unavailable.");
       setPeriod(nextPeriod);
       setKind(form.get("kind") === "term" ? "term" : "midterm");
-      setReport(data as unknown as TermReport);
+      setReport(data as unknown as ReportPreview);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not preview the report.");
     } finally {
@@ -78,6 +90,27 @@ export function LearningTermReports({ schoolId, classes }: { schoolId: string; c
       setMessage("Report published for the learner’s linked parents.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not publish the report.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withdraw(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!publishedId) return;
+    const reason = String(new FormData(event.currentTarget).get("reason") ?? "").trim();
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("withdraw_learning_term_report", {
+        school_id: schoolId, report_id: publishedId, reason,
+      });
+      if (error) throw new Error(error.message);
+      setReport(null);
+      setMessage("Report unpublished. Preview again to prepare a replacement.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not unpublish the report.");
     } finally {
       setBusy(false);
     }
@@ -117,9 +150,20 @@ export function LearningTermReports({ schoolId, classes }: { schoolId: string; c
       {report && (
         <section className="mt-4 space-y-3 border-t pt-4">
           <h3 className="font-semibold">{termReportTitle(kind)} · {report.learner_name}</h3>
-          {report.assessments.length === 0 ? <p>No published assessments for this period.</p> : (
+          {publishedId ? (
+            <form onSubmit={withdraw} className="space-y-3">
+              <p className="text-sm">Unpublishing removes this report from the family portal and disables its download.</p>
+              <label className="grid gap-1 text-sm font-semibold">Reason for unpublishing
+                <textarea className={field} name="reason" required maxLength={500} disabled={busy} />
+              </label>
+              <button disabled={busy} className="rounded-lg border border-red-800 px-4 py-2 font-semibold text-red-800">
+                Unpublish report
+              </button>
+            </form>
+          ) : report.assessments.length === 0 ? <p>No published assessments for this period.</p> : (
             <fieldset disabled={busy} className="space-y-2">
               <legend className="mb-2 text-sm">Select the assessments to include.</legend>
+              {missingSubjects > 0 && <p className="text-sm text-amber-900">{missingSubjects} enrolled subject(s) still need a selected result.</p>}
               {report.assessments.map((item) => {
                 const { summary } = resultScores(item);
                 return <label key={item.id} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
@@ -129,11 +173,24 @@ export function LearningTermReports({ schoolId, classes }: { schoolId: string; c
                   <span>{summary}</span>
                 </label>;
               })}
-              <button type="button" disabled={selection.length === 0} onClick={() => void publish()}
+              <button type="button" disabled={selection.length === 0 || missingSubjects > 0} onClick={() => void publish()}
                 className="rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
                 Approve and publish report
               </button>
             </fieldset>
+          )}
+          {history.length > 0 && (
+            <details className="rounded-lg border p-3 text-sm">
+              <summary className="cursor-pointer font-semibold">Withdrawal history ({history.length})</summary>
+              <ul className="mt-2 space-y-2">
+                {history.map((entry) => (
+                  <li key={entry.id} className="break-words">
+                    <time dateTime={entry.withdrawn_at}>{new Date(entry.withdrawn_at).toLocaleDateString()}</time>
+                    {" · "}{entry.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </section>
       )}
