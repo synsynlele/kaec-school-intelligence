@@ -462,6 +462,26 @@ const [correctedGradebookReport] = await gradebookReports();
 assert.notEqual(correctedGradebookReport.id,firstGradebookReport.id);
 assert.equal(correctedGradebookReport.assessments[0].scores.subjective,80);
 await assert.rejects(saveGradebook(81,sheetBeforeCorrection), /Scores changed/);
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('../supabase/migrations/20261124133000_learning_explicit_subject_enrolment.sql', import.meta.url), 'utf8'));
+await db.exec(`insert into students (id, workspace_id, class_id, active, display_name)
+  values ('${id(89)}','${id(4)}','${id(5)}',true,'Elective Learner');
+  set role authenticated; set app.uid = '${id(17)}';`);
+const saveElective = () => db.query('select save_learning_subject_gradebook($1,$2,$3,$4,$5,$6,$7,$8)', [
+  ...gradebookArgs, id(81), JSON.stringify({
+    maxima:{objective:0,subjective:100,critical_thinking:0,project:0}, marks:{[id(89)]:{subjective:75}},
+  }), 'null',
+]);
+await assert.rejects(saveElective(), /Invalid learner/);
+await assert.rejects(approveGradebook(), /Confirm subject enrolment/);
+await saveEnrolment([id(89)], [id(81)]);
+await saveElective();
+assert.equal(await approveGradebook(),2);
+const explicitReports = await gradebookReports();
+assert.deepEqual(explicitReports.find(item => item.learner_id===id(6)).assessments.map(item => item.subject), ['English']);
+assert.deepEqual(explicitReports.find(item => item.learner_id===id(89)).assessments.map(item => item.subject), ['Physics']);
+await db.exec(`reset role; update students set active=false where id='${id(89)}'; set role authenticated;`);
+
 await db.exec(`set app.uid = '${id(2)}'`);
 await assert.rejects(gradebook(), /School staff access/);
 
