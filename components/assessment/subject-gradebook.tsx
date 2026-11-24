@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { ImprovementPlanEditor } from "@/components/assessment/improvement-plan-editor";
 import { LearningSubjectEnrolment } from "@/components/assessment/learning-subject-enrolment";
 import { resultSections } from "@/lib/learning/result-report";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -174,6 +175,7 @@ export function SubjectGradebook() {
           <Link href={`/setup/teaching-map?class=${encodeURIComponent(scope.target_class)}`} className="font-semibold text-emerald-900 underline">Assign subjects and teachers</Link>
           <LearningSubjectEnrolment key={scope.target_class} schoolId={school} classes={classes.filter(item => item.id === scope.target_class)} />
         </>}
+        {roster.can_publish && <ImprovementPlanEditor key={`${scope.target_class}:${scope.school_session}`} scope={scope} learners={roster.learners} />}
         {!roster.subjects.length && <p>No teaching assignments are available for this class.</p>}
         <div className="flex flex-wrap gap-2">{roster.subjects.map(item => <button type="button" key={item.id}
           disabled={busy} aria-pressed={subject?.id === item.id} className={subject?.id === item.id ? button : field}

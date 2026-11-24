@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LearningPortalHeader } from "@/components/student/learning-portal-header";
+import { LearningImprovementPlan } from "@/components/student/learning-improvement-plan";
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
 import { formatCbtTime } from "@/lib/learning/cbt-time";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -187,6 +188,7 @@ export function LearningCbtClient() {
               </button>
             ))}
           </section>
+          <LearningImprovementPlan viewer="learner" />
           <LearningPublishedResults />
         </>
       )}
