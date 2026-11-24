@@ -186,16 +186,32 @@ textarea:read-only {
   }
 
   .ksi-app-shell table {
-    width: 100%;
-    max-width: 100%;
-    table-layout: fixed;
+    table-layout: auto;
+  }
+
+  /* Let wide tables scroll within their existing scroll regions. */
+  .ksi-app-shell .overflow-x-auto table {
+    min-width: min-content;
+    max-width: none;
   }
 
   .ksi-app-shell th,
   .ksi-app-shell td {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .ksi-app-shell .ksi-gradebook-table {
+    min-width: 34rem;
+  }
+
+  .ksi-app-shell .ksi-gradebook-table th,
+  .ksi-app-shell .ksi-gradebook-table td {
+    min-width: 6rem;
+  }
+
+  .ksi-app-shell .ksi-gradebook-table th:first-child {
+    min-width: 10rem;
   }
 }
 

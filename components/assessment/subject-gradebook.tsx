@@ -186,11 +186,12 @@ export function SubjectGradebook() {
           <p className="text-sm">Set maxima that total 100. Use 0 for an unused component. Leave missing marks blank.</p>
           <fieldset disabled={busy} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <legend className="sr-only">Component maxima</legend>
-            {resultSections.map(([key, label]) => <label className="grid gap-1 text-sm" key={key}>{label} maximum
+            {resultSections.map(([key, label]) => <label className="grid content-end gap-1 text-sm" key={key}>{label} maximum
               <input className={field} type="number" min={0} max={100} step="any" required value={scores.maxima[key] ?? ""}
                 onChange={(e) => { setScores({ ...scores, maxima: { ...scores.maxima, [key]: e.target.value === "" ? null : e.target.valueAsNumber } }); setDirty(true); }} /></label>)}
           </fieldset>
-          <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+          <p className="text-sm text-zinc-600 md:hidden">Swipe the table to see all marks.</p>
+          <div role="region" aria-label="Subject marks" tabIndex={0} className="overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-emerald-900"><table className="ksi-gradebook-table w-full text-left text-sm">
             <thead><tr><th scope="col" className="p-2">Learner</th>{resultSections.map(([key,label]) => <th scope="col" className="p-2" key={key}>{label}</th>)}</tr></thead>
             <tbody>{roster.learners.filter(item => enrolled(item, subject)).map(learner => (
               <tr key={learner.id} className="border-t"><th scope="row" className="p-2">{learner.name}</th>
@@ -207,7 +208,8 @@ export function SubjectGradebook() {
           <h3 className="font-semibold">Review and publish class results</h3>
           {roster.learners.some(item => !item.subjects) && <p role="status" className="text-sm text-amber-900">Confirm subject enrolment for every learner before publishing. Only selected subjects appear on each report.</p>}
           <p className="text-sm">To correct a published report, save the revised subject marks and approve the class again.</p>
-          <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+          <p className="text-sm text-zinc-600 md:hidden">Swipe the table to see all subjects.</p>
+          <div role="region" aria-label="Class results review" tabIndex={0} className="overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-emerald-900"><table className="ksi-gradebook-table w-full text-left text-sm">
             <thead><tr><th scope="col" className="p-2">Learner</th>{roster.subjects.map(item => <th scope="col" className="p-2" key={item.id}>{item.name}</th>)}</tr></thead>
             <tbody>{roster.learners.map(learner => <tr className="border-t" key={learner.id}><th scope="row" className="p-2">{learner.name}</th>
               {roster.subjects.map(item => <td className="p-2" key={item.id}>{result(learner, item)}</td>)}</tr>)}</tbody>
