@@ -108,6 +108,8 @@ async function loadAccessContext(
 }
 
 export function StudentAccessManager() {
+  const [showArchived, setShowArchived] = useState(false);
+  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const router = useRouter();
@@ -216,6 +218,32 @@ export function StudentAccessManager() {
     }
   }
 
+  async function setArchived(student: StudentRow, archived: boolean) {
+    if (!context || !window.confirm(archived
+      ? `Archive ${student.display_name}? Their school records will be kept and learner portal access will stop.`
+      : `Restore ${student.display_name} to the active learner list? Existing login access may resume.`)) return;
+
+    setBusyId(student.id);
+    setError(null);
+    setNotice("");
+    try {
+      const { error } = await getBrowserSupabaseClient().from("students")
+        .update({ active: !archived }).eq("workspace_id", context.workspaceId)
+        .eq("id", student.id).eq("active", archived).select("id").single();
+      if (error) throw error;
+      setContext(current => current && ({
+        ...current, students: current.students.map(item => item.id === student.id ? { ...item, active: !archived } : item),
+      }));
+      setIssued(null);
+      setIssuedLogin(null);
+      setNotice(archived ? "Learner archived. Their records are kept." : "Learner restored to the active list.");
+    } catch {
+      setError("Could not update learner status. Refresh and try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function copyCode() {
     if (!issued) return;
     await navigator.clipboard.writeText(issued.code);
@@ -231,7 +259,8 @@ export function StudentAccessManager() {
   }
 
   if (!context) return null;
-  const groups = groupAccessLearners(context.students, (student) =>
+  const activeStudents = context.students.filter(item => item.active);
+  const groups = groupAccessLearners(context.students.filter(item => item.active !== showArchived), (student) =>
     (student.class_id && classNames.get(student.class_id)) || "No class assigned");
   const query = search.trim().toLowerCase();
   const visibleGroups = groups.filter(([name]) => !classFilter || classFilter === name)
@@ -292,8 +321,14 @@ export function StudentAccessManager() {
 
       <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 px-6 py-5">
-          <h2 className="text-lg font-bold text-zinc-950">Learners</h2>
-          <p className="mt-1 text-sm text-zinc-500">{linkedStudentIds.size} of {context.students.filter((item) => item.active).length} active learners linked.</p>
+          <h2 className="text-lg font-bold text-zinc-950">{showArchived ? "Archived learners" : "Active learners"}</h2>
+          {!showArchived && <p className="mt-1 text-sm text-zinc-500">{activeStudents.filter(item => linkedStudentIds.has(item.id)).length} of {activeStudents.length} active learners linked.</p>}
+          <button type="button" disabled={busyId !== null} className="mt-2 min-h-11 font-semibold text-emerald-900 underline" onClick={() => {
+            setClassFilter("");
+            setSearch("");
+            setShowArchived(current => !current);
+          }}>{showArchived ? "Show active learners" : "Show archived learners"}</button>
+          {notice && <p role="status" className="text-sm text-emerald-900">{notice}</p>}
         </div>
         <div className="px-6 py-4"><LearnerAccessFilters search={search} className={classFilter}
           classes={groups.map(([name]) => name)} onSearch={setSearch} onClass={setClassFilter} /></div>
@@ -307,10 +342,10 @@ export function StudentAccessManager() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-zinc-950">{student.display_name}</p>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${linked ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+                    {student.active && <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${linked ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
                       {linked ? "Linked" : "Not linked"}
-                    </span>
-                    {!student.active ? <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-500">Inactive</span> : null}
+                    </span>}
+                    {!student.active ? <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-500">Archived</span> : null}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">
                     {student.class_id ? classNames.get(student.class_id) ?? "Assigned class" : "No class assigned"}
@@ -319,7 +354,11 @@ export function StudentAccessManager() {
                 <details className="text-sm">
                   <summary className="cursor-pointer py-2 font-semibold text-emerald-900">Student actions</summary>
                   <Link href={`/setup?student=${encodeURIComponent(student.id)}`} className="mb-2 block w-fit py-2 font-semibold text-emerald-900 underline">Edit details or change class</Link>
-                  {linked ? (
+                  <button type="button" disabled={busyId !== null} onClick={() => void setArchived(student, student.active)}
+                    className="mb-2 block min-h-11 font-semibold text-emerald-900 underline">
+                    {student.active ? "Archive learner" : "Restore learner"}
+                  </button>
+                  {student.active && (linked ? (
                     <button type="button" disabled={!student.active || busyId !== null}
                       onClick={() => void manageLogin(student, "reset")}
                       className="w-fit rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-60">
@@ -347,7 +386,7 @@ export function StudentAccessManager() {
                         {busyId === student.id ? "Please wait…" : "Generate access code"}
                       </button>
                     </div>
-                  )}
+                  ))}
                 </details>
               </div>
             );
