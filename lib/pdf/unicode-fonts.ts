@@ -94,11 +94,15 @@ export function embedUnicodePdfFonts(objects: Buffer[]) {
   return objects;
 }
 
+export function pdfTextWidth(value: string, size: number, bold = false) {
+  const font = fonts()[bold ? 1 : 0].font;
+  return Array.from(value).reduce((total, character) =>
+    total + font.glyphForCodePoint(character.codePointAt(0)!).advanceWidth * size / font.unitsPerEm, 0);
+}
+
 /** Wrap with the embedded font's real advances, including IPA and mathematical notation. */
 export function wrapPdfText(value: string, maxWidth: number, size: number, bold = false) {
-  const font = fonts()[bold ? 1 : 0].font;
-  const width = (text: string) => Array.from(text).reduce((total, character) =>
-    total + font.glyphForCodePoint(character.codePointAt(0)!).advanceWidth * size / font.unitsPerEm, 0);
+  const width = (text: string) => pdfTextWidth(text, size, bold);
   const lines: string[] = [];
   for (const paragraph of normalizePdfText(value).split(/\n+/)) {
     let line = "";
