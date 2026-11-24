@@ -350,6 +350,7 @@ export function buildStageRegenerationPrompt(args: {
   targetStage: HqlsStageContent;
   action: HqlsStageAction;
   lessonContext: string;
+  compactContext?: boolean;
 }) {
   const definition = HQLS_STAGES[args.targetStage.stageNumber - 1];
   const actionInstruction =
@@ -358,6 +359,23 @@ export function buildStageRegenerationPrompt(args: {
       : definition.index === 5
       ? `${ACTION_INSTRUCTIONS[args.action]} Stage 5 is normal lesson mode: do not reintroduce discovery, anti-lecture, anti-note, mandatory learner-participation, Trial-1-repair or Guide/Hero restrictions. Preserve focused, accurate conventional teaching with enough connected explanation to carry the lesson seriously, written in simple plain English.`
       : ACTION_INSTRUCTIONS[args.action];
+
+  const continuity = args.compactContext
+    ? JSON.stringify({
+        ...args.lesson,
+        stages: args.lesson.stages.filter((stage) => {
+          const number = stage.stageNumber;
+          const target = args.targetStage.stageNumber;
+          // Keep the adjacent stages, the opening scenario for early stages,
+          // and the teaching/reattempt sequence used to correct the first trial.
+          return number !== target && (
+            Math.abs(number - target) === 1 ||
+            (number === 1 && target <= 4) ||
+            (number >= 4 && number <= 6 && target >= 4)
+          );
+        }),
+      })
+    : JSON.stringify(args.lesson);
 
   return `
 Revise ONLY Stage ${definition.index} — ${definition.title} of the HQLS lesson below.
@@ -369,8 +387,9 @@ Stage rule: ${definition.nonNegotiable}
 LESSON CONTEXT:
 ${args.lessonContext}
 
-CURRENT FULL LESSON JSON (use it only to preserve continuity):
-${JSON.stringify(args.lesson)}
+CURRENT LESSON CONTEXT JSON (use it only to preserve continuity):
+${continuity}
+${args.compactContext ? "Only relevant stages are shown. Preserve existing references to omitted stages and never infer that an omitted stage is missing." : ""}
 
 CURRENT TARGET STAGE JSON:
 ${JSON.stringify(args.targetStage)}

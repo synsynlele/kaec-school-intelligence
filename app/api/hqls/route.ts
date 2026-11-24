@@ -710,11 +710,15 @@ async function handleGenerate(
             (item) => item.stageKey === targetStage.stageKey,
           );
           const stageValidation = validation.stageValidation[targetStage.stageKey];
+          const compactContext = process.env.KSI_HQLS_COMPACT_STAGE_REPAIR === "true" &&
+            targetViolations.length > 0 &&
+            !targetViolations.some(isHqlsMaterialViolation);
           const repairPrompt = `${buildStageRegenerationPrompt({
             lesson,
             targetStage,
             action: "improve",
             lessonContext: lessonContextSummary(input),
+            compactContext,
           })}
 
 Deterministic fidelity issues that must be fixed before returning this stage:
@@ -731,7 +735,7 @@ ${(
             responseSchema: HQLS_STAGE_JSON_SCHEMA,
             schemaName: "ksi_hqls_stage_repair",
             model,
-            promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair`,
+            promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair${compactContext ? "-compact-v1" : ""}`,
             promptCacheTtl: "30m",
             textVerbosity: "low",
             maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
