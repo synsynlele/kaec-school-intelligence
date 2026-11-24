@@ -10,7 +10,14 @@ type Scope = { school_id: string; target_class: string; school_session: string }
 const field = "w-full rounded-lg border border-zinc-300 bg-white p-2.5";
 const button = "rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-60";
 
-export function LearningSubjectEnrolment({ schoolId, classes }: { schoolId: string; classes: Option[] }) {
+export function LearningSubjectEnrolment({ schoolId, classes, defaultOpen = false }: {
+  schoolId: string;
+  classes: (Option & { academic_session?: string | null })[];
+  defaultOpen?: boolean;
+}) {
+  const initialClass = classes.length === 1 ? classes[0] : undefined;
+  const [classId, setClassId] = useState(initialClass?.id ?? "");
+  const [session, setSession] = useState(initialClass?.academic_session ?? "");
   const [scope, setScope] = useState<Scope | null>(null);
   const [roster, setRoster] = useState<Roster | null>(null);
   const [learners, setLearners] = useState<string[]>([]);
@@ -77,18 +84,22 @@ export function LearningSubjectEnrolment({ schoolId, classes }: { schoolId: stri
   }
 
   return (
-    <details className="rounded-2xl border border-emerald-900/15 bg-white p-4">
+    <details open={defaultOpen || undefined} className="rounded-2xl border border-emerald-900/15 bg-white p-4">
       <summary className="cursor-pointer font-semibold text-emerald-950">Learner subject enrolment</summary>
       <form onSubmit={load} onChange={() => { setRoster(null); setError(""); setNotice(""); }} className="mt-4 space-y-3">
         <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-semibold">Class
-            <select name="class" className={field} required>
+            <select name="class" className={field} required value={classId} onChange={(event) => {
+              const selected = classes.find(item => item.id === event.target.value);
+              setClassId(event.target.value);
+              setSession(selected?.academic_session ?? "");
+            }}>
               <option value="">Select class</option>
               {classes.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
             </select>
           </label>
           <label className="grid gap-1 text-sm font-semibold">Academic session
-            <input name="session" className={field} required placeholder="2026/2027" pattern="[0-9]{4}/[0-9]{4}" />
+            <input name="session" className={field} required value={session} onChange={event => setSession(event.target.value)} placeholder="2026/2027" pattern="[0-9]{4}/[0-9]{4}" />
           </label>
         </fieldset>
         <button className={button} disabled={busy}>Load class roster</button>
@@ -105,6 +116,10 @@ export function LearningSubjectEnrolment({ schoolId, classes }: { schoolId: stri
               <div className="grid gap-4 sm:grid-cols-2">
                 <fieldset disabled={busy} className="space-y-2">
                   <legend className="mb-2 text-sm font-semibold">Learners</legend>
+                  <button type="button" className="text-sm font-semibold text-emerald-900 underline" onClick={() => {
+                    setLearners(learners.length === roster.learners.length ? [] : roster.learners.map(item => item.id));
+                    setSubjects([]);
+                  }}>{learners.length === roster.learners.length ? "Clear learner selection" : "Select all learners"}</button>
                   {roster.learners.map((learner) => (
                     <label key={learner.id} className="flex min-h-10 items-center gap-2 text-sm">
                       <input type="checkbox" checked={learners.includes(learner.id)} onChange={() => toggleLearner(learner)} />

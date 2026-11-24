@@ -22,6 +22,7 @@ export default async function AssessmentPage({ searchParams }: { searchParams: P
             Manage CBT
           </Link>
           <Link href="/assessment/class-results" className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white">Class scores and results</Link>
+          <Link href="/setup/teaching-map" className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold">Class subjects and enrolment</Link>
           <Link
             href="/saved-work"
             className="inline-flex w-fit items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-stone-50"

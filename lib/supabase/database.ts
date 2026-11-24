@@ -200,6 +200,7 @@ type FinalStageFunctions = Omit<
   open_learning_score_sheet: { Args: { source_id: string }; Returns: string };
   get_learning_cbt_staff_status: { Args: { source_id: string }; Returns: Json };
   get_learning_cbt_item_insights: { Args: { source_id: string }; Returns: Json };
+  list_learning_objective_exams: { Args: { school_id: string; search_text: string; page_offset: number }; Returns: Json };
   list_learning_assessments: { Args: { search_text: string; school_id: string; page_offset: number }; Returns: Json };
   assign_learning_cbt: { Args: { source_id: string }; Returns: string };
   get_learning_cbts: { Args: { target_id?: string }; Returns: Json };

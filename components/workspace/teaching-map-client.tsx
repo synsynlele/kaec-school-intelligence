@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { LearningSubjectEnrolment } from "@/components/assessment/learning-subject-enrolment";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type NamedRow = { id: string; name: string };
@@ -30,7 +31,7 @@ type TeachingMapPayload = {
 type TeachingMapContext = {
   workspaceId: string;
   workspaceName: string;
-  classes: NamedRow[];
+  classes: (NamedRow & { academic_session: string | null })[];
   subjects: NamedRow[];
   map: TeachingMapPayload;
 };
@@ -56,7 +57,7 @@ async function loadContext(supabase: SupabaseClient): Promise<TeachingMapContext
   const workspaceId = profile.default_workspace_id;
   const [workspaceResult, classesResult, subjectsResult, mapResult] = await Promise.all([
     supabase.from("workspaces").select("name,workspace_type").eq("id", workspaceId).single(),
-    supabase.from("classes").select("id,name").eq("workspace_id", workspaceId).eq("active", true).order("name"),
+    supabase.from("classes").select("id,name,academic_session").eq("workspace_id", workspaceId).eq("active", true).order("name"),
     supabase.from("subjects").select("id,name").eq("workspace_id", workspaceId).eq("active", true).order("name"),
     supabase.rpc("get_teaching_map", { target_workspace_id: workspaceId }),
   ]);
@@ -70,17 +71,17 @@ async function loadContext(supabase: SupabaseClient): Promise<TeachingMapContext
   return {
     workspaceId,
     workspaceName: workspaceResult.data.name,
-    classes: (classesResult.data ?? []) as NamedRow[],
+    classes: (classesResult.data ?? []) as TeachingMapContext["classes"],
     subjects: (subjectsResult.data ?? []) as NamedRow[],
     map: mapResult.data as TeachingMapPayload,
   };
 }
 
-export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string } = {}) {
+export function TeachingMapClient({ initialStaffId, initialClassId }: { initialStaffId?: string; initialClassId?: string } = {}) {
   const router = useRouter();
   const [context, setContext] = useState<TeachingMapContext | null>(null);
   const [classId, setClassId] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [subjectIds, setSubjectIds] = useState<string[]>([]);
   const [teacherId, setTeacherId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,7 +98,6 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
     }
     setContext(next);
     setClassId((current) => current || next.classes[0]?.id || "");
-    setSubjectId((current) => current || next.subjects[0]?.id || "");
     setTeacherId((current) => current || (!initialStaffId ? next.map.teachers[0]?.user_id : "") || "");
   }
 
@@ -113,8 +113,7 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
           return;
         }
         setContext(next);
-        setClassId(next.classes[0]?.id || "");
-        setSubjectId(next.subjects[0]?.id || "");
+        setClassId(next.classes.find(item => item.id === initialClassId)?.id ?? next.classes[0]?.id ?? "");
         const staffId = initialStaffId
           ? next.map.teachers.find(({ user_id }) => user_id === initialStaffId)?.user_id
           : next.map.teachers[0]?.user_id;
@@ -130,11 +129,11 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
     return () => {
       cancelled = true;
     };
-  }, [initialStaffId, router]);
+  }, [initialClassId, initialStaffId, router]);
 
   const assignedStaff = context?.map.teachers.find(({ user_id }) => user_id === initialStaffId);
   const visibleAssignments = context?.map.assignments.filter(
-    (item) => !initialStaffId || item.teacher_id === initialStaffId
+    (item) => item.class_id === classId && (!initialStaffId || item.teacher_id === initialStaffId)
   ) ?? [];
   const canManage = context ? ["owner", "admin"].includes(context.map.role) : false;
   const activeCount = useMemo(
@@ -144,21 +143,21 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
 
   async function addAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!context || !classId || !subjectId || !teacherId) return;
+    if (!context || !classId || !subjectIds.length || !teacherId) return;
     setSaving(true);
     setError(null);
     setNotice(null);
     try {
       const supabase: SupabaseClient = getBrowserSupabaseClient();
-      const { error: rpcError } = await supabase.rpc("set_teaching_assignment", {
+      const { error: rpcError } = await supabase.rpc("assign_learning_class_subjects", {
         target_workspace_id: context.workspaceId,
         target_class_id: classId,
-        target_subject_id: subjectId,
+        target_subject_ids: subjectIds,
         target_teacher_id: teacherId,
-        target_active: true,
       });
-      if (rpcError) throw rpcError;
-      setNotice("Teaching assignment saved. Lesson delivery can now use this approved link.");
+      if (rpcError) throw new Error(rpcError.message);
+      setNotice(`${subjectIds.length} subject assignment(s) saved for this class.`);
+      setSubjectIds([]);
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Teaching assignment could not be saved.");
@@ -206,10 +205,10 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
       <div className="ksi-workspace-banner flex flex-col gap-4 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/dashboard" className="text-sm font-semibold text-emerald-900">← Dashboard</Link>
-          <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Academic Teaching Map</p>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Class subjects and enrolment</p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-950">{context.workspaceName}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-            This is the authoritative Teacher ↔ Class ↔ Subject map. A teacher can deliver a lesson only when this school has already approved that exact instructional relationship.
+            Choose a class, select the subjects a teacher handles, then enrol learners in the subjects they take.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -221,17 +220,29 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
       {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
       {notice ? <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{notice}</div> : null}
 
+      <div className="mt-6 flex flex-wrap items-end gap-4">
+        <SelectField label="Class" value={classId} onChange={(id) => { setClassId(id); setSubjectIds([]); setNotice(null); }}
+          options={context.classes.map(item => ({ value: item.id, label: item.name }))} />
+        <Link href="/assessment/class-results" className="font-semibold text-emerald-900 underline">Class scores and results</Link>
+        <Link href="#subject-enrolment" className="font-semibold text-emerald-900 underline">Learner subject enrolment</Link>
+      </div>
       {canManage && (!initialStaffId || assignedStaff) ? (
         <form onSubmit={addAssignment} className={`mt-8 grid gap-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:items-end ${assignedStaff ? "lg:grid-cols-[1fr_1fr_auto]" : "lg:grid-cols-[1fr_1fr_1fr_auto]"}`}>
-          <SelectField label="Class" value={classId} onChange={setClassId} options={context.classes.map((item) => ({ value: item.id, label: item.name }))} />
-          <SelectField label="Subject" value={subjectId} onChange={setSubjectId} options={context.subjects.map((item) => ({ value: item.id, label: item.name }))} />
+          <fieldset disabled={saving} className="max-h-60 space-y-2 overflow-y-auto">
+            <legend className="font-semibold">Subjects to assign</legend>
+            {context.subjects.map(item => <label key={item.id} className="flex items-center gap-2">
+              <input type="checkbox" checked={subjectIds.includes(item.id)} onChange={() => setSubjectIds(current =>
+                current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} />
+              {item.name}
+            </label>)}
+          </fieldset>
           {!assignedStaff && <SelectField label="Teacher" value={teacherId} onChange={setTeacherId} options={context.map.teachers.map((item) => ({ value: item.user_id, label: `${item.name} · ${item.role}` }))} />}
           <button
             type="submit"
-            disabled={saving || !classId || !subjectId || !teacherId}
+            disabled={saving || !classId || !subjectIds.length || !teacherId}
             className="rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
           >
-            {saving ? "Saving…" : assignedStaff ? `Assign ${assignedStaff.name}` : "Add teaching link"}
+            {saving ? "Saving…" : assignedStaff ? `Assign ${assignedStaff.name}` : "Assign selected subjects"}
           </button>
         </form>
       ) : (
@@ -240,6 +251,12 @@ export function TeachingMapClient({ initialStaffId }: { initialStaffId?: string 
         </div>
       )}
 
+      {["owner", "admin", "leader"].includes(context.map.role) && classId && (
+        <section id="subject-enrolment" className="mt-6 scroll-mt-8">
+          <LearningSubjectEnrolment key={classId} schoolId={context.workspaceId}
+            classes={context.classes.filter(item => item.id === classId)} defaultOpen />
+        </section>
+      )}
       {initialStaffId && <div className="mt-8 flex flex-wrap items-center gap-4 text-sm">
         <Link href="/setup/staff-access" className="font-semibold text-emerald-900 underline">Back to Staff</Link>
         <Link href="/setup/teaching-map" className="font-semibold text-emerald-900 underline">View all assignments</Link>
