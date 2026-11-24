@@ -281,3 +281,16 @@ textarea:read-only {
   overscroll-behavior-y: contain;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+.ksi-mobile-menu-trigger {
+  position: fixed;
+  z-index: 50;
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  body.ksi-school-nav-active:has(.ksi-mobile-menu-trigger) {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
