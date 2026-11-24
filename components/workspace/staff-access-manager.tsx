@@ -100,6 +100,7 @@ export function StaffAccessManager() {
   const [staffSearch, setStaffSearch] = useState("");
   const [inviteSearch, setInviteSearch] = useState("");
   const [email, setEmail] = useState("");
+  const [showFormer, setShowFormer] = useState(false);
   const [role, setRole] = useState<"teacher" | "leader" | "admin">("teacher");
   const [issued, setIssued] = useState<Issued | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,6 +110,30 @@ export function StaffAccessManager() {
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  async function manageStaff(member: StaffMember, action: "role" | "remove" | "return", newRole?: string) {
+    if (!context || busyStaffId) return;
+    const question = action === "role" ? `Change ${member.display_name}’s role to ${newRole}?`
+      : action === "remove" ? `Remove ${member.display_name} from this school and stop their access? Their school records will be kept.`
+      : `Return ${member.display_name} to the staff list as suspended?`;
+    if (!window.confirm(question)) return;
+    setBusyStaffId(member.user_id);
+    setError(null);
+    setNotice("");
+    try {
+      const { error } = await getBrowserSupabaseClient().rpc("manage_school_staff", {
+        school_id: context.workspaceId, staff_id: member.user_id, expected_role: member.role,
+        expected_status: member.status, action, ...(newRole ? { new_role: newRole } : {}),
+      });
+      if (error) throw error;
+      await refresh();
+      setNotice(action === "role" ? "Staff role updated." : action === "remove" ? "Staff member removed." : "Staff member returned as suspended.");
+    } catch (caught) {
+      setError(messageFrom(caught, "Staff details could not be changed."));
+    } finally {
+      setBusyStaffId(null);
+    }
+  }
 
   async function changeStaffStatus(member: StaffMember) {
     if (!context || busyStaffId) return;
@@ -231,7 +256,7 @@ export function StaffAccessManager() {
   }
 
   const staffQuery = staffSearch.trim().toLowerCase();
-  const visibleStaff = context.staff?.filter((member) =>
+  const visibleStaff = context.staff?.filter((member) => (member.status === "removed") === showFormer &&
     [member.display_name, member.role, member.status].some((value) => value.toLowerCase().includes(staffQuery))
   );
   const inviteQuery = inviteSearch.trim().toLowerCase();
@@ -274,6 +299,9 @@ export function StaffAccessManager() {
           <Link href="/setup/teaching-map" className="py-2 text-sm font-semibold text-emerald-900 underline">Manage teaching assignments</Link>
         </div>
         {visibleStaff ? <>
+          <button type="button" className="mt-3 min-h-11 font-semibold text-emerald-900 underline" onClick={() => setShowFormer(value => !value)}>
+            {showFormer ? "Show current staff" : "Show former staff"}
+          </button>
           <label className="my-4 block text-sm font-semibold">Search staff
             <input type="search" value={staffSearch} onChange={(event) => setStaffSearch(event.target.value)}
               placeholder="Name, role or status" className="mt-1 block w-full rounded-lg border border-zinc-300 p-2 font-normal" />
@@ -282,14 +310,14 @@ export function StaffAccessManager() {
           <ul className="divide-y divide-zinc-100">
             {visibleStaff.map((member) => {
               const canAssign = member.status === "active" && ["owner", "admin", "teacher"].includes(member.role);
-              const canChangeAccess = ["active", "suspended"].includes(member.status)
-                && member.user_id !== context.viewerId && member.role !== "owner"
+              const canManage = member.user_id !== context.viewerId && member.role !== "owner"
                 && (member.role !== "admin" || context.viewerRole === "owner");
+              const canChangeAccess = canManage && ["active", "suspended"].includes(member.status);
               return (
                 <li key={member.user_id} className="py-3">
                   <p className="font-semibold">{member.display_name}</p>
                   <p className="text-sm capitalize text-zinc-600">{member.role} · {member.status}</p>
-                  {(canAssign || canChangeAccess) &&
+                  {(canAssign || canChangeAccess || (canManage && member.status === "removed")) &&
                     <details className="mt-1 text-sm">
                       <summary className="w-fit cursor-pointer py-2 font-semibold text-emerald-900">Staff actions</summary>
                       <div className="flex flex-wrap gap-x-4">
@@ -301,6 +329,18 @@ export function StaffAccessManager() {
                             className="py-2 font-semibold text-zinc-800 underline disabled:opacity-50">
                             {busyStaffId === member.user_id ? "Updating…" : member.status === "active" ? "Suspend access" : "Restore access"}
                           </button>}
+                        {canChangeAccess && <label className="grid gap-1 py-2 font-semibold">Change role
+                          <select value={member.role} disabled={Boolean(busyStaffId)} className="rounded-lg border border-zinc-300 bg-white p-2"
+                            onChange={event => void manageStaff(member, "role", event.target.value)}>
+                            <option value="teacher">Teacher</option>
+                            <option value="leader">Leader</option>
+                            {context.viewerRole === "owner" && <option value="admin">Admin</option>}
+                          </select>
+                        </label>}
+                        {canChangeAccess && <button type="button" disabled={Boolean(busyStaffId)} onClick={() => void manageStaff(member, "remove")}
+                          className="min-h-11 font-semibold text-red-800 underline disabled:opacity-50">Remove from school</button>}
+                        {canManage && member.status === "removed" && <button type="button" disabled={Boolean(busyStaffId)} onClick={() => void manageStaff(member, "return")}
+                          className="min-h-11 font-semibold text-emerald-900 underline disabled:opacity-50">Return as suspended</button>}
                       </div>
                     </details>}
                 </li>
