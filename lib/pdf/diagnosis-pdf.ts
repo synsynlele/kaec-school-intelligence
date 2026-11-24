@@ -1,5 +1,5 @@
 import type { GeneratedDiagnosis } from "@/lib/diagnosis/engine";
-import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, wrapPdfText } from "@/lib/pdf/unicode-fonts";
+import { normalizePdfText, escapePdfText, embedUnicodePdfFonts, pdfTextWidth, wrapPdfText } from "@/lib/pdf/unicode-fonts";
 import { resultScores, type ResultReport, type ReportDiagnosis, type TermReport, termReportTitle } from "@/lib/learning/result-report";
 import { KSI_PDF_ATTRIBUTION, resolvePdfBranding } from "@/lib/pdf/pdf-branding";
 
@@ -728,27 +728,43 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
       const page: string[] = [];
       rectTop(page, 28, 28, CONTENT_WIDTH, 74, light, null);
       if (branding.hasSchoolLogo) page.push(`q 52 0 0 52 40 ${PAGE_HEIGHT - 91} cm /Im1 Do Q`);
-      const titleX = branding.hasSchoolLogo ? 107 : 40;
-      wrapText(report.school_name, 630, 21, true).slice(0, 2).forEach((line, index) =>
-        textAtTop(page, line, titleX, 34 + index * 22, 21, true, FOREST));
-      textAtTop(page, termReportTitle(report.kind), titleX, 80, 12, true, FOREST);
+      const photo = passportImage(report.passport_photo);
+      if (photo) {
+        photos.set(pages.length, photo);
+        page.push(`q 46.4 0 0 58 ${PAGE_WIDTH - 86.4} ${PAGE_HEIGHT - 94} cm /Im2 Do Q`);
+      }
+
+      const headingWidth = PAGE_WIDTH - 2 * 108;
+      const heading = [
+        { value: report.school_name, size: 19, color: FOREST },
+        { value: report.kind === "midterm" ? "Mid-Term Report" : "End-of-Term Report", size: 11, color: FOREST },
+        { value: report.learner_name, size: 12, color: TEXT },
+      ].flatMap(({ value, size, color }) => {
+        const lines = wrapText(value, headingWidth, size, true);
+        const fittedSize = lines.length > 2 ? Math.min(size, headingWidth / pdfTextWidth(ascii(value), 1, true)) : size;
+        return (lines.length > 2 ? [ascii(value).replace(/\s+/g, " ").trim()] : lines)
+          .map(line => ({ line, size: fittedSize, color }));
+      });
+      const headingHeight = heading.reduce((height, row) => height + row.size + 2, 0);
+      const headingScale = Math.min(1, 66 / headingHeight);
+      let headingTop = 28 + (74 - headingHeight * headingScale) / 2;
+      for (const { line, size: nominalSize, color } of heading) {
+        const size = nominalSize * headingScale;
+        textAtTop(page, line, (PAGE_WIDTH - pdfTextWidth(line, size, true)) / 2, headingTop, size, true, color);
+        headingTop += size + 2 * headingScale;
+      }
       rectTop(page, 28, 102, CONTENT_WIDTH, 2, FOREST, null);
 
       const side = 640;
       const cardWidth = PAGE_WIDTH - MARGIN_X - side;
-      const photo = passportImage(report.passport_photo);
       let top = 122;
       rectTop(page, side, top, cardWidth, 145, light, null);
       textAtTop(page, "LEARNER RECORD", side + 12, top + 11, 8, true, FOREST);
-      if (photo) {
-        photos.set(pages.length, photo);
-        page.push(`q 36 0 0 45 ${side + cardWidth - 48} ${PAGE_HEIGHT - top - 70} cm /Im2 Do Q`);
-      }
-      wrapText(report.learner_name, photo ? 100 : 150, 11, true).slice(0, 3).forEach((line, index) =>
-        textAtTop(page, line, side + 12, top + 26 + index * 13, 11, true));
-      textAtTop(page, report.class_name ?? "-", side + 12, top + 76, 10, true);
-      textAtTop(page, report.academic_session, side + 12, top + 92, 9);
-      textAtTop(page, report.term, side + 12, top + 107, 9);
+      textAtTop(page, "Class", side + 12, top + 36, 8, true, FOREST);
+      textAtTop(page, report.class_name ?? "-", side + 12, top + 48, 10, true);
+      textAtTop(page, "Academic session", side + 12, top + 67, 8, true, FOREST);
+      textAtTop(page, report.academic_session, side + 12, top + 79, 9);
+      textAtTop(page, report.term, side + 12, top + 100, 9);
 
       if (report.admission_reference) {
         const [reference] = wrapText(`ID  ${report.admission_reference}`, cardWidth - 24, 9);
