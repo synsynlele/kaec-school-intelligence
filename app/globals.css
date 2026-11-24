@@ -14,6 +14,8 @@
 }
 
 html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   color-scheme: light;
   background: var(--background);
 }
@@ -21,7 +23,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 /*
@@ -216,5 +218,36 @@ textarea:read-only {
 
   .ksi-saved-work-shell article > div > div:last-child > button {
     flex: 1 1 9rem;
+  }
+}
+
+/* Report text uses solid colours in browsers without modern colour support. */
+.ksi-readable-report {
+  background-color: #fff;
+  color: #172033;
+  line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ksi-readable-report th,
+.ksi-readable-report td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.ksi-report-card-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ksi-report-card-grid > * {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .ksi-report-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

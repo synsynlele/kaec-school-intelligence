@@ -19,37 +19,26 @@ function DiagnosisTables({ diagnosis }: { diagnosis: ReportDiagnosis }) {
     <section className="space-y-4">
       <h3 className="text-lg font-semibold">Approved diagnosis</h3>
       {diagnosis.conciseDiagnosis && <p>{diagnosis.conciseDiagnosis}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">Diagnosis findings</caption>
-          <thead className="bg-stone-100"><tr>{["Area", "Strengths", "Challenges"].map((label) =>
-            <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
-          <tbody>{findingRows.map(([label, strengths, challenges]) => (
-            <tr key={label} className="border-b border-stone-200 align-top">
-              <th scope="row" className="p-2">{label}</th>
-              {[strengths, challenges].map((items, column) => (
-                <td key={column} className="whitespace-pre-wrap p-2">{items.map(({ statement }) => statement).join("\n") || "—"}</td>
-              ))}
-            </tr>
-          ))}</tbody>
-        </table>
+      <div className="ksi-report-card-grid">
+        {findingRows.map(([label, strengths, challenges]) => (
+          <section key={label} className="space-y-2 rounded-lg border border-stone-200 p-3">
+            <h4 className="font-semibold">{label}</h4>
+            <p className="whitespace-pre-wrap"><strong>Strengths</strong><br />{strengths.map(({ statement }) => statement).join("\n") || "—"}</p>
+            <p className="whitespace-pre-wrap"><strong>Challenges</strong><br />{challenges.map(({ statement }) => statement).join("\n") || "—"}</p>
+          </section>
+        ))}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">Diagnosis action plan</caption>
-          <thead className="bg-stone-100"><tr>{["Action plan", "School", "Parents"].map((label) =>
-            <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
-          <tbody>{actionRows.map(([label, school, parent]) => (
-            <tr key={label} className="border-b border-stone-200 align-top">
-              <th scope="row" className="p-2">{label}</th>
-              {[school, parent].map((items, column) => (
-                <td key={column} className="whitespace-pre-wrap p-2">
-                  {items.map(({ action, timeframe }) => timeframe ? `${action} (${timeframe})` : action).join("\n") || "—"}
-                </td>
-              ))}
-            </tr>
-          ))}</tbody>
-        </table>
+      <div className="ksi-report-card-grid">
+        {actionRows.map(([label, school, parent]) => (
+          <section key={label} className="space-y-2 rounded-lg border border-stone-200 p-3">
+            <h4 className="font-semibold">{label} action plan</h4>
+            {([["School", school], ["Parents", parent]] as const).map(([audience, items]) => (
+              <p key={audience} className="whitespace-pre-wrap"><strong>{audience}</strong><br />
+                {items.map(({ action, timeframe }) => timeframe ? `${action} (${timeframe})` : action).join("\n") || "—"}
+              </p>
+            ))}
+          </section>
+        ))}
       </div>
       {diagnosis.builderGrowthDirection && <p><strong>Builder Growth Direction</strong><br />{diagnosis.builderGrowthDirection}</p>}
       {diagnosis.encouragementNote && <p><strong>Encouragement</strong><br />{diagnosis.encouragementNote}</p>}
@@ -68,7 +57,7 @@ function ReportCard({ report }: { report: ResultReport }) {
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- School logos are uploaded JPEG data URLs. */}
             {logo && <img src={logo} alt="" className="h-12 w-12 shrink-0 object-contain" />}
-            <p className="break-words font-semibold text-emerald-950">{report.school_name}</p>
+            <p className="min-w-0 font-semibold text-emerald-950">{report.school_name}</p>
           </div>
           <h2 className="text-xl font-bold">{report.title}</h2>
           <p className="font-semibold">{report.learner_name}</p>
@@ -106,6 +95,7 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
   const [results, setResults] = useState<PublishedResult[] | null>(null);
   const [diagnoses, setDiagnoses] = useState<Pick<ResultReport, "id" | "title" | "learner_name" | "term" | "academic_session">[] | null>(null);
   const [termReports, setTermReports] = useState<TermReport[] | null>(null);
+  const [preview, setPreview] = useState<{ diagnosis: ResultReport } | { term: TermReport } | null>(null);
   const [report, setReport] = useState<ResultReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -173,6 +163,23 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
     }
   }
 
+  async function openPreview(id: string, kind: "diagnosis" | "term") {
+    setBusy(true);
+    setError("");
+    try {
+      const client = getBrowserSupabaseClient();
+      const { data, error } = kind === "diagnosis"
+        ? await client.rpc("get_my_parent_learning_diagnoses", { diagnosis_id: id })
+        : await client.rpc(viewer === "parent" ? "get_my_parent_term_reports" : "get_my_learner_term_reports", { report_id: id });
+      if (error || !Array.isArray(data) || !data[0]) throw new Error("This report is unavailable.");
+      setPreview(kind === "diagnosis" ? { diagnosis: data[0] as unknown as ResultReport } : { term: data[0] as unknown as TermReport });
+    } catch {
+      setError("Could not open the report. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function downloadReport(query: URLSearchParams, diagnosisOnly = false, termReport = false) {
     setBusy(true);
     setError("");
@@ -205,12 +212,36 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
   }
 
   return (
-    <section id="published-results" aria-labelledby="published-results-heading" className="scroll-mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
+    <section id="published-results" aria-labelledby="published-results-heading" className="ksi-readable-report scroll-mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
       <h2 id="published-results-heading" className="text-xl font-bold tracking-tight text-slate-950">
         {viewer === "parent" ? "School reports" : "Published results"}
       </h2>
       {error && <p role="alert" className="text-red-900">{error}</p>}
-      {report ? (
+      {preview ? (
+        <article className="space-y-4">
+          <button type="button" className="font-semibold text-emerald-900 underline" onClick={() => setPreview(null)}>Back to reports</button>
+          {"diagnosis" in preview ? <>
+            <h3 className="text-lg font-bold">{preview.diagnosis.learner_name} · {preview.diagnosis.title}</h3>
+            {preview.diagnosis.diagnosis && <DiagnosisTables diagnosis={preview.diagnosis.diagnosis} />}
+          </> : <>
+            <h3 className="text-lg font-bold">{preview.term.learner_name} · {termReportTitle(preview.term.kind)}</h3>
+            <p>{preview.term.school_name} · {preview.term.class_name} · {preview.term.academic_session} · {preview.term.term}</p>
+            {preview.term.resumption_date && <p>Resumption date {preview.term.resumption_date}</p>}
+            <div className="ksi-report-card-grid">
+              {preview.term.assessments.map(assessment => {
+                const { rows, summary } = resultScores(assessment);
+                return <section key={assessment.id} className="space-y-2 rounded-lg border border-stone-200 p-3">
+                  <h4 className="font-semibold">{assessment.subject ?? assessment.title}</h4>
+                  <dl>{rows.map(row => <div key={row.label} className="flex flex-wrap justify-between gap-x-2">
+                    <dt>{row.label}</dt><dd>{row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score} / ${row.maximum}`}</dd>
+                  </div>)}</dl>
+                  <p className="font-semibold">Total {summary}</p>
+                </section>;
+              })}
+            </div>
+          </>}
+        </article>
+      ) : report ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button type="button" disabled={busy} onClick={() => { setReport(null); setError(""); }}
@@ -261,12 +292,16 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
                     <p className="font-semibold">{diagnosis.learner_name} · {diagnosis.title}</p>
                     <p className="text-sm text-zinc-600">{[diagnosis.academic_session, diagnosis.term].filter(Boolean).join(" · ")}</p>
                   </div>
-                  <button type="button" disabled={busy}
-                    aria-label={`Download diagnosis PDF for ${diagnosis.learner_name}: ${diagnosis.title}`}
-                    className="font-semibold text-emerald-900 underline"
-                    onClick={() => void downloadReport(new URLSearchParams({ diagnosis: diagnosis.id }), true)}>
-                    Download PDF
-                  </button>
+                  <div className="flex flex-wrap gap-3">
+                    <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
+                      onClick={() => void openPreview(diagnosis.id, "diagnosis")}>Read diagnosis</button>
+                    <button type="button" disabled={busy}
+                      aria-label={`Download diagnosis PDF for ${diagnosis.learner_name}: ${diagnosis.title}`}
+                      className="font-semibold text-emerald-900 underline"
+                      onClick={() => void downloadReport(new URLSearchParams({ diagnosis: diagnosis.id }), true)}>
+                      Download PDF
+                    </button>
+                  </div>
                 </div>
               ))}
             </section>
@@ -279,6 +314,8 @@ export function LearningPublishedResults({ viewer = "learner" }: { viewer?: "lea
                   <p className="font-semibold">{item.learner_name} · {termReportTitle(item.kind)}</p>
                   <p className="text-sm text-zinc-600">{item.academic_session} · {item.term}</p>
                   <div className="flex flex-wrap gap-3">
+                    <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
+                      onClick={() => void openPreview(item.id, "term")}>Read report</button>
                     <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
                       onClick={() => void downloadReport(new URLSearchParams({ report: item.id }), false, true)}>Download PDF</button>
                     {viewer === "parent" && <button type="button" disabled={busy} className="font-semibold text-emerald-900 underline"
