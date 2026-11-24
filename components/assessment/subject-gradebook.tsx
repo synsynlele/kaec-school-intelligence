@@ -17,8 +17,9 @@ type Class = { id: string; name: string; academic_session: string | null };
 
 const field = "rounded-lg border border-zinc-300 bg-white px-3 py-2";
 const button = "rounded-lg bg-emerald-900 px-4 py-2 font-semibold text-white disabled:opacity-50";
-const enrolled = (learner: Learner, subject: Subject) => !learner.subjects || learner.subjects.includes(subject.id);
+const enrolled = (learner: Learner, subject: Subject) => learner.subjects?.includes(subject.id) === true;
 function result(learner: Learner, subject: Subject) {
+  if (!learner.subjects) return "Enrolment needed";
   if (!enrolled(learner, subject)) return "Not enrolled";
   if (!subject.sheet) return "Missing";
   const { maxima, marks } = subject.sheet;
@@ -163,6 +164,7 @@ export function SubjectGradebook() {
           onClick={() => { if (!dirty || window.confirm("Discard unsaved marks?")) select(item); }}>{item.name}</button>)}</div>
         {subject && <form onSubmit={save} className="space-y-3 rounded-xl border p-4">
           <h3 className="font-semibold">{subject.name} score sheet</h3>
+          {!roster.learners.some(item => enrolled(item, subject)) && <p className="text-sm">No learners are enrolled in this subject. Set their subject enrolment first.</p>}
           <p className="text-sm">Set maxima that total 100. Use 0 for an unused component. Leave missing marks blank.</p>
           <fieldset disabled={busy} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <legend className="sr-only">Component maxima</legend>
@@ -185,6 +187,7 @@ export function SubjectGradebook() {
         </form>}
         {roster.can_publish && <section className="space-y-3 rounded-xl border p-4">
           <h3 className="font-semibold">Review and publish class results</h3>
+          {roster.learners.some(item => !item.subjects) && <p role="status" className="text-sm text-amber-900">Confirm subject enrolment for every learner before publishing. Only selected subjects appear on each report.</p>}
           <p className="text-sm">To correct a published report, save the revised subject marks and approve the class again.</p>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm">
             <thead><tr><th scope="col" className="p-2">Learner</th>{roster.subjects.map(item => <th scope="col" className="p-2" key={item.id}>{item.name}</th>)}</tr></thead>
