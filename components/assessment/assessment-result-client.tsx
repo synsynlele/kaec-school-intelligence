@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ClassWorkPublisher } from "@/components/assessment/class-work-publisher";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -218,7 +219,7 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
   if (!state) return <main className="mx-auto max-w-3xl px-5 py-10"><div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{error ?? "Assessment unavailable."}</div></main>;
 
   const blueprint = record(state.assessment.blueprint);
-  const kind = typeof blueprint.assessmentKind === "string" ? blueprint.assessmentKind : "assessment";
+  const kind = typeof blueprint.assessmentKind === "string" ? blueprint.assessmentKind : state.assessment.assessment_mode === "project" ? "project" : "assessment";
   const difficulty = typeof blueprint.overallDifficulty === "string" ? blueprint.overallDifficulty : "not specified";
   const studentInstructions = typeof blueprint.studentInstructions === "string" ? blueprint.studentInstructions : "Answer all questions as instructed.";
   const totalMarks = typeof blueprint.totalMarks === "number"
@@ -269,6 +270,11 @@ export function AssessmentResultClient({ assessmentId }: { assessmentId: string 
             <button type="button" onClick={() => void downloadPdf("marking", "docx")} disabled={downloadingMode !== null} className="min-h-11 rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 disabled:opacity-50">Download Guide Word</button>
           </div>
         </div>
+        {(kind === "assignment" || kind === "project") && <ClassWorkPublisher
+          key={state.assessment.id} assessmentId={state.assessment.id}
+          className={state.className} classId={state.assessment.class_id} kind={kind}
+          eligible={state.assessment.status === "validated" && Boolean(state.assessment.class_id)}
+        />}
         <section className="mt-6 space-y-3 rounded-2xl border border-emerald-900/15 bg-emerald-50/60 p-4">
           <h2 className="font-semibold">CBT &amp; score sheet</h2>
           {state.assessment.status === "validated" && state.assessment.class_id && (
