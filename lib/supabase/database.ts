@@ -206,6 +206,8 @@ type FinalStageFunctions = Omit<
   list_learning_objective_exams: { Args: { school_id: string; search_text: string; page_offset: number }; Returns: Json };
   list_learning_assessments: { Args: { search_text: string; school_id: string; page_offset: number }; Returns: Json };
   assign_learning_cbt: { Args: { source_id: string }; Returns: string };
+  manage_learning_class_work: { Args: { source_id: string; operation: "read" | "publish" | "withdraw"; deadline?: string }; Returns: Json };
+  get_my_learning_class_work: { Args: { target_id?: string }; Returns: Json };
   get_learning_cbts: { Args: { target_id?: string }; Returns: Json };
   submit_learning_cbt: { Args: { target_id: string; responses: Json }; Returns: Json };
   get_platform_school_overview: {

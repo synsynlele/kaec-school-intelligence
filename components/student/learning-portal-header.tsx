@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FiBookOpen, FiDownload, FiLogOut, FiUsers } from "react-icons/fi";
+import { FiBookOpen, FiClipboard, FiDownload, FiLogOut, FiUsers } from "react-icons/fi";
 
 export function LearningPortalHeader({ viewer, onSignOut }: {
   viewer: "parent" | "learner";
@@ -27,6 +27,9 @@ export function LearningPortalHeader({ viewer, onSignOut }: {
         <nav aria-label={parent ? "Family dashboard shortcuts" : "Learning dashboard shortcuts"} className="mt-5 flex flex-wrap gap-2">
           {!parent && <a href="#assessments" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-indigo-950">
             <FiBookOpen aria-hidden="true" /> Assessments
+          </a>}
+          {!parent && <a href="#class-work" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white hover:bg-white/15">
+            <FiClipboard aria-hidden="true" /> Assignments and projects
           </a>}
           <a href="#published-results" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white hover:bg-white/15">
             <FiDownload aria-hidden="true" /> {parent ? "School reports" : "Published results"}
