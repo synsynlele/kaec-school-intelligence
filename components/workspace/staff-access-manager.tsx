@@ -98,6 +98,7 @@ export function StaffAccessManager() {
   const router = useRouter();
   const [context, setContext] = useState<Context | null>(null);
   const [staffSearch, setStaffSearch] = useState("");
+  const [revokeEmail, setRevokeEmail] = useState("");
   const [inviteSearch, setInviteSearch] = useState("");
   const [email, setEmail] = useState("");
   const [showFormer, setShowFormer] = useState(false);
@@ -233,6 +234,9 @@ export function StaffAccessManager() {
         target_invite_id: inviteId,
       });
       if (rpcError) throw rpcError;
+      if (issued?.email.toLowerCase() === revokeEmail.trim().toLowerCase()) setIssued(null);
+      setRevokeEmail("");
+      setNotice("Staff access code revoked.");
       await refresh();
     } catch (caught) {
       setError(messageFrom(caught, "Staff Access Code could not be revoked."));
@@ -260,7 +264,8 @@ export function StaffAccessManager() {
     [member.display_name, member.role, member.status].some((value) => value.toLowerCase().includes(staffQuery))
   );
   const inviteQuery = inviteSearch.trim().toLowerCase();
-  const visibleInvites = context.invites.filter((invite) =>
+  const redeemedInvites = context.invites.filter(invite => invite.redeemed_at && !invite.revoked_at);
+  const visibleInvites = redeemedInvites.filter(invite =>
     invite.invited_email.toLowerCase().includes(inviteQuery) || invite.invited_role.includes(inviteQuery)
   );
 
@@ -352,34 +357,47 @@ export function StaffAccessManager() {
 
       <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 px-6 py-5">
-          <h2 className="text-lg font-bold text-zinc-950">Recent staff invitations</h2>
-          <p className="mt-1 text-xs text-zinc-500">Unused codes are still subject to their displayed expiry time; KSI validates expiry again at redemption.</p>
+          <h2 className="text-lg font-bold text-zinc-950">Redeemed staff invitations</h2>
         </div>
-        <label className="block px-6 py-4 text-sm font-semibold">Search invitations
-          <input type="search" value={inviteSearch} onChange={(event) => setInviteSearch(event.target.value)}
+        <label className="block px-6 py-4 text-sm font-semibold">Search redeemed invitations
+          <input type="search" value={inviteSearch} onChange={event => setInviteSearch(event.target.value)}
             placeholder="Staff email or role" className="mt-1 block w-full rounded-lg border border-zinc-300 p-2 font-normal" />
         </label>
         {visibleInvites.length === 0 ? (
-          <div className="px-6 py-8 text-sm text-zinc-500">{context.invites.length ? "No invitations match your search." : "No staff access invitations yet."}</div>
+          <p className="px-6 py-5 text-sm text-zinc-500">{redeemedInvites.length ? "No redeemed invitations match your search." : "No staff invitations have been redeemed."}</p>
         ) : (
           <div className="divide-y divide-zinc-100">
-            {visibleInvites.map((invite) => {
-              const unused = !invite.redeemed_at && !invite.revoked_at;
-              const status = invite.redeemed_at ? "Redeemed" : invite.revoked_at ? "Revoked" : "Unused";
-              return (
-                <div key={invite.invite_id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-zinc-950">{invite.invited_email}</p>
-                    <p className="mt-1 text-sm text-zinc-500">{invite.invited_role} · {status} · expires {new Date(invite.expires_at).toLocaleString()}</p>
-                  </div>
-                  {unused ? (
-                    <button type="button" disabled={busyInviteId !== null} onClick={() => void revoke(invite.invite_id)} className="w-fit rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 disabled:opacity-60">{busyInviteId === invite.invite_id ? "Revoking…" : "Revoke"}</button>
-                  ) : null}
-                </div>
-              );
-            })}
+            {visibleInvites.map(invite => (
+              <div key={invite.invite_id} className="px-6 py-4">
+                <p className="break-all font-semibold text-zinc-950">{invite.invited_email}</p>
+                <p className="mt-1 text-sm text-zinc-500">{invite.invited_role} · Redeemed {new Date(invite.redeemed_at!).toLocaleString()}</p>
+              </div>
+            ))}
           </div>
         )}
+        <details className="border-t border-zinc-200 px-6 py-4">
+          <summary className="cursor-pointer font-semibold text-emerald-900">Revoke an unused code by email</summary>
+          <form className="mt-3 flex flex-wrap items-end gap-3" onSubmit={event => {
+            event.preventDefault();
+            const address = revokeEmail.trim().toLowerCase();
+            const pending = context.invites.find(invite => !invite.revoked_at && !invite.redeemed_at
+              && Date.parse(invite.expires_at) > Date.now() && invite.invited_email.toLowerCase() === address);
+            setNotice("");
+            if (!pending) {
+              setError("No unused, unexpired code found for that email.");
+              return;
+            }
+            if (window.confirm(`Revoke the unused staff code for ${address}?`)) void revoke(pending.invite_id);
+          }}>
+            <label className="grid gap-1 text-sm font-semibold">Staff email
+              <input required type="email" value={revokeEmail} onChange={event => setRevokeEmail(event.target.value)}
+                className="rounded-lg border border-zinc-300 p-2 font-normal" />
+            </label>
+            <button type="submit" disabled={busyInviteId !== null} className="min-h-11 rounded-xl border border-red-200 px-4 text-sm font-bold text-red-800 disabled:opacity-60">
+              {busyInviteId ? "Revoking…" : "Revoke code"}
+            </button>
+          </form>
+        </details>
       </section>
       <details className="mt-7 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-7">
         <summary className="cursor-pointer font-semibold text-emerald-900">Invite staff</summary>
