@@ -560,7 +560,7 @@ function buildPdfObjects(pageCommands: string[][], input: HqlsLessonPdfInput) {
 
 function serializePdf(objects: Buffer[]) {
   embedUnicodePdfFonts(objects);
-  const header = Buffer.from("%PDF-1.4\n%KSI\n", "latin1");
+  const header = Buffer.from("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
   let offset = header.length;

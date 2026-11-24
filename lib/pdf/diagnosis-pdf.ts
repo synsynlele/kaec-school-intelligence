@@ -581,7 +581,7 @@ function buildPdfObjects(
 
 function serializePdf(objects: Buffer[]) {
   embedUnicodePdfFonts(objects);
-  const header = Buffer.from("%PDF-1.4\n%KSI\n", "latin1");
+  const header = Buffer.from("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n", "latin1");
   const chunks: Buffer[] = [header];
   const offsets: number[] = [0];
   let offset = header.length;
@@ -718,7 +718,7 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
   const pages: string[][] = [];
   const photos = new Map<number, NonNullable<ReturnType<typeof passportImage>>>();
   for (const report of reports) {
-    const rowsPerPage = 22;
+    const rowsPerPage = 18;
     const light: Color = [0.93, 0.96, 0.95];
     const scoredSubjects = report.assessments.map(resultScores)
       .filter(({ maximum, summary }) => maximum > 0 && summary !== "Pending");
@@ -800,25 +800,25 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
       textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 482, 150, 8, true, CREAM);
       textAtTop(page, "Mastery", 553, 150, 8, true, CREAM);
       report.assessments.slice(offset, offset + rowsPerPage).forEach((assessment, index) => {
-        const top = 166 + index * 17.5;
-        if (index % 2 === 0) rectTop(page, 28, top, 599, 17.5, light, null);
+        const top = 166 + index * 21;
+        if (index % 2 === 0) rectTop(page, 28, top, 599, 21, light, null);
         const { rows, summary, total, maximum } = resultScores(assessment);
         const subjectLines = wrapText(assessment.subject ?? assessment.title, 157, 8, true).slice(0, 2);
-        subjectLines.forEach((line, lineIndex) => textAtTop(page, line, 38, top + 0.75 + lineIndex * 8, 8, true));
+        subjectLines.forEach((line, lineIndex) => textAtTop(page, line, 38, top + 1 + lineIndex * 10, 8, true));
         for (const [label, x] of columns) {
           const row = rows.find((entry) => entry.label.toLowerCase() === label.toLowerCase());
           const value = !row ? "-" : row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score}/${row.maximum}`;
-          textAtTop(page, value, x, top + 4.5, 8);
+          textAtTop(page, value, x, top + 6, 8);
         }
         const scored = maximum > 0 && summary !== "Pending" && report.mastery_progressing_at != null;
         const displayedTotal = scored
           ? String(total === maximum ? 100 : Math.min(99.99, Math.round(total * 10000 / maximum) / 100))
           : summary;
-        textAtTop(page, displayedTotal, 482, top + 4.5, 8);
+        textAtTop(page, displayedTotal, 482, top + 6, 8);
         if (scored && report.mastery_progressing_at != null) {
           const mastery = total === maximum ? "Complete"
             : total * 100 >= maximum * report.mastery_progressing_at ? "Progressing" : "Incomplete";
-          textAtTop(page, mastery, 553, top + 4.5, 8, true);
+          textAtTop(page, mastery, 553, top + 6, 8, true);
         }
       });
       pages.push(page);

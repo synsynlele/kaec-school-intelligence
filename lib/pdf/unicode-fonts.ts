@@ -5,7 +5,7 @@ import fontkit, { type Font } from "@pdf-lib/fontkit";
 
 /** Preserve educational notation; only discard non-printing control characters. */
 export function normalizePdfText(value: string) {
-  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+  return value.normalize("NFC").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
     .replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").trim();
 }
 
@@ -86,7 +86,7 @@ export function embedUnicodePdfFonts(objects: Buffer[]) {
     objects[3 + index] = Buffer.from(`<< /Type /Font /Subtype /Type0 /BaseFont /${name} /Encoding /Identity-H /DescendantFonts [${cidRef} 0 R] /ToUnicode ${unicodeRef} 0 R >>`);
     objects[cidRef] = Buffer.from(`<< /Type /Font /Subtype /CIDFontType2 /BaseFont /${name} /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor ${descriptorRef} 0 R /CIDToGIDMap ${glyphRef} 0 R /DW 600 /W [${widths.join(" ")}] >>`);
     const box = [font.bbox.minX, font.bbox.minY, font.bbox.maxX, font.bbox.maxY].map((n) => Math.round(n * scale)).join(" ");
-    objects[descriptorRef] = Buffer.from(`<< /Type /FontDescriptor /FontName /${name} /Flags 32 /FontBBox [${box}] /ItalicAngle 0 /Ascent ${Math.round(font.ascent * scale)} /Descent ${Math.round(font.descent * scale)} /CapHeight ${Math.round(font.capHeight * scale)} /StemV ${index ? 120 : 80} /FontFile2 ${fontRef} 0 R >>`);
+    objects[descriptorRef] = Buffer.from(`<< /Type /FontDescriptor /FontName /${name} /Flags 4 /FontBBox [${box}] /ItalicAngle 0 /Ascent ${Math.round(font.ascent * scale)} /Descent ${Math.round(font.descent * scale)} /CapHeight ${Math.round(font.capHeight * scale)} /StemV ${index ? 120 : 80} /FontFile2 ${fontRef} 0 R >>`);
     objects[fontRef] = stream(bytes, `/Length1 ${bytes.length}`);
     objects[glyphRef] = stream(glyphMap);
     objects[unicodeRef] = stream(Buffer.from(cmap));
