@@ -509,8 +509,8 @@ export function SchemeIngestionClient() {
       </section>
 
       {promotionEntry ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 px-4 py-8">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <div className="fixed inset-0 z-50 flex overflow-y-auto overscroll-contain bg-zinc-950/70 px-4 py-4 sm:py-8">
+          <div className="m-auto w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl sm:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
               Explicit single-row promotion gate
             </p>

@@ -284,23 +284,21 @@ export function KsiAppNav() {
         </p>
       </aside>
 
-      <div className="flex shrink-0 justify-end border-b border-emerald-900/10 bg-[#f8faf7] px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
-        <button
-          type="button"
-          aria-label="Open KSI navigation"
-          aria-expanded={mobileOpen}
-          aria-controls="ksi-mobile-menu"
-          onClick={() => setMobileMenuPath(pathname)}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-emerald-900/15 bg-emerald-950 px-4 py-3 text-sm font-bold text-white shadow-[0_12px_35px_rgba(6,78,59,0.28)] transition active:scale-[0.98]"
-        >
-          <span aria-hidden="true" className="grid gap-1">
-            <span className="block h-0.5 w-4 rounded-full bg-white" />
-            <span className="block h-0.5 w-4 rounded-full bg-white" />
-            <span className="block h-0.5 w-4 rounded-full bg-white" />
-          </span>
-          Menu
-        </button>
-      </div>
+      <button
+        type="button"
+        aria-label="Open KSI navigation"
+        aria-expanded={mobileOpen}
+        aria-controls="ksi-mobile-menu"
+        onClick={() => setMobileMenuPath(pathname)}
+        className="ksi-mobile-menu-trigger inline-flex min-h-12 items-center gap-2 rounded-full border border-emerald-900/15 bg-emerald-950 px-4 py-3 text-sm font-bold text-white shadow-[0_12px_35px_rgba(6,78,59,0.28)] transition active:scale-[0.98] lg:hidden"
+      >
+        <span aria-hidden="true" className="grid gap-1">
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+          <span className="block h-0.5 w-4 rounded-full bg-white" />
+        </span>
+        Menu
+      </button>
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-[60] lg:hidden">
@@ -315,7 +313,7 @@ export function KsiAppNav() {
             role="dialog"
             aria-modal="true"
             aria-label="KSI mobile navigation"
-            className="absolute inset-x-0 bottom-0 max-h-[84dvh] overflow-hidden rounded-t-[2rem] border-t border-zinc-200 bg-[#f8faf7] shadow-[0_-24px_70px_rgba(0,0,0,0.18)]"
+            className="ksi-mobile-nav-panel absolute inset-x-0 bottom-0 rounded-t-[2rem] border-t border-zinc-200 bg-[#f8faf7] shadow-[0_-24px_70px_rgba(0,0,0,0.18)]"
           >
             <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-zinc-300" aria-hidden="true" />
             <header className="flex items-start justify-between gap-4 border-b border-zinc-200 px-5 pb-4 pt-4">
@@ -333,7 +331,7 @@ export function KsiAppNav() {
               </button>
             </header>
 
-            <nav className="max-h-[calc(84dvh-7rem)] space-y-5 overflow-y-auto px-5 py-5" aria-label="KSI mobile menu sections">
+            <nav className="space-y-5 px-5 py-5" aria-label="KSI mobile menu sections">
               {groups.map((group) => (
                 <section key={`mobile:${group.label}`} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
                   <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-zinc-400">{group.label}</p>

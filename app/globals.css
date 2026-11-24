@@ -166,6 +166,11 @@ textarea:read-only {
   .ksi-app-shell h2,
   .ksi-app-shell h3,
   .ksi-app-shell h4,
+  .ksi-app-shell h5,
+  .ksi-app-shell h6,
+  .ksi-app-shell summary,
+  .ksi-app-shell legend,
+  .ksi-app-shell caption,
   .ksi-app-shell p,
   .ksi-app-shell li,
   .ksi-app-shell dt,
@@ -176,8 +181,8 @@ textarea:read-only {
   .ksi-app-shell button,
   .ksi-app-shell code,
   .ksi-app-shell pre {
+    overflow-wrap: break-word;
     overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   .ksi-app-shell pre {
@@ -265,5 +270,27 @@ textarea:read-only {
 @media (min-width: 640px) {
   .ksi-report-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Keep dialogs reachable in short viewports and when browser chrome resizes. */
+.ksi-mobile-nav-panel {
+  max-height: 84vh;
+  max-height: 84dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.ksi-mobile-menu-trigger {
+  position: fixed;
+  z-index: 50;
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 1023px) {
+  body.ksi-school-nav-active:has(.ksi-mobile-menu-trigger) {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 }
