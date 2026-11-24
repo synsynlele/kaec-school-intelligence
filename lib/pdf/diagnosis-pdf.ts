@@ -718,29 +718,38 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
   const pages: string[][] = [];
   const photos = new Map<number, NonNullable<ReturnType<typeof passportImage>>>();
   for (const report of reports) {
-    for (let offset = 0; offset < report.assessments.length; offset += 15) {
+    const rowsPerPage = 19;
+    const scoredSubjects = report.assessments.map(resultScores)
+      .filter(({ maximum, summary }) => maximum > 0 && summary !== "Pending");
+    const marks = scoredSubjects.reduce((sum, subject) => sum + subject.total, 0);
+    const availableMarks = scoredSubjects.reduce((sum, subject) => sum + subject.maximum, 0);
+    for (let offset = 0; offset < Math.max(1, report.assessments.length); offset += rowsPerPage) {
       const page: string[] = [];
-      if (branding.hasSchoolLogo) page.push(`q 34 0 0 34 48 ${PAGE_HEIGHT - 72} cm /Im1 Do Q`);
+      if (branding.hasSchoolLogo) page.push(`q 52 0 0 52 48 ${PAGE_HEIGHT - 90} cm /Im1 Do Q`);
       const photo = passportImage(report.passport_photo);
       if (photo) {
         photos.set(pages.length, photo);
-        page.push(`q 60 0 0 75 488 ${PAGE_HEIGHT - 133} cm /Im2 Do Q`);
+        page.push(`q 60 0 0 75 488 ${PAGE_HEIGHT - 143} cm /Im2 Do Q`);
       }
-      textAtTop(page, report.school_name, branding.hasSchoolLogo ? 92 : 48, 47, 11, true, FOREST);
-      textAtTop(page, termReportTitle(report.kind), 48, 69, 22, true, FOREST);
-      textAtTop(page, report.learner_name, 48, 103, 13, true);
-      textAtTop(page, [report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), 48, 126, 10);
-      rectTop(page, 48, 150, 500, 24, FOREST, null);
-      textAtTop(page, "Subject / Assessment", 58, 157, 10, true, CREAM);
-      const columns = [["Critical thinking", 206], ["CBT", 279], ["Subjective", 325], ["Project", 384]] as const;
-      for (const [label, x] of columns) textAtTop(page, label, x, 157, 8, true, CREAM);
-      textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 438, 157, 8, true, CREAM);
-      textAtTop(page, "Mastery", 484, 157, 8, true, CREAM);
-      report.assessments.slice(offset, offset + 15).forEach((assessment, index) => {
-        const top = 185 + index * 35;
+      const titleX = branding.hasSchoolLogo ? 114 : 48;
+      textAtTop(page, report.school_name, titleX, 43, 17, true, FOREST);
+      textAtTop(page, termReportTitle(report.kind), titleX, 69, 13, true);
+      rectTop(page, 48, 95, 426, 2, FOREST, null);
+      textAtTop(page, report.learner_name, 48, 104, 13, true);
+      textAtTop(page, [report.class_name, report.academic_session, report.term].filter(Boolean).join(" | "), 48, 125, 10);
+      textAtTop(page, offset ? "Subject results (continued)" : "Subject results", 48, 151, 11, true, FOREST);
+      rectTop(page, 48, 170, 500, 24, FOREST, null);
+      textAtTop(page, "Subject", 58, 177, 9, true, CREAM);
+      const columns = [["Critical thinking", 201], ["CBT", 284], ["Subjective", 325], ["Project", 384]] as const;
+      for (const [label, x] of columns) textAtTop(page, label, x, 177, 8, true, CREAM);
+      textAtTop(page, report.mastery_progressing_at == null ? "Total" : "Out of 100", 431, 177, 8, true, CREAM);
+      textAtTop(page, "Mastery", 488, 177, 8, true, CREAM);
+      report.assessments.slice(offset, offset + rowsPerPage).forEach((assessment, index) => {
+        const top = 194 + index * 26;
+        if (index % 2 === 0) rectTop(page, 48, top, 500, 26, [0.93, 0.96, 0.96], null);
         const { rows, summary, total, maximum } = resultScores(assessment);
-        textAtTop(page, (assessment.subject ?? "General").slice(0, 27), 58, top, 9, true);
-        textAtTop(page, assessment.title.length > 30 ? assessment.title.slice(0, 27) + "…" : assessment.title, 58, top + 13, 9);
+        const subjectLines = wrapText(assessment.subject ?? assessment.title, 140, 9, true).slice(0, 2);
+        subjectLines.forEach((line, lineIndex) => textAtTop(page, line, 58, top + 3 + lineIndex * 10, 9, true));
         for (const [label, x] of columns) {
           const row = rows.find((entry) => entry.label.toLowerCase() === label.toLowerCase());
           const value = !row ? "-" : row.excused ? "Excused" : row.score == null ? "Pending" : `${row.score}/${row.maximum}`;
@@ -750,13 +759,28 @@ export function createLearningTermPdf(reports: TermReport[], diagnoses: Diagnosi
         const displayedTotal = scored
           ? String(total === maximum ? 100 : Math.min(99.99, Math.round(total * 10000 / maximum) / 100))
           : summary;
-        textAtTop(page, displayedTotal, 438, top + 6, 8);
+        textAtTop(page, displayedTotal, 431, top + 6, 8);
         if (scored && report.mastery_progressing_at != null) {
           const mastery = total === maximum ? "Complete"
             : total * 100 >= maximum * report.mastery_progressing_at ? "Progressing" : "Incomplete";
-          textAtTop(page, mastery, 484, top + 6, 8, true);
+          textAtTop(page, mastery, 488, top + 6, 8, true);
         }
       });
+      if (offset + rowsPerPage >= report.assessments.length) {
+        const top = 210 + Math.min(rowsPerPage, report.assessments.length - offset) * 26;
+        textAtTop(page, "Performance summary", 48, top, 11, true, FOREST);
+        rectTop(page, 48, top + 18, 500, 48, [0.93, 0.96, 0.96], null);
+        const metrics = [
+          ["Subjects scored", String(scoredSubjects.length)],
+          ["Marks obtained", availableMarks ? `${marks} / ${availableMarks}` : "-"],
+          ["Overall score", availableMarks ? `${(marks * 100 / availableMarks).toFixed(2)}%` : "-"],
+        ];
+        metrics.forEach(([label, value], index) => {
+          const x = 60 + index * 166;
+          textAtTop(page, label, x, top + 25, 8, true, FOREST);
+          textAtTop(page, value, x, top + 40, 11, true);
+        });
+      }
       pages.push(page);
     }
   }
