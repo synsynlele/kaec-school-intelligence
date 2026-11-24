@@ -65,17 +65,19 @@ export async function GET(request: Request) {
         item.learner_id === report.learner_id && item.academic_session === report.academic_session
         && item.term?.trim().toLowerCase() === report.term.trim().toLowerCase();
       const relatedReports = (otherReports.data as unknown as TermReport[]).filter((item) => item.id !== reportId && samePeriod(item));
-      const relatedDiagnoses = (diagnosisList.data as unknown as ResultReport[]).filter(samePeriod);
-      const [resultRows, diagnosisRows] = await Promise.all([
+      // The diagnosis list is ordered by finalisation date, newest first.
+      const latestDiagnosis = (diagnosisList.data as unknown as ResultReport[]).find(samePeriod);
+      const [resultRows, diagnosisRow] = await Promise.all([
         Promise.all(relatedReports.map(({ id }) => client.rpc("get_my_parent_term_reports", { report_id: id }))),
-        Promise.all(relatedDiagnoses.map(({ id }) => client.rpc("get_my_parent_learning_diagnoses", { diagnosis_id: id }))),
+        latestDiagnosis ? client.rpc("get_my_parent_learning_diagnoses", { diagnosis_id: latestDiagnosis.id }) : null,
       ]);
-      if ([...resultRows, ...diagnosisRows].some((item) => item.error || !Array.isArray(item.data) || item.data.length !== 1)) {
+      const fetchedRows = diagnosisRow ? [...resultRows, diagnosisRow] : resultRows;
+      if (fetchedRows.some((item) => item.error || !Array.isArray(item.data) || item.data.length !== 1)) {
         throw new Error("Approved reports changed. Try again.");
       }
       reports = reports.concat(resultRows.flatMap(({ data }) => data as unknown as TermReport[]));
       reports.sort((a, b) => a.kind.localeCompare(b.kind));
-      diagnoses = diagnosisRows.flatMap(({ data }) => data as unknown as ResultReport[]);
+      diagnoses = (diagnosisRow?.data as unknown as ResultReport[] | null) ?? [];
     }
 
     const bytes = createLearningTermPdf(pdfSafeValue(reports), pdfSafeValue(diagnoses));
