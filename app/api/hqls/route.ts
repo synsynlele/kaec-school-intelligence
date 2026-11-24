@@ -16,6 +16,7 @@ import {
   HQLS_ENGINE_VERSION,
   HQLS_LESSON_JSON_SCHEMA,
   HQLS_PROMPT_VERSION,
+  HQLS_SINGLE_PASS_PROMPT_VERSION,
   HQLS_STAGE_JSON_SCHEMA,
   buildHqlsGenerationPrompt,
   buildHqlsGenerationSystemInstruction,
@@ -604,7 +605,7 @@ async function saveLessonValidation(args: {
       source_context: toJson(sourceContext),
       validation_summary: toJson(args.validation),
       engine_version: HQLS_ENGINE_VERSION,
-      prompt_version: HQLS_PROMPT_VERSION,
+      prompt_version: args.lesson.prompt_version ?? HQLS_PROMPT_VERSION,
     })
     .eq("id", args.lesson.id)
     .select("id,status,validation_summary")
@@ -655,6 +656,8 @@ async function handleGenerate(
       ),
     ]);
     const model = configuredOpenAIModel();
+    const singlePass = process.env.KSI_HQLS_SINGLE_PASS === "true";
+    const promptVersion = singlePass ? HQLS_SINGLE_PASS_PROMPT_VERSION : HQLS_PROMPT_VERSION;
     const generationStartedAt = Date.now();
 
     runId = await startAiRun(supabase, {
@@ -662,7 +665,7 @@ async function handleGenerate(
       userId,
       engine: "hqls_lesson",
       engineVersion: HQLS_ENGINE_VERSION,
-      promptVersion: HQLS_PROMPT_VERSION,
+      promptVersion: promptVersion,
       provider: "openai",
       model,
       artifactType: "lesson",
@@ -680,13 +683,13 @@ async function handleGenerate(
     const generated = await generateOpenAIJson<unknown>({
       systemInstruction: buildHqlsGenerationSystemInstruction(),
       parts: [
-        { text: buildHqlsGenerationPrompt(input, resources.labels) },
+        { text: buildHqlsGenerationPrompt(input, resources.labels, singlePass) },
         ...resources.parts,
       ],
       responseSchema: HQLS_LESSON_JSON_SCHEMA,
       schemaName: "ksi_hqls_lesson",
       model,
-      promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}`,
+      promptCacheKey: `ksi-hqls-${promptVersion}`,
       promptCacheTtl: "30m",
       textVerbosity: "low",
       maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
@@ -697,7 +700,7 @@ async function handleGenerate(
     let repairMode: "none" | "single_stage" | "parallel_stages" | "full_lesson" = "none";
     let repairDurationMs = 0;
 
-    if (!validation.passed) {
+    if (!validation.passed && !singlePass) {
       const failedStages = lesson.stages.filter(
         (stage) => !validation.stageValidation[stage.stageKey]?.passed,
       );
@@ -735,7 +738,7 @@ ${(
             responseSchema: HQLS_STAGE_JSON_SCHEMA,
             schemaName: "ksi_hqls_stage_repair",
             model,
-            promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-stage-repair${compactContext ? "-compact-v1" : ""}`,
+            promptCacheKey: `ksi-hqls-${promptVersion}-stage-repair${compactContext ? "-compact-v1" : ""}`,
             promptCacheTtl: "30m",
             textVerbosity: "low",
             maxOutputTokens: HQLS_STAGE_REPAIR_MAX_OUTPUT_TOKENS,
@@ -761,7 +764,7 @@ ${(
           responseSchema: HQLS_LESSON_JSON_SCHEMA,
           schemaName: "ksi_hqls_lesson_repair",
           model,
-          promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
+          promptCacheKey: `ksi-hqls-${promptVersion}-repair`,
           promptCacheTtl: "30m",
           textVerbosity: "low",
           maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
@@ -772,7 +775,7 @@ ${(
       }
     }
 
-    if (!validation.passed && repairMode !== "full_lesson") {
+    if (!validation.passed && repairMode !== "full_lesson" && !singlePass) {
       repairMode = "full_lesson";
       const repaired = await generateOpenAIJson<unknown>({
         systemInstruction: buildHqlsGenerationSystemInstruction(),
@@ -783,7 +786,7 @@ ${(
         responseSchema: HQLS_LESSON_JSON_SCHEMA,
         schemaName: "ksi_hqls_lesson_repair",
         model,
-        promptCacheKey: `ksi-hqls-${HQLS_PROMPT_VERSION}-repair`,
+        promptCacheKey: `ksi-hqls-${promptVersion}-repair`,
         promptCacheTtl: "30m",
         textVerbosity: "low",
         maxOutputTokens: HQLS_MAX_OUTPUT_TOKENS,
@@ -802,12 +805,12 @@ ${(
         violations: validation.violations.map(({ code, stageKey }) => ({ code, stageKey })),
       }));
     }
-    if (validation.violations.some((issue) => !isHqlsMaterialViolation(issue))) {
+    if (validation.violations.some((issue) => !isHqlsMaterialViolation(issue)) && !singlePass) {
       console.warn(
         "KSI_HQLS_FIDELITY_FAILED",
         JSON.stringify({
           engineVersion: HQLS_ENGINE_VERSION,
-          promptVersion: HQLS_PROMPT_VERSION,
+          promptVersion: promptVersion,
           repairMode,
           violations: validation.violations.map((item) => ({
             code: item.code,
@@ -833,7 +836,9 @@ ${(
     }
 
     const reviewStartedAt = Date.now();
-    const qualityReview = await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
+    const qualityReview = singlePass
+      ? legacyHqlsAdvice()
+      : await reviewGeneratedContent(lesson, lessonContextSummary(input), resources.parts);
     const reviewDurationMs = Date.now() - reviewStartedAt;
     const reviewCalls = qualityReview.attempts;
     const contentRepairMode = "none";
@@ -848,7 +853,7 @@ ${(
       classId: input.classId ?? null,
       subjectId: input.subjectId ?? null,
       engineVersion: HQLS_ENGINE_VERSION,
-      promptVersion: HQLS_PROMPT_VERSION,
+      promptVersion: promptVersion,
       sourceContext: replaceHqlsAdvice(resources.sourceContext, qualityReview),
       stages: toLessonStageInputs(lesson, validation),
     });
@@ -895,6 +900,8 @@ ${(
       "KSI_HQLS_TIMING",
       JSON.stringify({
         model,
+        singlePass,
+        fidelityPassed: validation.passed,
         firstPassMs: generated.durationMs,
         repairMs: repairDurationMs,
         repairMode,
