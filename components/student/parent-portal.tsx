@@ -9,6 +9,7 @@ import { parentLoginDomain, resolveParentLogin } from "@/lib/learning/school-log
 import { useEffect, useState, type FormEvent } from "react";
 
 import { LearningPortalHeader } from "@/components/student/learning-portal-header";
+import { ParentFeeSummary } from "@/components/student/parent-fee-summary";
 import { LearningImprovementPlan } from "@/components/student/learning-improvement-plan";
 import { LearningPublishedResults } from "@/components/student/learning-published-results";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -81,6 +82,7 @@ export function ParentPortal() {
         await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
         setActive(false);
       }} />
+      <ParentFeeSummary />
       <LearningImprovementPlan viewer="parent" />
       <LearningPublishedResults viewer="parent" />
     </main>
