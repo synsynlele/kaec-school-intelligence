@@ -1,5 +1,6 @@
 "use client";
 
+import { KhposRosterImport } from "@/components/integrations/khpos-roster-import";
 import { KhposRosterSharing } from "@/components/integrations/khpos-roster-sharing";
 
 import Image from "next/image";
@@ -913,6 +914,7 @@ export function AcademicSetupClient({ initialStudentId }: { initialStudentId?: s
           </div>
         </details>
 
+        {canManage && <KhposRosterImport key={context.workspace.id} workspace={context.workspace.id} classes={context.classes} refresh={refresh} />}
         {canManage && <KhposRosterSharing key={context.workspace.id} workspace={context.workspace.id} />}
 
         <details className="mt-6 rounded-2xl border border-zinc-200 bg-white">
