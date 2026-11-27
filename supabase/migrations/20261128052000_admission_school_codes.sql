@@ -21,7 +21,7 @@ begin
   end if;
   select coalesce(max((split_part(substring(ref from length(prefix)+1),'/',1))::bigint),0) into highest
     from (select external_reference as ref from public.students where workspace_id=school) records
-    where ref ~* ('^'||prefix||'[0-9]{1,12}('||suffix||')?);
+    where ref ~* ('^'||prefix||'[0-9]{1,12}('||suffix||')?$');
   highest := greatest(highest,minimum);
   insert into private.admission_sequences as seq(school_id,class_code,allocation)
     values(school,code,highest+1)
@@ -29,14 +29,5 @@ begin
       set allocation=greatest(seq.allocation,excluded.allocation-1)+1
     returning allocation into allocated;
   return prefix||lpad(allocated::text,greatest(4,length(allocated::text)),'0')||suffix;
-end
-$$;);
-  highest := greatest(highest,minimum);
-  insert into private.admission_sequences as seq(school_id,class_code,allocation)
-    values(school,code,highest+1)
-    on conflict(school_id,class_code) do update
-      set allocation=greatest(seq.allocation,excluded.allocation-1)+1
-    returning allocation into allocated;
-  return prefix||lpad(allocated::text,greatest(4,length(allocated::text)),'0');
 end
 $$;
