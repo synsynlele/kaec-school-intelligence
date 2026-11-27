@@ -1,3 +1,4 @@
+import { rosterSchedule, fetchRosterPage } from "@/lib/integrations/roster-schedule";
 import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabasePublicEnv } from "@/lib/env";
@@ -33,29 +34,35 @@ export async function POST(request: Request) {
     return json({rows:data});
   }
 
-  if (input.action==="khposClasses" || input.action==="importKhpos") {
+  if (input.action==="khposClasses" || input.action==="importKhpos" || input.action==="scheduleKhpos") {
     if (!token.startsWith("Bearer ")) return json({error:"Sign in to import learners."},401);
     const db=createClient(url,publishableKey,{auth,global:{headers:{Authorization:token}}});
     const {error:roleError}=await db.rpc("manage_khpos_roster_share",{p_workspace:input.workspace,p_enabled:null});
     if (roleError) return json({error:"Only a school Owner or Admin can import learners."},403);
     const importing=input.action==="importKhpos";
-    const required=importing?[input.school,input.campus,input.sourceClass,input.term,input.classId]:[input.school];
+    const required=(importing || input.action==="scheduleKhpos")?[input.school,input.campus,input.sourceClass,input.term,input.classId]:[input.school];
     if(required.some(value=>typeof value!=="string" || !uuid.test(value)) ||
       (input.after!=null && (typeof input.after!=="string" || !uuid.test(input.after)))) {
       return json({error:"Check the school ID and select a class and term."},400);
     }
+    if(input.action==="scheduleKhpos") {
+      if(input.enabled!==undefined && typeof input.enabled!=="boolean") return json({error:"Choose a valid schedule action."},400);
+      const {data:{user}}=await db.auth.getUser(token.slice(7));
+      if(!user) return json({error:"Sign in to manage the schedule."},401);
+      try {
+        const schedule=await rosterSchedule({school_id:input.school,campus_id:input.campus,
+          workspace_id:input.workspace,source_class_id:input.sourceClass,
+          destination_class_id:input.classId,term_id:input.term},user.id,input.enabled);
+        return json({schedule});
+      } catch {
+        return json({error:"Could not manage the roster schedule."},503);
+      }
+    }
     const key=process.env.KSI_ROSTER_BRIDGE_KEY?.trim();
     if(!key || key.length<32) return json({error:"The KHP-OS roster connection is unavailable."},503);
     try {
-      const endpoint=new URL("/api/khpos/ops/learner-roster/"+input.school,
-        process.env.KHPOS_ROSTER_ORIGIN || "https://schools.intelps.cloud");
-      if(endpoint.protocol!=="https:") throw new Error("HTTPS required");
-      const response=await fetch(endpoint,{method:"POST",redirect:"error",cache:"no-store",signal:AbortSignal.timeout(8000),
-        headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},
-        body:JSON.stringify({action:"export",workspace:input.workspace,
-          ...(importing?{campus:input.campus,classId:input.sourceClass,term:input.term,after:input.after}:{}),
-        }),
-      });
+      const response=await fetchRosterPage({school:input.school,workspace:input.workspace,
+        ...(importing?{campus:input.campus,classId:input.sourceClass,term:input.term,after:input.after}:{})});
       if(!response.ok) return json({error:response.status===403
         ?"Check the school ID and enable campus sharing in KHP-OS."
         :"Could not load the KHP-OS roster."},response.status===403?403:503);

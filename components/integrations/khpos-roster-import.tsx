@@ -13,8 +13,10 @@ export function KhposRosterImport({workspace,classes,refresh}: {
   const [school,setSchool]=useState("");
   const [choices,setChoices]=useState<Choice[]>();
   const [source,setSource]=useState("");
+  const [operation,setOperation]=useState("manual");
   const [destination,setDestination]=useState("");
   const [busy,setBusy]=useState(false);
+  const [scheduleMessage,setScheduleMessage]=useState("");
   const [error,setError]=useState("");
   const [count,setCount]=useState<number>();
   const [review,setReview]=useState<Result[]>([]);
@@ -44,7 +46,20 @@ export function KhposRosterImport({workspace,classes,refresh}: {
     event.preventDefault();
     const choice=choices?.find(item=>item.id+"/"+item.term===source);
     if(busy || !choice || !destination) return;
-    setBusy(true);setError("");setCount(undefined);setReview([]);
+    setBusy(true);setError("");setCount(undefined);setReview([]);setScheduleMessage("");
+    if(operation!=="manual") {
+      try {
+        const {schedule}=await request({action:"scheduleKhpos",campus:choice.campus,term:choice.term,
+          sourceClass:choice.id,classId:destination,enabled:operation==="check"?undefined:operation==="enable"});
+        setScheduleMessage(schedule ? [schedule.enabled?"Daily sync is on.":"Daily sync is paused.",schedule.last_status,
+              schedule.last_run?"Last run "+new Date(schedule.last_run).toLocaleString():null,
+              schedule.review_count?schedule.review_count+" to review. Run a manual import for details.":null].filter(Boolean).join(" ")
+              : "Daily sync has yet to be set up for this class.");
+      } catch(cause) {
+        setError(cause instanceof Error?cause.message:"Could not manage daily sync.");
+      } finally {setBusy(false);}
+      return;
+    }
     let synced=0;
     let after:string|null=null;
     const conflicts:Result[]=[];
@@ -93,8 +108,17 @@ export function KhposRosterImport({workspace,classes,refresh}: {
           </option>)}
         </select>
       </label>
-      <button className={button} disabled={busy || !source || !destination}>{busy?"Importing…":"Import this class"}</button>
+      <label className="block space-y-1 text-sm font-semibold">What would you like to do?
+        <select className={control} value={operation} disabled={busy} onChange={event=>setOperation(event.target.value)}>
+          <option value="manual">Import now</option>
+          <option value="check">Check daily sync status</option>
+          <option value="enable">Enable daily sync</option>
+          <option value="pause">Pause daily sync</option>
+        </select>
+      </label>
+      <button className={button} disabled={busy || !source || !destination}>{busy?"Working…":"Continue"}</button>
     </form>}
+      {scheduleMessage && <p role="status" className="text-sm font-semibold">{scheduleMessage}</p>}
     {error && <p role="alert" className="text-sm text-rose-800">{error}</p>}
     {count!==undefined && <p role="status" className="text-sm font-semibold">{count} imported or matched · {review.length} to review</p>}
     {!!review.length && <ul className="max-h-64 space-y-2 overflow-auto">
