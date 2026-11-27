@@ -6,5 +6,11 @@
       "main": true,
       "*-preview": true
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/integrations/khpos/roster/cron",
+      "schedule": "35 4 * * *"
+    }
+  ]
 }
