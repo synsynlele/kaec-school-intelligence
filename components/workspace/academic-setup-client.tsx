@@ -831,10 +831,10 @@ export function AcademicSetupClient({ initialStudentId }: { initialStudentId?: s
                     </label>
                   ) : null}
                   <Input
-                    label="Reference (optional)"
+                    label="Admission number (optional)"
                     value={editing.reference}
                     onChange={(value) => setEditing({ ...editing, reference: value })}
-                    placeholder="Admission / local reference"
+                    placeholder="School-issued admission number"
                   />
                 </>
               ) : null}
@@ -1019,10 +1019,10 @@ export function AcademicSetupClient({ initialStudentId }: { initialStudentId?: s
                 <p className="text-xs text-zinc-500">Reports use neutral wording until the student-record database update is installed.</p>
               )}
               <Input
-                label="Reference (optional)"
+                label="Admission number (optional)"
                 value={studentReference}
                 onChange={setStudentReference}
-                placeholder="Admission / local reference"
+                placeholder="Generated for JSS and SS if left blank"
               />
             </SetupForm>
           </section>
