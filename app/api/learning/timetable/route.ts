@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getSupabasePublicEnv } from "@/lib/env";
 
 type Audience = { workspace: string; classId: string; session: string | null; subjects: string[] };
-type ClassLink = { campus: string; classLabel: string; section?: string };
+type ClassLink = { campus: string; classLabel: string; section?: string; sections?: string[] };
 
 function reply(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
@@ -31,16 +31,24 @@ export async function GET(request: Request) {
     if (!key || !link) return reply({ entries: [], message: "Your school has yet to connect this class to its published timetable." });
     const endpoint = new URL(process.env.KHPOS_TIMETABLE_URL || "https://www.kshc.name.ng/api/khpos/integrations/ksi/timetable");
     if (endpoint.protocol !== "https:") throw new Error("HTTPS timetable endpoint required");
-    const response = await fetch(endpoint, {
-      method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workspace: audience.workspace, campus: link.campus, classLabel: link.classLabel,
-        section: link.section ?? "", session: audience.session, subjects: audience.subjects,
-      }),
-      cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) throw new Error("Timetable bridge unavailable");
-    return reply(await response.json());
+    const sections = [...new Set(link.sections ?? [link.section ?? ""])];
+    if (!sections.length || sections.length > 8) throw new Error("Invalid timetable section mapping");
+    const batches = await Promise.all(sections.map(async section => {
+      const response = await fetch(endpoint, {
+        method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspace: audience.workspace, campus: link.campus, classLabel: link.classLabel,
+          section, session: audience.session, subjects: audience.subjects,
+        }),
+        cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error("Timetable bridge unavailable");
+      return (await response.json() as { entries: { id: string; kind: string; weekday?: number; start?: string; startsAt?: string }[] }).entries;
+    }));
+    const entries = [...new Map(batches.flat().map(entry => [entry.kind + ":" + entry.id, entry])).values()];
+    entries.sort((a, b) => (a.weekday ?? 0) - (b.weekday ?? 0) ||
+      (a.startsAt ?? a.start ?? "").localeCompare(b.startsAt ?? b.start ?? ""));
+    return reply({ entries });
   } catch {
     return reply({ error: "Your timetable is temporarily unavailable. Please try again." }, 503);
   }

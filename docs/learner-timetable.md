@@ -7,7 +7,7 @@ KHP-OS staff publish lessons and papers from the weekly lessons and tests and ex
 1. Apply both learner timetable migrations and deploy both applications.
 2. Pair the KSI school workspace with KHP-OS through the existing school integration.
 3. Set the same randomly generated server-only `KSI_TIMETABLE_BRIDGE_KEY` in KSI and KHP-OS. Use at least 32 characters, with a different key for each deployment environment.
-4. In KSI, set the server-only `KSI_TIMETABLE_CLASS_LINKS` variable to a JSON object keyed by KSI class UUID. Each value contains the KHP-OS campus UUID, class label and section label. Omit the section only for classes whose KHP-OS streams have no section.
+4. In KSI, set the server-only `KSI_TIMETABLE_CLASS_LINKS` variable to a JSON object keyed by KSI class UUID. Each value contains the KHP-OS campus UUID, class label and section label. Use a `sections` array when a KSI class intentionally receives schedules from more than one section at the same campus. Omit the section only for classes whose KHP-OS streams have no section.
 5. Confirm subject names match in both systems and the learner has explicit KSI subject enrolments for the class session. Publish a lesson and paper for a test class and verify both from a learner account.
 
 Example class mapping with placeholder UUIDs
