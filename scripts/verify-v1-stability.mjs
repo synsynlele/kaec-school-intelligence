@@ -117,8 +117,9 @@ for (const required of [
   "min-inline-size: 0",
   ".ksi-app-shell input:not([type=\"checkbox\"]):not([type=\"radio\"])",
   ".ksi-app-shell table",
-  "table-layout: fixed",
-  "word-break: break-word",
+  "table-layout: auto",
+  "overflow-wrap: break-word",
+  "word-break: normal",
 ]) {
   assert(globals.includes(required), `Product-wide mobile containment is missing: ${required}`);
 }
