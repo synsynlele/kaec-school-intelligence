@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { LearningTimetable } from "@/components/student/learning-timetable";
 import { LearningPortalHeader } from "@/components/student/learning-portal-header";
 import { LearningImprovementPlan } from "@/components/student/learning-improvement-plan";
 import { LearningClassWork } from "@/components/student/learning-class-work";
@@ -166,6 +167,7 @@ export function LearningCbtClient() {
       {busy && <p role="status" className="text-sm font-medium text-slate-600">Loading…</p>}
       {!current && !needsCode && (!busy || list.length > 0) && (!error || list.length > 0) && (
         <>
+          <LearningTimetable />
           <dl className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-indigo-100 bg-white p-4 sm:p-5">
               <dt className="text-sm font-semibold text-slate-600">Open to take</dt>
